@@ -1,0 +1,26 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Clean (PC)",
+            "type": "shell",
+            "command": "make clean -f Makefile.port",
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "Build",
+            "type": "shell",
+            "command": "make -f Makefile.port -j",
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "Build (Debug)",
+            "type": "shell",
+            "command": "make -f Makefile.port -j GCC_OPT_LVL=-Og",
+            "group": "build",
+            "problemMatcher": []
+        }
+    ]
+}

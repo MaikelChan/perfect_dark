@@ -1,0 +1,14 @@
+{
+    "C_Cpp.autoAddFileAssociations": false,
+    "terminal.integrated.env.windows": {
+        "CHERE_INVOKING": "1",
+        "MSYSTEM": "MINGW32"
+    },
+    "terminal.integrated.profiles.windows": {
+        "bash (MSYS2)": {
+            "path": "C:\\msys64\\usr\\bin\\bash.exe",
+            "args": ["--login", "-i"]
+        }
+    },
+    "terminal.integrated.defaultProfile.windows": "bash (MSYS2)",
+}

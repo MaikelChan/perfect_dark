@@ -1,0 +1,28 @@
+{
+    "configurations": [
+        {
+            "name": "Windows (NTSC Final)",
+            "compilerPath": "C:/msys64/mingw32/bin/i686-w64-mingw32-gcc.exe",
+            "includePath": [
+                "${workspaceFolder}/include",
+                "${workspaceFolder}/include/PR",
+                "${workspaceFolder}/port/include",
+                "${workspaceFolder}/src/include",
+                "${workspaceFolder}/src/generated/ntsc-final",
+                "C:/msys64/mingw32/include",
+                "C:/msys64/mingw32/include/SDL2"
+            ],
+            "defines": [
+                "_LANGUAGE_C",
+                "AVOID_UB",
+                "PAL=0",
+                "PIRACYCHECKS=0",
+                "VERSION=2",
+                "VERSION_HASH=\"\"",
+                "VERSION_ROMID=\"ntsc-final\"",
+                "VERSION_TARGET=\"i686-windows\""
+            ]
+        }
+    ],
+    "version": 4
+}
