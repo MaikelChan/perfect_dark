@@ -23,7 +23,7 @@
                     "ignoreFailures": true
                 }
             ],
-            //"preLaunchTask": "Build (Debug)"
+            "preLaunchTask": "Build (Debug)"
             //"logging": { "engineLogging": true }
         }
     ]
