@@ -838,8 +838,8 @@ static void import_texture(int i, int tile, bool importReplacement) {
     const uint32_t tmem_index = rdp.texture_tile[tile].tmem_index;
     const uint8_t palette_index = rdp.texture_tile[tile].palette;
 
-    if (rdp.tex_lod && tile == rdp.first_tile_index) {
-        // set up miplevel 0
+    if ((rdp.tex_lod && tile == rdp.first_tile_index) || !rdp.loaded_texture[tmem_index].addr) {
+        // set up miplevel 0; also acts as a catch-all for when .addr is NULL because my texture loader sucks
         rdp.loaded_texture[tmem_index].line_size_bytes = rdp.texture_tile[tile].line_size_bytes;
         rdp.loaded_texture[tmem_index].full_image_line_size_bytes = rdp.texture_tile[tile].line_size_bytes;
         rdp.loaded_texture[tmem_index].full_size_bytes = rdp.loaded_texture[tmem_index].full_image_line_size_bytes * rdp.texture_tile[tile].height;
@@ -996,7 +996,8 @@ static float gfx_adjust_x_for_aspect_ratio(float x) {
     if (fbActive) {
         return x;
     } else {
-        return x * (4.0f / 3.0f) / ((float)gfx_current_dimensions.width / (float)gfx_current_dimensions.height);
+        return x * ((float)gfx_current_window_dimensions.width / gfx_current_window_dimensions.height) /
+            ((float)gfx_current_dimensions.width / (float)gfx_current_dimensions.height);
     }
 }
 
@@ -2582,14 +2583,12 @@ extern "C" void gfx_start_frame(void) {
         gfx_current_window_dimensions.height = 1;
     }
 
-    // for now ensure that the game renders in a centered 4:3 window
-    // proper 16:9 support requires some fixes, namely the sky, fullscreen fades and room culling
-    gfx_current_dimensions.aspect_ratio = 4.0f / 3.0f;
-    gfx_current_dimensions.height = gfx_current_window_dimensions.height;
-    gfx_current_dimensions.width = gfx_current_dimensions.height * gfx_current_dimensions.aspect_ratio;
+    gfx_current_window_dimensions.aspect_ratio = (float)gfx_current_window_dimensions.width / gfx_current_window_dimensions.height;
+
+    gfx_current_dimensions = gfx_current_window_dimensions;
+
     gfx_current_game_window_viewport.width = gfx_current_dimensions.width;
     gfx_current_game_window_viewport.height = gfx_current_dimensions.height;
-    gfx_current_game_window_viewport.x = (gfx_current_window_dimensions.width - gfx_current_dimensions.width) / 2;
 
     if (gfx_current_dimensions.height != gfx_prev_dimensions.height) {
         for (auto& fb : framebuffers) {

@@ -70,6 +70,9 @@
 #include "lib/lib_317f0.h"
 #include "data.h"
 #include "types.h"
+#ifndef PLATFORM_N64
+#include "video.h"
+#endif
 
 s32 g_DefaultWeapons[2];
 f32 g_MpSwirlRotateSpeed;
@@ -2996,7 +2999,11 @@ f32 player0f0bd358(void)
 	result = (f32)width / (f32)height;
 	result = g_ViModes[g_ViRes].yscale * result;
 
+#ifdef PLATFORM_N64
 	return result;
+#else
+	return result * (videoGetAspect() / (4.0f / 3.0f));
+#endif
 }
 
 void playerUpdateShake(void)
@@ -3152,11 +3159,15 @@ void playerTick(bool arg0)
 	var800800f0jf = 0;
 #endif
 
+#ifdef PLATFORM_N64
 	if (optionsGetScreenRatio() == SCREENRATIO_16_9) {
 		aspectratio = player0f0bd358() * 1.33333333f;
 	} else {
 		aspectratio = player0f0bd358();
 	}
+#else
+	aspectratio = player0f0bd358();
+#endif
 
 #if PAL
 	aspectratio *= 1.1904761791229f;

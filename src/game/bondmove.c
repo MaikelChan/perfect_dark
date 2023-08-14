@@ -40,6 +40,7 @@
 #include "types.h"
 #ifndef PLATFORM_N64
 #include "input.h"
+#include "video.h"
 #endif
 
 void bmoveSetControlDef(u32 controldef)
@@ -1837,8 +1838,21 @@ void bmoveProcessInput(bool allowc1x, bool allowc1y, bool allowc1buttons, bool i
 				g_Vars.currentplayer->autoaimdamp = (PAL ? 0.974f : 0.979f);
 			}
 
+#ifdef PLATFORM_N64
 			x = g_Vars.currentplayer->speedtheta * 0.3f + g_Vars.currentplayer->gunextraaimx;
 			y = -g_Vars.currentplayer->speedverta * 0.1f + g_Vars.currentplayer->gunextraaimy;
+#else
+			f32 xscale, yscale;
+			if (movedata.freelookdx || movedata.freelookdy) {
+				xscale = 320.f / (f32)videoGetWidth();
+				yscale = 240.f / (f32)videoGetHeight();
+			} else {
+				xscale = 1.f;
+				yscale = 1.f;
+			}
+			x = g_Vars.currentplayer->speedtheta * 0.3f * xscale + g_Vars.currentplayer->gunextraaimx;
+			y = -g_Vars.currentplayer->speedverta * 0.1f * yscale + g_Vars.currentplayer->gunextraaimy;
+#endif
 
 			bgunSwivelWithDamp(x, y, PAL ? 0.955f : 0.963f);
 		}
