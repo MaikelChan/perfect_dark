@@ -11,7 +11,7 @@
             "program": "${workspaceFolder}/build/ntsc-final-port/pd.exe",
             "args": [],
             "stopAtEntry": false,
-            "cwd": "${workspaceFolder}/build/ntsc-final-port",
+            "cwd": "${workspaceFolder}/../Build/",
             "environment": [],
             "externalConsole": false,
             "MIMode": "gdb",
