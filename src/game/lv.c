@@ -1185,6 +1185,9 @@ Gfx *lvRender(Gfx *gdl)
 				}
 
 				gdl = viRenderViewportEdges(gdl);
+#ifndef PLATFORM_N64
+				gdl = playerSetVisionMode(gdl);
+#endif
 				gdl = skyRender(gdl);
 				bgTick();
 				lightsTick();
@@ -1287,11 +1290,18 @@ Gfx *lvRender(Gfx *gdl)
 				}
 
 				// Handle opening doors and reloading
-				if (g_Vars.currentplayer->bondactivateorreload) {
-					if (currentPlayerInteract(false)) {
+				if (g_Vars.currentplayer->bondactivateorreload & JO_ACTION_RELOAD) {
+					if (g_Vars.currentplayer->hands[HAND_RIGHT].state != HANDSTATE_RELOAD){
 						bgunReloadIfPossible(HAND_RIGHT);
+
+					}
+					if (g_Vars.currentplayer->hands[HAND_LEFT].state != HANDSTATE_RELOAD) {
 						bgunReloadIfPossible(HAND_LEFT);
 					}
+					g_Vars.currentplayer->bondactivateorreload = (g_Vars.currentplayer->bondactivateorreload & ~JO_ACTION_RELOAD) | (g_Vars.currentplayer->bondactivateorreload & 0x0);
+				}
+				if (g_Vars.currentplayer->bondactivateorreload & JO_ACTION_ACTIVATE) {
+					currentPlayerInteract(false);
 				} else if (g_Vars.currentplayer->eyespy
 						&& g_Vars.currentplayer->eyespy->active
 						&& g_Vars.currentplayer->eyespy->opendoor) {
@@ -1299,6 +1309,7 @@ Gfx *lvRender(Gfx *gdl)
 				}
 
 				propsTestForPickup();
+
 				gdl = bgRender(gdl);
 				chr0f028498(var80075d68 == 15 || g_AnimHostEnabled);
 				gdl = propsRenderBeams(gdl);
@@ -2049,8 +2060,8 @@ void lvTick(void)
 
 		if (slowmo == SLOWMOTION_ON) {
 			if (g_Vars.speedpillon == false || g_Vars.in_cutscene) {
-				if (g_Vars.lvupdate240 > 4) {
-					g_Vars.lvupdate240 = 4;
+				if (g_Vars.lvupdate240 > LV_SLOMO_TICK_CAP) {
+					g_Vars.lvupdate240 = LV_SLOMO_TICK_CAP;
 				}
 			}
 		} else if (slowmo == SLOWMOTION_SMART) {
@@ -2080,25 +2091,25 @@ void lvTick(void)
 					}
 
 					if (foundnearbychr) {
-						if (g_Vars.lvupdate240 > 4) {
-							g_Vars.lvupdate240 = 4;
+						if (g_Vars.lvupdate240 > LV_SLOMO_TICK_CAP) {
+							g_Vars.lvupdate240 = LV_SLOMO_TICK_CAP;
 						}
 					} else {
-						if (g_Vars.lvupdate240 > 8) {
-							g_Vars.lvupdate240 = 8;
+						if (g_Vars.lvupdate240 > TICKS(8)) {
+							g_Vars.lvupdate240 = TICKS(8);
 						}
 					}
 				} else {
-					if (g_Vars.lvupdate240 > 4) {
-						g_Vars.lvupdate240 = 4;
+					if (g_Vars.lvupdate240 > LV_SLOMO_TICK_CAP) {
+						g_Vars.lvupdate240 = LV_SLOMO_TICK_CAP;
 					}
 				}
 			}
 		} else {
 			// Slow motion settings are off
 			if (g_Vars.speedpillon && g_Vars.in_cutscene == false) {
-				if (g_Vars.lvupdate240 > 4) {
-					g_Vars.lvupdate240 = 4;
+				if (g_Vars.lvupdate240 > LV_SLOMO_TICK_CAP) {
+					g_Vars.lvupdate240 = LV_SLOMO_TICK_CAP;
 				}
 			}
 		}

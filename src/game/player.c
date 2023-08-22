@@ -72,6 +72,7 @@
 #include "types.h"
 #ifndef PLATFORM_N64
 #include "video.h"
+#include "input.h"
 #endif
 
 s32 g_DefaultWeapons[2];
@@ -805,6 +806,8 @@ void playerLoadDefaults(void)
 	g_Vars.currentplayer->prevoverexposurered = 0;
 	g_Vars.currentplayer->prevoverexposuregreen = 0;
 	g_Vars.currentplayer->prevoverexposureblue = 0;
+	g_Vars.currentplayer->amdowntime = 0;
+	g_Vars.currentplayer->altdowntime = 0;
 }
 
 bool playerSpawnAnti(struct chrdata *hostchr, bool force)
@@ -1327,7 +1330,7 @@ void playerTickChrBody(void)
 		s32 headnum = HEAD_DARK_COMBAT;
 		bool sp60 = false;
 		struct model *model = NULL;
-		union modelrwdata **rwdatas;
+		u32 *rwdatas;
 		u32 stack3[2];
 
 		g_Vars.currentplayer->haschrbody = true;
@@ -1375,7 +1378,7 @@ void playerTickChrBody(void)
 			offset1 += sizeof(struct anim);
 			offset1 = ALIGN64(offset1);
 
-			rwdatas = (union modelrwdata **)(allocation + offset1);
+			rwdatas = (u32 *)(allocation + offset1);
 			osSyncPrintf("Gunmem: savedata 0x%08x\n", (uintptr_t)rwdatas);
 			offset1 += 0x400;
 			offset1 = ALIGN64(offset1);
@@ -2060,11 +2063,19 @@ f32 playerGetZoomFovY(void)
 
 void playerTweenFovY(f32 targetfovy)
 {
+	f32 speed = 15.0f / 30.0f;
+
+#ifndef PLATFORM_N64
+	if (videoGetPlayerFovY() > 60.0f) { // adjust zoom speed depending on non-default fov setting (higher fov == faster zoom)
+		speed /= videoGetPlayerFovY() / 60.0f;
+	}
+#endif
+
 	if (playerGetZoomFovY() != targetfovy) {
 		if (g_Vars.currentplayer->zoominfovy > targetfovy) {
-			playerSetZoomFovY(targetfovy, (g_Vars.currentplayer->zoominfovy - targetfovy) * 15.0f / 30.0f);
+			playerSetZoomFovY(targetfovy, (g_Vars.currentplayer->zoominfovy - targetfovy) * speed);
 		} else {
-			playerSetZoomFovY(targetfovy, (targetfovy - g_Vars.currentplayer->zoominfovy) * 15.0f / 30.0f);
+			playerSetZoomFovY(targetfovy, (targetfovy - g_Vars.currentplayer->zoominfovy) * speed);
 		}
 	}
 }
@@ -3124,14 +3135,22 @@ void playerConfigureVi(void)
 	var800800f0jf = 0;
 #endif
 
+#ifdef PLATFORM_N64
 	playermgrSetFovY(60);
+#else
+	playermgrSetFovY(videoGetPlayerFovY());
+#endif
 	playermgrSetAspectRatio(ratio);
 	playermgrSetViewSize(playerGetViewportWidth(), playerGetViewportHeight());
 	playermgrSetViewPosition(playerGetViewportLeft(), playerGetViewportTop());
 
 	viSetMode(g_ViModes[g_ViRes].xscale);
 
+#ifdef PLATFORM_N64
 	viSetFovAspectAndSize(60, ratio, playerGetViewportWidth(), playerGetViewportHeight());
+#else
+	viSetFovAspectAndSize(videoGetPlayerFovY(), ratio, playerGetViewportWidth(), playerGetViewportHeight());
+#endif
 
 	viSetViewPosition(playerGetViewportLeft(), playerGetViewportTop());
 	viSetSize(playerGetFbWidth(), playerGetFbHeight());
@@ -3194,13 +3213,21 @@ void playerTick(bool arg0)
 		return;
 	}
 
+#ifdef PLATFORM_N64
 	playermgrSetFovY(60);
+#else
+	playermgrSetFovY(videoGetPlayerFovY());
+#endif
 	playermgrSetAspectRatio(aspectratio);
 	playermgrSetViewSize(playerGetViewportWidth(), playerGetViewportHeight());
 	playermgrSetViewPosition(playerGetViewportLeft(), playerGetViewportTop());
 
 	viSetMode(g_ViModes[g_ViRes].xscale);
+#ifdef PLATFORM_N64
 	viSetFovAspectAndSize(60, aspectratio, playerGetViewportWidth(), playerGetViewportHeight());
+#else
+	viSetFovAspectAndSize(videoGetPlayerFovY(), aspectratio, playerGetViewportWidth(), playerGetViewportHeight());
+#endif
 	viSetViewPosition(playerGetViewportLeft(), playerGetViewportTop());
 	viSetSize(playerGetFbWidth(), playerGetFbHeight());
 	viSetBufSize(playerGetFbWidth(), playerGetFbHeight());
@@ -3501,7 +3528,7 @@ void playerTick(bool arg0)
 								explode = true;
 							}
 
-							if (joyGetButtons(contpad1, B_BUTTON | Z_TRIG | L_TRIG | R_TRIG)) {
+							if (joyGetButtons(contpad1, B_BUTTON | Z_TRIG | R_TRIG)) {
 								slow = true;
 							}
 						} else {
@@ -3509,7 +3536,7 @@ void playerTick(bool arg0)
 								explode = true;
 							}
 
-							if (joyGetButtons(contpad1, A_BUTTON | B_BUTTON | L_TRIG | R_TRIG)) {
+							if (joyGetButtons(contpad1, A_BUTTON | B_BUTTON | R_TRIG)) {
 								slow = true;
 							}
 						}
@@ -3539,6 +3566,17 @@ void playerTick(bool arg0)
 
 				sp178 = sticky * LVUPDATE60FREAL() * 0.00025f;
 				sp174 = -stickx * LVUPDATE60FREAL() * 0.00025f;
+
+#ifndef PLATFORM_N64
+				if (g_Vars.currentplayernum == 0) {
+					f32 mdx, mdy;
+					inputMouseGetScaledDelta(&mdx, &mdy);
+					if (mdx || mdy) {
+						sp178 += mdy * LVUPDATE60FREAL() * 0.0025f;
+						sp174 -= mdx * LVUPDATE60FREAL() * 0.0025f;
+					}
+				}
+#endif
 
 				f20 = sqrtf(sp2ac.f[0] * sp2ac.f[0] + sp2ac.f[2] * sp2ac.f[2]);
 
@@ -4073,7 +4111,7 @@ void playerTick(bool arg0)
 
 		if (!lvIsPaused()
 				&& arg0
-				&& joyGetButtonsPressedThisFrame(contpad1, A_BUTTON | B_BUTTON | Z_TRIG | START_BUTTON | L_TRIG | R_TRIG)) {
+				&& joyGetButtonsPressedThisFrame(contpad1, A_BUTTON | B_BUTTON | Z_TRIG | START_BUTTON | R_TRIG)) {
 			var8007074c = 2;
 
 			if (playerIsFadeComplete()) {
@@ -4159,37 +4197,37 @@ struct var80070ba4 {
 
 struct var80070ba4 var80070ba4[4][7] = { // [wieldmode][turnmode]
 	{
-		{ var80065be0,            0,                       0.1,   79, 87,  1.0470308065414  },
-		{ &g_AttackAnimLightWalk, 0,                       0.5,   -1, -1,  1.0470308065414  },
-		{ &g_AttackAnimLightRun,  0,                       0.5,   -1, -1,  1.0470308065414  },
-		{ &var800709f4,           0,                       0.001, 0,  0.1, 1.0470308065414  },
-		{ &var800709f4,           0,                       0.503, -1, -1,  1.0470308065414  },
-		{ &var80070a3c,           0,                       0.001, 0,  0.1, 0.52351540327072 },
-		{ &var80070a3c,           0,                       0.45,  -1, -1,  0.52351540327072 },
+		{ var80065be0,           0,                       0.1,   79, 87,  1.0470308065414  },
+		{ &g_WalkAttackAnims[2], 0,                       0.5,   -1, -1,  1.0470308065414  },
+		{ &g_WalkAttackAnims[3], 0,                       0.5,   -1, -1,  1.0470308065414  },
+		{ &var800709f4,          0,                       0.001, 0,  0.1, 1.0470308065414  },
+		{ &var800709f4,          0,                       0.503, -1, -1,  1.0470308065414  },
+		{ &var80070a3c,          0,                       0.001, 0,  0.1, 0.52351540327072 },
+		{ &var80070a3c,          0,                       0.45,  -1, -1,  0.52351540327072 },
 	}, {
-		{ var800656c0,            0,                       0.05,  35, 40,  1.0470308065414  },
-		{ &g_AttackAnimHeavyWalk, 0,                       0.5,   -1, -1,  1.0470308065414  },
-		{ &g_AttackAnimHeavyRun,  0,                       0.5,   -1, -1,  1.0470308065414  },
-		{ &var80070a84,           0,                       0.001, 0,  0.1, 1.0470308065414  },
-		{ &var80070a84,           0,                       0.503, -1, -1,  1.0470308065414  },
-		{ &var80070acc,           0,                       0.001, 0,  0.1, 0.52351540327072 },
-		{ &var80070acc,           0,                       0.45,  -1, -1,  0.52351540327072 },
+		{ var800656c0,           0,                       0.05,  35, 40,  1.0470308065414  },
+		{ &g_WalkAttackAnims[0], 0,                       0.5,   -1, -1,  1.0470308065414  },
+		{ &g_WalkAttackAnims[1], 0,                       0.5,   -1, -1,  1.0470308065414  },
+		{ &var80070a84,          0,                       0.001, 0,  0.1, 1.0470308065414  },
+		{ &var80070a84,          0,                       0.503, -1, -1,  1.0470308065414  },
+		{ &var80070acc,          0,                       0.001, 0,  0.1, 0.52351540327072 },
+		{ &var80070acc,          0,                       0.45,  -1, -1,  0.52351540327072 },
 	}, {
-		{ NULL,                   ANIM_006A,               0.25,  0,  -1,  1.0470308065414  },
-		{ NULL,                   ANIM_006B,               0.5,   -1, -1,  1.0470308065414  },
-		{ NULL,                   ANIM_RUNNING_ONEHANDGUN, 0.5,   -1, -1,  1.0470308065414  },
-		{ NULL,                   ANIM_0280,               0.001, 0,  0.1, 1.0470308065414  },
-		{ NULL,                   ANIM_0280,               0.503, -1, -1,  1.0470308065414  },
-		{ NULL,                   ANIM_0284,               0.001, 0,  0.1, 0.52351540327072 },
-		{ NULL,                   ANIM_0284,               0.45,  -1, -1,  0.52351540327072 },
+		{ NULL,                  ANIM_006A,               0.25,  0,  -1,  1.0470308065414  },
+		{ NULL,                  ANIM_006B,               0.5,   -1, -1,  1.0470308065414  },
+		{ NULL,                  ANIM_RUNNING_ONEHANDGUN, 0.5,   -1, -1,  1.0470308065414  },
+		{ NULL,                  ANIM_0280,               0.001, 0,  0.1, 1.0470308065414  },
+		{ NULL,                  ANIM_0280,               0.503, -1, -1,  1.0470308065414  },
+		{ NULL,                  ANIM_0284,               0.001, 0,  0.1, 0.52351540327072 },
+		{ NULL,                  ANIM_0284,               0.45,  -1, -1,  0.52351540327072 },
 	}, {
-		{ var800663d8,            0,                       0.1,   32, 42,  1.0470308065414  },
-		{ &g_AttackAnimDualWalk,  0,                       0.5,   -1, -1,  1.0470308065414  },
-		{ &g_AttackAnimDualRun,   0,                       0.5,   -1, -1,  1.0470308065414  },
-		{ &var80070b14,           0,                       0.001, 0,  0.1, 1.0470308065414  },
-		{ &var80070b14,           0,                       0.503, -1, -1,  1.0470308065414  },
-		{ &var80070b5c,           0,                       0.001, 0,  0.1, 0.52351540327072 },
-		{ &var80070b5c,           0,                       0.45,  -1, -1,  0.52351540327072 },
+		{ var800663d8,           0,                       0.1,   32, 42,  1.0470308065414  },
+		{ &g_WalkAttackAnims[4], 0,                       0.5,   -1, -1,  1.0470308065414  },
+		{ &g_WalkAttackAnims[5], 0,                       0.5,   -1, -1,  1.0470308065414  },
+		{ &var80070b14,          0,                       0.001, 0,  0.1, 1.0470308065414  },
+		{ &var80070b14,          0,                       0.503, -1, -1,  1.0470308065414  },
+		{ &var80070b5c,          0,                       0.001, 0,  0.1, 0.52351540327072 },
+		{ &var80070b5c,          0,                       0.45,  -1, -1,  0.52351540327072 },
 	},
 };
 
@@ -4446,6 +4484,28 @@ Gfx *playerRenderShield(Gfx *gdl)
 	return gdl;
 }
 
+#ifndef PLATFORM_N64
+Gfx *playerSetVisionMode(Gfx *gdl)
+{
+	if (g_Vars.currentplayer) {
+		if (g_Vars.currentplayer->isdead == false
+				&& g_InCutscene == 0
+				&& (!g_Vars.currentplayer->eyespy || (g_Vars.currentplayer->eyespy && !g_Vars.currentplayer->eyespy->active))
+				&& ((g_Vars.currentplayer->devicesactive & ~g_Vars.currentplayer->devicesinhibit) & DEVICE_NIGHTVISION)) {
+				gDPGrayscaleEXT(gdl++, G_ON);
+				gDPSetGrayscaleColorEXT(gdl++, 0x00, 0xFF, 0x00, 0xFF);
+		} else if (g_Vars.currentplayer->isdead == false
+				&& g_InCutscene == 0
+				&& (!g_Vars.currentplayer->eyespy || (g_Vars.currentplayer->eyespy && !g_Vars.currentplayer->eyespy->active))
+				&& ((g_Vars.currentplayer->devicesactive & ~g_Vars.currentplayer->devicesinhibit) & DEVICE_IRSCANNER)) {
+				gDPGrayscaleEXT(gdl++, G_ON);
+				gDPSetGrayscaleColorEXT(gdl++, 0xFF, 0x00, 0x00, 0xFF);
+		}
+	}
+	return gdl;
+}
+#endif
+
 Gfx *playerRenderHud(Gfx *gdl)
 {
 	if (g_Vars.currentplayer->cameramode == CAMERAMODE_THIRDPERSON) {
@@ -4509,12 +4569,20 @@ Gfx *playerRenderHud(Gfx *gdl)
 				&& ((g_Vars.currentplayer->devicesactive & ~g_Vars.currentplayer->devicesinhibit) & DEVICE_NIGHTVISION)) {
 			gdl = bviewDrawNvLens(gdl);
 			gdl = bviewDrawNvBinoculars(gdl);
+#ifndef PLATFORM_N64
+			// turn off "greenscale"
+			gDPGrayscaleEXT(gdl++, G_OFF);
+#endif
 		} else if (g_Vars.currentplayer->isdead == false
 				&& g_InCutscene == 0
 				&& (!g_Vars.currentplayer->eyespy || (g_Vars.currentplayer->eyespy && !g_Vars.currentplayer->eyespy->active))
 				&& ((g_Vars.currentplayer->devicesactive & ~g_Vars.currentplayer->devicesinhibit) & DEVICE_IRSCANNER)) {
 			gdl = bviewDrawIrLens(gdl);
 			gdl = bviewDrawIrBinoculars(gdl);
+#ifndef PLATFORM_N64
+			// turn off "redscale"
+			gDPGrayscaleEXT(gdl++, G_OFF);
+#endif
 		}
 
 		if (g_Vars.currentplayer->eyesshutfrac > 0) {

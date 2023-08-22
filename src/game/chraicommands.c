@@ -4871,6 +4871,7 @@ bool aiSetCameraAnimation(void)
 	playerStartCutscene(anim_id);
 
 	if (g_Vars.currentplayer->haschrbody == false) {
+		g_Vars.chrdata->sleep = -1;
 		return true;
 	}
 

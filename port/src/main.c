@@ -52,6 +52,12 @@ void bootCreateSched(void)
 	}
 }
 
+static void cleanup(void)
+{
+	configSave(CONFIG_FNAME);
+	// TODO: actually shut down all subsystems
+}
+
 int main(int argc, const char **argv)
 {
 	fsInit();
@@ -61,6 +67,8 @@ int main(int argc, const char **argv)
 	audioInit();
 	romdataInit();
 
+	atexit(cleanup);
+
 	bootCreateSched();
 
 	osMemSize = configGetInt("Game.MemorySize", 16) * 1024 * 1024;
@@ -68,7 +76,7 @@ int main(int argc, const char **argv)
 	g_OsMemSize = osGetMemSize();
 
 	g_MempHeapSize = g_OsMemSize;
-	g_MempHeap = calloc(1, g_MempHeapSize);
+	g_MempHeap = sysMemZeroAlloc(g_MempHeapSize);
 	if (!g_MempHeap) {
 		sysFatalError("Could not alloc %u bytes for memp heap.", g_MempHeapSize);
 	}

@@ -45,6 +45,8 @@
 #include "types.h"
 #ifndef PLATFORM_N64
 #include "preprocess.h"
+#include "system.h"
+#include "video.h"
 #endif
 
 #define BGCMD_END                               0x00
@@ -2220,6 +2222,19 @@ Gfx *bgScissorWithinViewportF(Gfx *gdl, f32 viewleft, f32 viewtop, f32 viewright
 
 Gfx *bgScissorWithinViewport(Gfx *gdl, s32 viewleft, s32 viewtop, s32 viewright, s32 viewbottom)
 {
+#ifndef PLATFORM_N64
+	const s32 xmargin = videoGetWidth() / SCREEN_320 - 1;
+	const s32 ymargin = videoGetHeight() / SCREEN_240 - 1;
+	if (xmargin > 0) {
+		viewleft -= xmargin;
+		viewright += xmargin;
+	}
+	if (ymargin > 0) {
+		viewtop -= ymargin;
+		viewbottom += ymargin;
+	}
+#endif
+
 	if (viewleft < g_Vars.currentplayer->viewleft) {
 		viewleft = g_Vars.currentplayer->viewleft;
 	}
@@ -2789,12 +2804,23 @@ void bgLoadRoom(s32 roomnum)
 			alloclen += 1024;
 		}
 	} else {
+#ifdef PLATFORM_N64
 		alloclen = memaGetLongestFree();
+#else
+		// probably never reaches here in practice as all rooms have gfxdatalen
+		// alloc 10k and hope for the best
+		alloclen = 10240;
+#endif
 	}
 
+#ifdef PLATFORM_N64
 	bgGarbageCollectRooms(alloclen, false);
 
 	allocation = memaAlloc(alloclen);
+#else
+	// allocate room data from heap to not take up mema space
+	allocation = sysMemAlloc(alloclen);
+#endif
 
 	if (allocation != NULL) {
 		dyntexSetCurrentRoom(roomnum);
@@ -2943,9 +2969,11 @@ void bgLoadRoom(s32 roomnum)
 
 		g_Rooms[roomnum].loaded240 = 1;
 
+#ifdef PLATFORM_N64
 		if (g_Rooms[roomnum].gfxdatalen != alloclen) {
 			memaRealloc((intptr_t) allocation, alloclen, g_Rooms[roomnum].gfxdatalen);
 		}
+#endif
 
 		// Update gdl pointers in the gfxdata so they point to the ones
 		// that have been processed by textLoadFromGdl.
@@ -3030,14 +3058,22 @@ void bgUnloadRoom(s32 roomnum)
 	u32 size;
 
 	if (g_Rooms[roomnum].vtxbatches) {
+#ifdef PLATFORM_N64
 		size = ((g_Rooms[roomnum].numvtxbatches) * sizeof(struct vtxbatch) + 0xf) & ~0xf;
 		memaFree(g_Rooms[roomnum].vtxbatches, size);
+#else
+		sysMemFree(g_Rooms[roomnum].vtxbatches);
+#endif
 		g_Rooms[roomnum].vtxbatches = NULL;
 	}
 
 	if (g_Rooms[roomnum].gfxdatalen > 0) {
+#ifdef PLATFORM_N64
 		size = g_Rooms[roomnum].gfxdatalen;
 		memaFree(g_Rooms[roomnum].gfxdata, size);
+#else
+		sysMemFree(g_Rooms[roomnum].gfxdata);
+#endif
 		g_Rooms[roomnum].gfxdata = NULL;
 	}
 
@@ -3067,6 +3103,7 @@ void bgUnloadAllRooms(void)
  */
 void bgGarbageCollectRooms(s32 bytesneeded, bool desparate)
 {
+#ifdef PLATFORM_N64 // don't need this on PC as rooms are allocated from heap
 	s32 bytesfree = memaGetLongestFree();
 	s32 oldestroom;
 	s32 oldesttimer;
@@ -3114,6 +3151,7 @@ void bgGarbageCollectRooms(s32 bytesneeded, bool desparate)
 			break;
 		}
 	}
+#endif
 }
 
 /**
@@ -3174,8 +3212,13 @@ Gfx *bgRenderRoomPass(Gfx *gdl, s32 roomnum, struct roomblock *block, bool arg3)
 		v0 = (uintptr_t)g_Rooms[roomnum].colours;
 
 		if (v0 != NULL) {
+#ifdef PLATFORM_N64
 			s32 addr = ALIGN8((uintptr_t)&g_Rooms[roomnum].gfxdata->vertices[g_Rooms[roomnum].gfxdata->numvertices]);
 			v0 += (((intptr_t)block->colours - addr) >> 2) * 4;
+#else
+			uintptr_t addr = ALIGN8((uintptr_t)&g_Rooms[roomnum].gfxdata->vertices[g_Rooms[roomnum].gfxdata->numvertices]);
+			v0 += (((uintptr_t)block->colours - addr) >> 2) * 4;
+#endif
 		} else {
 			v0 = (uintptr_t)block->colours;
 		}
@@ -3399,7 +3442,11 @@ void bgFindRoomVtxBatches(s32 roomnum)
 
 			batchindex += xlucount;
 
+#ifdef PLATFORM_N64
 			batches = memaAlloc((batchindex * sizeof(struct vtxbatch) + 0xf) & ~0xf);
+#else
+			batches = sysMemAlloc((batchindex * sizeof(struct vtxbatch) + 0xf) & ~0xf);
+#endif
 
 			if (batches != NULL) {
 				gdl = bgGetNextGdlInLayer(roomnum, NULL, VTXBATCHTYPE_OPA);

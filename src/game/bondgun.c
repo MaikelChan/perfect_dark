@@ -4157,10 +4157,10 @@ void bgunTickMasterLoad(void)
 						for (i = 0; i < 2; i++) {
 							hand = &player->hands[i];
 
-							modelInit(&hand->gunmodel, player->gunctrl.gunmodeldef, (union modelrwdata **)hand->unk0a6c, 0);
+							modelInit(&hand->gunmodel, player->gunctrl.gunmodeldef, hand->unk0a6c, 0);
 
 							if (player->gunctrl.handmodeldef != 0) {
-								modelInit(&hand->handmodel, player->gunctrl.handmodeldef, (union modelrwdata **)hand->handsavedata, false);
+								modelInit(&hand->handmodel, player->gunctrl.handmodeldef, hand->handsavedata, false);
 							}
 
 							hand->unk0dcc = (s32 *) player->gunctrl.memloadptr;
@@ -7491,6 +7491,22 @@ void bgunCreateFx(struct hand *hand, s32 handnum, struct weaponfunc *funcdef, s3
 	}
 }
 
+#ifndef PLATFORM_N64
+
+// offset calculation from NeonNyan/perfect-dark
+
+static inline f32 bgunGetFovOffsetZ(void)
+{
+	return (videoGetPlayerFovY() - 60.f) / 3.f;
+}
+
+static inline f32 bgunGetFovOffsetY(void)
+{
+	return (videoGetPlayerFovY() - 60.f) / (2.75f * 4.f);
+}
+
+#endif
+
 void bgun0f0a5550(s32 handnum)
 {
 	u8 *mtxallocation;
@@ -7581,6 +7597,12 @@ void bgun0f0a5550(s32 handnum)
 
 	sp274.y += player->guncloseroffset * 5.0f / -90.0f * 50.0f;
 	sp274.z -= player->guncloseroffset * 15.0f / -90.0f * 50.0f;
+
+#ifndef PLATFORM_N64
+	// adjust viewmodel position for different FOVs
+	sp274.y -= bgunGetFovOffsetY();
+	sp274.z += bgunGetFovOffsetZ();
+#endif
 
 	if (hand->firing && shootfunc && g_Vars.lvupdate240 != 0 && shootfunc->recoilsettings != NULL) {
 		sp274.x += (RANDOMFRAC() - 0.5f) * shootfunc->recoilsettings->xrange * hand->finalmult[0];
@@ -11664,20 +11686,27 @@ void bgunSetTriggerOn(s32 handnum, bool on)
  * - USETIMER_STOP if the B button timer should stop (ie. the B press is consumed)
  * - USETIMER_REPEAT if this function should be called again on each frame until B is released.
  */
-s32 bgunConsiderToggleGunFunction(s32 usedowntime, bool trigpressed, bool fromactivemenu)
+s32 bgunConsiderToggleGunFunction(s32 usedowntime, bool trigpressed, bool fromactivemenu, bool fromdedicatedbutton)
 {
 	switch (bgunGetWeaponNum(HAND_RIGHT)) {
 	case WEAPON_SNIPERRIFLE:
-		// At 25 ticks (or B+Z), start showing the new function
+		if (usedowntime < 0) {
+			return USETIMER_CONTINUE;
+		}
+		// g_Vars.currentplayer->gunctrl.invertgunfunc = !g_Vars.currentplayer->gunctrl.invertgunfunc;
 		g_Vars.currentplayer->gunctrl.invertgunfunc = true;
 
 		// B+Z immediately triggers crouch or stand
 		if (trigpressed) {
+			g_Vars.currentplayer->hands[HAND_RIGHT].activatesecondary = true;
 			return USETIMER_STOP;
 		}
+		if (fromdedicatedbutton) {
+			g_Vars.currentplayer->hands[HAND_RIGHT].activatesecondary = true;
+			return USETIMER_CONTINUE;
+		}
 
-		// Don't do anything if B hasn't been held for 50/60ths of a second
-		if (usedowntime < TICKS(50)) {
+		if (ABS(usedowntime) < 0) {
 			return USETIMER_CONTINUE;
 		}
 
@@ -11687,13 +11716,13 @@ s32 bgunConsiderToggleGunFunction(s32 usedowntime, bool trigpressed, bool fromac
 
 		// Do crouch or stand
 		g_Vars.currentplayer->hands[HAND_RIGHT].activatesecondary = true;
-		return USETIMER_REPEAT;
+		return USETIMER_STOP;
 	case WEAPON_RCP120:
 	case WEAPON_LAPTOPGUN:
 	case WEAPON_DRAGON:
 	case WEAPON_REMOTEMINE:
 		// These weapons use temporary alt functions
-		g_Vars.currentplayer->gunctrl.invertgunfunc = true;
+		g_Vars.currentplayer->gunctrl.invertgunfunc = !g_Vars.currentplayer->gunctrl.invertgunfunc;
 
 		if (fromactivemenu && bgunIsUsingSecondaryFunction() == true) {
 			g_Vars.currentplayer->hands[HAND_RIGHT].activatesecondary = true;
@@ -11739,8 +11768,16 @@ s32 bgunConsiderToggleGunFunction(s32 usedowntime, bool trigpressed, bool fromac
 
 void bgun0f0a8c50(void)
 {
-	if (g_Vars.currentplayer->hands[HAND_RIGHT].activatesecondary == false) {
-		g_Vars.currentplayer->gunctrl.invertgunfunc = false;
+	switch (bgunGetWeaponNum(HAND_RIGHT)) {
+	case WEAPON_RCP120:
+	case WEAPON_LAPTOPGUN:
+	case WEAPON_DRAGON:
+	case WEAPON_REMOTEMINE:
+		return;
+	default:
+		if (g_Vars.currentplayer->hands[HAND_RIGHT].activatesecondary == false) {
+			g_Vars.currentplayer->gunctrl.invertgunfunc = false;
+		}
 	}
 }
 

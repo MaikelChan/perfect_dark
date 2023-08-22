@@ -2,6 +2,8 @@
 
 #include <PR/ultratypes.h>
 
+#define CONFIG_FNAME "./pd.ini"
+
 void configInit(void);
 s32 configLoad(const char *fname);
 s32 configSave(const char *fname);

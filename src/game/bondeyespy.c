@@ -24,6 +24,9 @@
 #include "lib/collision.h"
 #include "data.h"
 #include "types.h"
+#ifndef PLATFORM_N64
+#include "input.h"
+#endif
 
 u8 g_EyespyPickup = false;
 u8 g_EyespyHit = EYESPYHIT_NONE;
@@ -736,7 +739,7 @@ void eyespyProcessInput(bool allowbuttons)
 		exitpressed = c1buttons & R_TRIG;
 		activatepressed = c1buttons & B_BUTTON;
 	} else if (controlmode <= CONTROLMODE_14) {
-		aimpressed = c1buttons & (L_TRIG | R_TRIG);
+		aimpressed = c1buttons & (R_TRIG);
 		shootpressed = c1buttons & Z_TRIG;
 		exitpressed = c1buttons & A_BUTTON;
 		activatepressed = c1buttons & B_BUTTON;
@@ -816,18 +819,18 @@ void eyespyProcessInput(bool allowbuttons)
 			forwardspeed = c1sticky;
 		}
 
-		ascendspeed = (c1buttons & (U_CBUTTONS | U_JPAD) ? 1 : 0) - (c1buttons & (D_CBUTTONS | D_JPAD) ? 1 : 0);
-		sidespeed = (c1buttons & (R_CBUTTONS | R_JPAD) ? 1 : 0) - (c1buttons & (L_CBUTTONS | L_JPAD) ? 1 : 0);
+		ascendspeed = (c1buttons & (U_CBUTTONS) ? 1 : 0) - (c1buttons & (D_CBUTTONS) ? 1 : 0);
+		sidespeed = (c1buttons & (R_CBUTTONS) ? 1 : 0) - (c1buttons & (L_CBUTTONS) ? 1 : 0);
 	} else if (controlmode <= CONTROLMODE_14) {
 		if (aimpressed) {
 			domovecentre = false;
 			pitchspeed = c1sticky;
 		} else {
 			ascendspeed = c1sticky * 0.25f;
-			forwardspeed = (c1buttons & (U_CBUTTONS | U_JPAD) ? 24.0f : 0) - (c1buttons & (D_CBUTTONS | D_JPAD) ? 24.0f : 0);
+			forwardspeed = (c1buttons & (U_CBUTTONS) ? 24.0f : 0) - (c1buttons & (D_CBUTTONS) ? 24.0f : 0);
 		}
 
-		sidespeed = (c1buttons & (R_CBUTTONS | R_JPAD) ? 1 : 0) - (c1buttons & (L_CBUTTONS | L_JPAD) ? 1 : 0);
+		sidespeed = (c1buttons & (R_CBUTTONS) ? 1 : 0) - (c1buttons & (L_CBUTTONS) ? 1 : 0);
 	} else if (controlmode == CONTROLMODE_21 || controlmode == CONTROLMODE_23) {
 		forwardspeed = c1sticky;
 
@@ -898,6 +901,24 @@ void eyespyProcessInput(bool allowbuttons)
 		}
 #endif
 
+#ifndef PLATFORM_N64
+		if (g_Vars.currentplayernum == 0) {
+			f32 mdx, mdy;
+			inputMouseGetScaledDelta(&mdx, &mdy);
+			if (mdx || mdy) {
+				mdx *= g_Vars.lvupdate60freal;
+				mdy *= g_Vars.lvupdate60freal;
+				g_Vars.currentplayer->eyespy->theta += mdx * 1.5f;
+				// hold aim to move up and down, release to look up and down
+				if (aimpressed) {
+					ascendspeed -= mdy;
+				} else {
+					g_Vars.currentplayer->eyespy->verta -= mdy * 1.5f;
+				}
+			}
+		}
+#endif
+
 		// Update theta
 		g_Vars.currentplayer->eyespy->theta += c1stickx * 0.0625f * g_Vars.lvupdate60freal;
 
@@ -916,6 +937,19 @@ void eyespyProcessInput(bool allowbuttons)
 		g_Vars.currentplayer->eyespy->verta -= pitchspeed * 0.0625f * g_Vars.lvupdate60freal;
 
 		if (prevverta != g_Vars.currentplayer->eyespy->verta) {
+#ifndef PLATFORM_N64 // limit eyespy range to 75 degrees
+			while (g_Vars.currentplayer->eyespy->verta > 90.0f) {
+				g_Vars.currentplayer->eyespy->verta -= 360.0f;
+			}
+
+			if (g_Vars.currentplayer->eyespy->verta < -75.0f) {
+				g_Vars.currentplayer->eyespy->verta = -75.0f;
+			}
+
+			if (g_Vars.currentplayer->eyespy->verta > 75.0f) {
+				g_Vars.currentplayer->eyespy->verta = 75.0f;
+			}
+#endif
 			while (g_Vars.currentplayer->eyespy->verta < 0.0f) {
 				g_Vars.currentplayer->eyespy->verta += 360.0f;
 			}
@@ -937,6 +971,7 @@ void eyespyProcessInput(bool allowbuttons)
 		// Make eyespy look horizontally
 		if (domovecentre) {
 			if (g_Vars.currentplayer->eyespy->verta > 0.0f && forwardspeed != 0) {
+#ifdef PLATFORM_N64
 				if (g_Vars.currentplayer->eyespy->verta < 180.0f) {
 					tmp = g_Vars.currentplayer->eyespy->verta;
 
@@ -952,6 +987,7 @@ void eyespyProcessInput(bool allowbuttons)
 						g_Vars.currentplayer->eyespy->verta += tmp;
 					}
 				}
+#endif
 
 				g_Vars.currentplayer->eyespy->cosverta = cosf(g_Vars.currentplayer->eyespy->verta * 0.017453292384744f);
 				g_Vars.currentplayer->eyespy->sinverta = sinf(g_Vars.currentplayer->eyespy->verta * 0.017453292384744f);

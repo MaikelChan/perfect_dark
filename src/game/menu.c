@@ -48,6 +48,9 @@
 #include "lib/lib_317f0.h"
 #include "data.h"
 #include "types.h"
+#ifndef PLATFORM_N64
+#include "video.h"
+#endif
 
 #if VERSION >= VERSION_PAL_FINAL
 char g_CheatMarqueeString[300];
@@ -493,7 +496,7 @@ char *menuResolveDialogTitle(struct menudialogdef *dialogdef)
 	return menuResolveText(dialogdef->title, dialogdef);
 }
 
-void func0f0f15a4(struct menuitem *item, s32 *arg1)
+void menuGetItemBlocksRequired(struct menuitem *item, s32 *numwords)
 {
 	switch (item->type) {
 	case MENUITEMTYPE_SLIDER:
@@ -501,31 +504,31 @@ void func0f0f15a4(struct menuitem *item, s32 *arg1)
 	case MENUITEMTYPE_RANKING:
 	case MENUITEMTYPE_14:
 	case MENUITEMTYPE_18:
-		*arg1 = 1;
+		*numwords = 1;
 		break;
 #if VERSION < VERSION_PAL_BETA
 	case MENUITEMTYPE_SCROLLABLE:
 #endif
 	case MENUITEMTYPE_MARQUEE:
 	case MENUITEMTYPE_CONTROLLER:
-		*arg1 = 2;
+		*numwords = 2;
 		break;
 	case MENUITEMTYPE_LIST:
 #if VERSION >= VERSION_PAL_BETA
 	case MENUITEMTYPE_SCROLLABLE:
 #endif
-		*arg1 = 3;
+		*numwords = 3;
 		break;
 	case MENUITEMTYPE_DROPDOWN:
-		*arg1 = 4;
+		*numwords = 4;
 		break;
 	case MENUITEMTYPE_PLAYERSTATS:
-		*arg1 = 5;
+		*numwords = 5;
 		break;
 	case MENUITEMTYPE_KEYBOARD:
 	case MENUITEMTYPE_10:
 	case MENUITEMTYPE_16:
-		*arg1 = 3;
+		*numwords = 3;
 		break;
 	}
 }
@@ -890,7 +893,7 @@ void func0f0f1d6c(struct menudialogdef *dialogdef, struct menudialog *dialog, st
 			}
 
 			numblocksthisitem = -1;
-			func0f0f15a4(item, &numblocksthisitem);
+			menuGetItemBlocksRequired(item, &numblocksthisitem);
 
 			if (numblocksthisitem != -1) {
 				menu->rows[rowindex].blockindex = blockindex;
@@ -1827,7 +1830,7 @@ Gfx *menuRenderModels(Gfx *gdl, struct menu840 *thing, s32 arg2)
 						modelAllocateRwData(thing->headmodeldef);
 					}
 
-					modelInit(&thing->bodymodel, thing->bodymodeldef, &thing->unk110, true);
+					modelInit(&thing->bodymodel, thing->bodymodeldef, thing->unk110, true);
 					animInit(&thing->bodyanim);
 
 					thing->bodymodel.rwdatalen = 256;
@@ -1846,7 +1849,7 @@ Gfx *menuRenderModels(Gfx *gdl, struct menu840 *thing, s32 arg2)
 
 					fileGetLoadedSize(thing->unk00c);
 					modelAllocateRwData(thing->bodymodeldef);
-					modelInit(&thing->bodymodel, thing->bodymodeldef, &thing->unk110, true);
+					modelInit(&thing->bodymodel, thing->bodymodeldef, thing->unk110, true);
 					animInit(&thing->bodyanim);
 
 					thing->bodymodel.rwdatalen = 256;
@@ -2143,7 +2146,7 @@ Gfx *menuRenderModels(Gfx *gdl, struct menu840 *thing, s32 arg2)
 
 			modelGetRootPosition(&thing->bodymodel, &oldpos);
 
-			if (joyGetButtons(0, L_TRIG)) {
+			if (joyGetButtons(0, R_TRIG)) {
 				modelSetRootPosition(&thing->bodymodel, &newpos);
 			}
 		}
@@ -2191,6 +2194,9 @@ Gfx *menuRenderModels(Gfx *gdl, struct menu840 *thing, s32 arg2)
 				gSPMatrix(gdl++, osVirtualToPhysical(camGetPerspectiveMtxL()), G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
 			} else {
 				f32 aspect = (f32) (g_MenuScissorX2 - g_MenuScissorX1) / (f32) (g_MenuScissorY2 - g_MenuScissorY1);
+#ifndef PLATFORM_N64
+				aspect *= videoGetAspect() / (4.0f / 3.0f);
+#endif
 				static u32 znear = 10;
 				static u32 zfar = 300;
 
@@ -2249,7 +2255,6 @@ Gfx *menuRenderModels(Gfx *gdl, struct menu840 *thing, s32 arg2)
 
 		renderdata.unk00 = &thing->unk014;
 		renderdata.unk10 = thing->bodymodel.matrices;
-
 		modelSetMatricesWithAnim(&renderdata, &thing->bodymodel);
 
 		if (thing->bodymodeldef->skel == &g_SkelHudPiece) {
@@ -2330,6 +2335,7 @@ Gfx *menuRenderModels(Gfx *gdl, struct menu840 *thing, s32 arg2)
 		renderdata.gdl = gdl;
 		renderdata.zbufferenabled = true;
 		modelRender(&renderdata, &thing->bodymodel);
+
 		gdl = renderdata.gdl;
 
 		mtx00016760();
@@ -4617,10 +4623,6 @@ void menuProcessInput(void)
 				inputs.shoulder = 1;
 			}
 
-			if (buttons & L_TRIG) {
-				inputs.shoulder = 1;
-			}
-
 			if ((stickx < 0 ? -stickx : stickx) < (thisstickx < 0 ? -thisstickx : thisstickx)) {
 				stickx = thisstickx;
 			}
@@ -4661,37 +4663,6 @@ void menuProcessInput(void)
 				xtapdir = 1;
 			}
 
-			if (buttons & U_JPAD) {
-				yhelddir = -1;
-			}
-
-			if (buttonsnow & U_JPAD) {
-				ytapdir = -1;
-			}
-
-			if (buttons & D_JPAD) {
-				yhelddir = 1;
-			}
-
-			if (buttonsnow & D_JPAD) {
-				ytapdir = 1;
-			}
-
-			if (buttons & L_JPAD) {
-				xhelddir = -1;
-			}
-
-			if (buttonsnow & L_JPAD) {
-				xtapdir = -1;
-			}
-
-			if (buttons & R_JPAD) {
-				xhelddir = 1;
-			}
-
-			if (buttonsnow & R_JPAD) {
-				xtapdir = 1;
-			}
 		}
 
 		// Prevent select and going back on the same frame
@@ -5059,9 +5030,23 @@ Gfx *menuRenderBackgroundLayer1(Gfx *gdl, u8 bg, f32 frac)
 			// Render the blurred background texture with full alpha
 			gdl = menugfxRenderBgBlur(gdl, 0xffffff00 | alpha, 0, 0);
 
+#ifdef PLATFORM_N64
 			// Render it twice more with half alpha and offset
 			gdl = menugfxRenderBgBlur(gdl, 0xffffff00 | alpha >> 1, -30, -30);
 			gdl = menugfxRenderBgBlur(gdl, 0xffffff00 | alpha >> 1, 30, 30);
+#else
+			// HACK: we don't actually blur anything on the CPU, so
+			// render it offset to all cardinal and ordinal directions to achieve crappy box blur
+			const s32 card[2] = { -30, 30 };
+			const s32 ord[2] = { -21, 21 }; // 30 / sqrt(2)
+			const u32 rgba = 0xffffff00 | alpha >> 3;
+			for (s32 i = 0; i < 2; ++i) {
+				gdl = menugfxRenderBgBlur(gdl, rgba, 0, card[i]);
+				gdl = menugfxRenderBgBlur(gdl, rgba, card[i], 0);
+				gdl = menugfxRenderBgBlur(gdl, rgba, ord[0], ord[i]);
+				gdl = menugfxRenderBgBlur(gdl, rgba, ord[i], ord[0]);
+			}
+#endif
 		}
 		break;
 	case MENUBG_BLACK:

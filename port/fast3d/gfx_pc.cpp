@@ -32,7 +32,6 @@
 #include "gfx_screen_config.h"
 
 uintptr_t gfxFramebuffer;
-std::stack<std::string> currentDir;
 
 using namespace std;
 
@@ -73,7 +72,7 @@ struct RGBA {
 struct NormalColor {
     union {
         struct { uint8_t r, g, b, a; };
-        struct { uint8_t x, y, z, w; };
+        struct { int8_t x, y, z, w; };
     };
 };
 
@@ -504,11 +503,14 @@ static struct ColorCombiner* gfx_lookup_or_create_color_combiner(const ColorComb
 }
 
 void gfx_texture_cache_clear() {
+    gfx_flush();
     for (const auto& entry : gfx_texture_cache.map) {
         gfx_texture_cache.free_texture_ids.push_back(entry.second.texture_id);
     }
     gfx_texture_cache.map.clear();
     gfx_texture_cache.lru.clear();
+    rdp.textures_changed[0] = rdp.textures_changed[1] = true;
+    memset(rendering_state.textures, 0, sizeof(rendering_state.textures));
 }
 
 static bool gfx_texture_cache_lookup(int i, const TextureCacheKey& key) {
@@ -551,6 +553,8 @@ static bool gfx_texture_cache_lookup(int i, const TextureCacheKey& key) {
 }
 
 static void gfx_texture_cache_delete(const uint8_t* orig_addr) {
+    gfx_flush();
+    rdp.textures_changed[0] = rdp.textures_changed[1] = true;
     while (gfx_texture_cache.map.bucket_count() > 0) {
         TextureCacheKey key = { orig_addr, { 0 }, 0, 0 }; // bucket index only depends on the address
         size_t bucket = gfx_texture_cache.map.bucket(key);
@@ -1015,11 +1019,6 @@ static void gfx_adjust_width_height_for_scale(uint32_t& width, uint32_t& height)
 static void gfx_sp_vertex(size_t n_vertices, size_t dest_index, const Vtx* vertices) {
     SUPPORT_CHECK(n_vertices <= MAX_VERTICES);
 
-    // seems like PD likes to use fog color/alpha without enabling G_FOG
-    const bool use_fog = (rsp.geometry_mode & G_FOG) || 
-        (rdp.other_mode_l >> 30) == G_BL_CLR_FOG ||
-        (rdp.other_mode_l >> 26) == G_BL_A_FOG;
-
     for (size_t i = 0; i < n_vertices; i++, dest_index++) {
         const Vtx* v = &vertices[i];
         struct LoadedVertex* d = &rsp.loaded_vertices[dest_index];
@@ -1139,7 +1138,7 @@ static void gfx_sp_vertex(size_t n_vertices, size_t dest_index, const Vtx* verti
         d->z = z;
         d->w = w;
 
-        if (use_fog) {
+        if (rsp.geometry_mode & G_FOG) {
             if (fabsf(w) < 0.001f) {
                 // To avoid division by zero
                 w = 0.001f;
@@ -1153,7 +1152,7 @@ static void gfx_sp_vertex(size_t n_vertices, size_t dest_index, const Vtx* verti
             float fog_z = z * winv * rsp.fog_mul + rsp.fog_offset;
             d->fog = clampf(fog_z, 0.f, 255.f);
         } else {
-            d->fog = 0;
+            d->fog = rdp.fog_color.a;
         }
 
         d->color.a = vcn->a; // can be required for SHADE_ALPHA even if fog is enabled
@@ -1374,14 +1373,16 @@ static void gfx_sp_tri1(uint8_t vtx1_idx, uint8_t vtx2_idx, uint8_t vtx3_idx, bo
                 cmt &= ~G_TX_CLAMP;
             }
 
-            bool linear_filter = (rdp.other_mode_h & (3U << G_MDSFT_TEXTFILT)) != G_TF_POINT;
-            if (linear_filter != rendering_state.textures[i]->second.linear_filter ||
-                cms != rendering_state.textures[i]->second.cms || cmt != rendering_state.textures[i]->second.cmt) {
-                gfx_flush();
-                gfx_rapi->set_sampler_parameters(i, linear_filter, cms, cmt);
-                rendering_state.textures[i]->second.linear_filter = linear_filter;
-                rendering_state.textures[i]->second.cms = cms;
-                rendering_state.textures[i]->second.cmt = cmt;
+            if (rendering_state.textures[i]) {
+                bool linear_filter = (rdp.other_mode_h & (3U << G_MDSFT_TEXTFILT)) != G_TF_POINT;
+                if (linear_filter != rendering_state.textures[i]->second.linear_filter ||
+                    cms != rendering_state.textures[i]->second.cms || cmt != rendering_state.textures[i]->second.cmt) {
+                    gfx_flush();
+                    gfx_rapi->set_sampler_parameters(i, linear_filter, cms, cmt);
+                    rendering_state.textures[i]->second.linear_filter = linear_filter;
+                    rendering_state.textures[i]->second.cms = cms;
+                    rendering_state.textures[i]->second.cmt = cmt;
+                }
             }
         }
     }
@@ -1769,13 +1770,11 @@ static void gfx_dp_set_scissor(uint32_t mode, uint32_t ulx, uint32_t uly, uint32
     rdp.viewport_or_scissor_changed = true;
 }
 
-static void gfx_dp_set_texture_image(uint32_t format, uint32_t size, uint32_t width, const char* texPath,
-                                     uint32_t texFlags, RawTexMetadata rawTexMetdata, const void* addr) {
+static void gfx_dp_set_texture_image(uint32_t format, uint32_t size, uint32_t width, uint32_t tex_flags, const void* addr) {
     rdp.texture_to_load.addr = (const uint8_t*)addr;
     rdp.texture_to_load.siz = size;
     rdp.texture_to_load.width = width;
-    rdp.texture_to_load.tex_flags = texFlags;
-    rdp.texture_to_load.raw_tex_metadata = rawTexMetdata;
+    rdp.texture_to_load.tex_flags = tex_flags;
 }
 
 static void gfx_dp_set_tile(uint8_t fmt, uint32_t siz, uint32_t line, uint32_t tmem, uint8_t tile, uint32_t palette,
@@ -2385,18 +2384,23 @@ static void gfx_run_dl(Gfx* cmd) {
 #endif
                 break;
             case G_COL:
-                gfx_sp_set_vertex_colors(C0(0, 16) / 4, (struct NormalColor *)seg_addr(cmd->words.w1));
+                gfx_sp_set_vertex_colors(C0(0, 16) / 4, (NormalColor *)seg_addr(cmd->words.w1));
                 break;
 
             // RDP Commands:
             case G_SETTIMG: {
-                uintptr_t i = (uintptr_t)seg_addr(cmd->words.w1);
-                char* imgData = (char*)i;
-                uint32_t texFlags = 0;
-                RawTexMetadata rawTexMetdata = {};
-                gfx_dp_set_texture_image(C0(21, 3), C0(19, 2), C0(0, 10), imgData, texFlags, rawTexMetdata, (void*)i);
+                gfx_dp_set_texture_image(C0(21, 3), C0(19, 2), C0(0, 10), 0, seg_addr(cmd->words.w1));
                 break;
             }
+            case G_SETTIMG_FB_EXT:
+                gfx_flush();
+                gfx_rapi->select_texture_fb(cmd->words.w1);
+                rdp.textures_changed[0] = false;
+                rdp.textures_changed[1] = false;
+                break;
+            case G_SETGRAYSCALE_EXT:
+                rdp.grayscale = cmd->words.w1;
+                break;
             case G_LOADBLOCK:
                 gfx_dp_load_block(C1(24, 3), C0(12, 12), C0(0, 12), C1(12, 12), C1(0, 12));
                 break;
@@ -2424,6 +2428,9 @@ static void gfx_run_dl(Gfx* cmd) {
                 break;
             case G_SETFILLCOLOR:
                 gfx_dp_set_fill_color(cmd->words.w1);
+                break;
+            case G_SETINTENSITY_EXT:
+                gfx_dp_set_grayscale_color(C1(24, 8), C1(16, 8), C1(8, 8), C1(0, 8));
                 break;
             case G_SETCOMBINE:
                 gfx_dp_set_combine_mode(color_comb(C0(20, 4), C1(28, 4), C0(15, 5), C1(15, 3)),
@@ -2490,8 +2497,29 @@ static void gfx_run_dl(Gfx* cmd) {
             case G_SETCIMG:
                 gfx_dp_set_color_image(C0(21, 3), C0(19, 2), C0(0, 11), seg_addr(cmd->words.w1));
                 break;
+            case G_SETFB_EXT:
+                gfx_flush();
+                if (cmd->words.w1) {
+                    // don't care about noise here
+                    gfx_set_framebuffer(cmd->words.w1, 1.f);
+                    fbActive = true;
+                } else {
+                    gfx_reset_framebuffer();
+                    fbActive = false;
+                }
+                break;
+            case G_COPYFB_EXT:
+                gfx_copy_framebuffer(C0(12, 12), C0(0, 12), C1(16, 16), C1(0, 16));
+                break;
             case G_RDPSETOTHERMODE:
                 gfx_dp_set_other_mode(C0(0, 24), cmd->words.w1);
+                break;
+            case G_INVALTEXCACHE_EXT:
+                if (cmd->words.w1) {
+                    gfx_texture_cache_delete((const uint8_t *)seg_addr(cmd->words.w1));
+                } else {
+                    gfx_texture_cache_clear();
+                }
                 break;
             case (uint8_t)G_RDPHALF_1:
             case (uint8_t)G_RDPHALF_2:
@@ -2532,7 +2560,6 @@ extern "C" void gfx_init(struct GfxWindowManagerAPI* wapi, struct GfxRenderingAP
     gfx_rapi->init();
     gfx_rapi->update_framebuffer_parameters(0, width, height, 1, false, true, true, true);
     gfx_current_dimensions.internal_mul = 1;
-    gfx_msaa_level = 1;
     gfx_current_game_window_viewport.width = gfx_current_dimensions.width = width;
     gfx_current_game_window_viewport.height = gfx_current_dimensions.height = height;
     game_framebuffer = gfx_rapi->create_framebuffer();
@@ -2649,7 +2676,6 @@ extern "C" void gfx_run(Gfx* commands) {
     gfx_run_dl(commands);
     gfx_flush();
     gfxFramebuffer = 0;
-    currentDir = std::stack<std::string>();
 
     if (game_renders_to_framebuffer) {
         gfx_rapi->start_draw_to_framebuffer(0, 1);
@@ -2700,6 +2726,17 @@ extern "C" void gfx_set_framebuffer(int fb, float noise_scale) {
     gfx_rapi->clear_framebuffer();
 }
 
-extern "C" void gfx_reset_framebuffer() {
+extern "C" void gfx_copy_framebuffer(int fb_dst, int fb_src, int left, int top) {
+    if (fb_src == 0 && left > 0 && top > 0) {
+        // upscale the position
+        left = left * gfx_current_dimensions.width / gfx_current_native_viewport.width;
+        top = top * gfx_current_dimensions.height / gfx_current_native_viewport.height;
+        // flip Y
+        top = gfx_current_dimensions.height - top - 1;
+    }
+    gfx_rapi->copy_framebuffer(fb_dst, fb_src, left, top);
+}
+
+extern "C" void gfx_reset_framebuffer(void) {
     gfx_rapi->start_draw_to_framebuffer(0, (float)gfx_current_dimensions.height / SCREEN_HEIGHT);
 }

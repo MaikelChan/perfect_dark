@@ -1832,9 +1832,9 @@ s32 texInflateLookupFromBuffer(u8 *src, s32 width, s32 height, u8 *dst, u8 *look
 		for (y = 0; y < height; y++) {
 			for (x = 0; x < width; x++) {
 				if (numcolours <= 256) {
-					dst16[x] = lookup16[src8[x]];
+					dst16[x] = PD_BE16(lookup16[src8[x]]);
 				} else {
-					dst16[x] = lookup16[src16[x]];
+					dst16[x] = PD_BE16(lookup16[src16[x]]);
 				}
 			}
 
@@ -1848,9 +1848,9 @@ s32 texInflateLookupFromBuffer(u8 *src, s32 width, s32 height, u8 *dst, u8 *look
 		for (y = 0; y < height; y++) {
 			for (x = 0; x < width; x++) {
 				if (numcolours <= 256) {
-					dst16[x] = lookup16[src8[x]] << 1 | 1;
+					dst16[x] = PD_BE16(lookup16[src8[x]] << 1 | 1);
 				} else {
-					dst16[x] = lookup16[src16[x]] << 1 | 1;
+					dst16[x] = PD_BE16(lookup16[src16[x]] << 1 | 1);
 				}
 			}
 
@@ -1907,13 +1907,82 @@ s32 texInflateLookupFromBuffer(u8 *src, s32 width, s32 height, u8 *dst, u8 *look
  * For textures with 32-bit colour values (in GBI format), swap every pair
  * within each word. For all other textures, swap every byte within each pair.
  */
+#ifdef PLATFORM_N64
+void texSwapAltRowBytes(u8 *dst, s32 width, s32 height, s32 format)
+#else
+s32 texConfigToFormat(const struct textureconfig *tex)
+{
+	switch (tex->format) {
+		case G_IM_FMT_I:
+			switch (tex->depth) {
+				case G_IM_SIZ_4b:
+					return TEXFORMAT_I4;
+				case G_IM_SIZ_8b:
+					return TEXFORMAT_I8;
+				default:
+					break;
+			}
+			break;
+		case G_IM_FMT_IA:
+			switch (tex->depth) {
+				case G_IM_SIZ_4b:
+					return TEXFORMAT_IA4;
+				case G_IM_SIZ_8b:
+					return TEXFORMAT_IA8;
+				case G_IM_SIZ_16b:
+					return TEXFORMAT_IA16;
+				default:
+					break;
+			}
+			break;
+		case G_IM_FMT_CI:
+			switch (tex->depth) {
+				case G_IM_SIZ_4b:
+					return TEXFORMAT_IA16_CI4;
+				case G_IM_SIZ_8b:
+					return TEXFORMAT_IA16_CI8;
+				default:
+					break;
+			}
+			break;
+		case G_IM_FMT_RGBA:
+			switch (tex->depth) {
+				case G_IM_SIZ_4b:
+					return TEXFORMAT_RGBA16_CI4;
+				case G_IM_SIZ_8b:
+					return TEXFORMAT_RGBA16_CI8;
+				case G_IM_SIZ_16b:
+					return TEXFORMAT_RGBA16;
+				case G_IM_SIZ_32b:
+					return TEXFORMAT_RGBA32;
+				default:
+					break;
+			}
+			break;
+		default:
+			break;
+	}
+
+	return TEXFORMAT_I8;
+}
+
 void texSwapAltRowBytes(u8 *dst, s32 width, s32 height, s32 format)
 {
-#ifdef PLATFORM_N64 // the N64 GPU wants interleaved data, we don't
+	/**
+	 * The N64 GPU wants swizzled textures, we don't.
+	 * Thus this function is stubbed out, but its functionality is still made
+	 * available for unswizzling the embedded textures in preprocess.c.
+	 */
+}
+
+void texSwapAltRowBytesInternal(u8 *dst, s32 width, s32 height, s32 format, u32 dstlen)
+#endif
+{
 	s32 x;
 	s32 y;
 	s32 alignedwidth;
 	u32 *row = (u32 *)dst;
+	u32 *end = (u32 *)(dst + dstlen);
 	s32 tmp;
 
 	switch (format) {
@@ -1944,7 +2013,7 @@ void texSwapAltRowBytes(u8 *dst, s32 width, s32 height, s32 format)
 
 	if (format == TEXFORMAT_RGBA32 || format == TEXFORMAT_RGB24) {
 		for (y = 1; y < height; y += 2) {
-			for (x = 0; x < alignedwidth; x += 4) {
+			for (x = 0; x < alignedwidth && row + x < end; x += 4) {
 				tmp = row[x + 0];
 				row[x + 0] = row[x + 2];
 				row[x + 2] = tmp;
@@ -1958,7 +2027,7 @@ void texSwapAltRowBytes(u8 *dst, s32 width, s32 height, s32 format)
 		}
 	} else {
 		for (y = 1; y < height; y += 2) {
-			for (x = 0; x < alignedwidth; x += 2) {
+			for (x = 0; x < alignedwidth && row + x < end; x += 2) {
 				tmp = row[x + 0];
 				row[x + 0] = row[x + 1];
 				row[x + 1] = tmp;
@@ -1967,7 +2036,6 @@ void texSwapAltRowBytes(u8 *dst, s32 width, s32 height, s32 format)
 			row += alignedwidth * 2;
 		}
 	}
-#endif
 }
 
 /**

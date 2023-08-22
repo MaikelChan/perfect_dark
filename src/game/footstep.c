@@ -2,6 +2,7 @@
 #include "constants.h"
 #include "game/debug.h"
 #include "game/game_006900.h"
+#include "game/lv.h"
 #include "game/propsnd.h"
 #include "game/bg.h"
 #include "bss.h"
@@ -176,6 +177,16 @@ void footstepCheckDefault(struct chrdata *chr)
 							chr->footstep = 2;
 						}
 					} else {
+#ifndef PLATFORM_N64 // fix spamming footsteps for 60fps port
+						if (g_Vars.lvupdate240 == LV_SLOMO_TICK_CAP) {
+							s32 roundedframe = (s32)(frame*2);
+							if (roundedframe == (g_FootstepAnims[i].frame1*2) && prevframe < g_FootstepAnims[i].frame1) {
+								chr->footstep = 1;
+							} else if (roundedframe == (g_FootstepAnims[i].frame2*2) && prevframe < g_FootstepAnims[i].frame2) {
+								chr->footstep = 2;
+							}
+						} else
+#endif
 						if (frame >= g_FootstepAnims[i].frame1 && prevframe < g_FootstepAnims[i].frame1) {
 							chr->footstep = 1;
 						} else if (frame >= g_FootstepAnims[i].frame2 && prevframe < g_FootstepAnims[i].frame2) {
