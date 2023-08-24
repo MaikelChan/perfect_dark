@@ -135,11 +135,10 @@ ifneq (,$(findstring windows,$(TARGET_PLATFORM)))
   TOOLCHAIN ?= i686-w64-mingw32-
 else # assume *nix
   TARGET_CFLAGS := $(shell pkg-config sdl2 --cflags-only-I)
-  TARGET_LDFLAGS := $(shell pkg-config sdl2 --libs) -lGL -lz
+  TARGET_LDFLAGS := $(shell pkg-config sdl2 --libs) -lGL -lz -ldl
   ifneq (,$(findstring arm,$(TARGET_PLATFORM))$(findstring aarch,$(TARGET_PLATFORM)))
     # linux on arm or aarch64
     # TODO: detect soft/hardfloat abi
-    TARGET_LDFLAGS += -ldl
     TOOLCHAIN ?= arm-linux-gnueabihf-
   endif
 endif

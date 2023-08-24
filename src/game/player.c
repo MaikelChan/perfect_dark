@@ -3572,8 +3572,12 @@ void playerTick(bool arg0)
 					f32 mdx, mdy;
 					inputMouseGetScaledDelta(&mdx, &mdy);
 					if (mdx || mdy) {
-						sp178 += mdy * LVUPDATE60FREAL() * 0.0025f;
-						sp174 -= mdx * LVUPDATE60FREAL() * 0.0025f;
+						mdx *= 48.f;
+						mdy *= 48.f;
+						mdx = (mdx < -128.f) ? -128.f : (mdx > 127.f) ? 127.f : mdx;
+						mdy = (mdy < -128.f) ? -128.f : (mdy > 127.f) ? 127.f : mdy;
+						sp178 += mdy * LVUPDATE60FREAL() * 0.00025f;
+						sp174 -= mdx * LVUPDATE60FREAL() * 0.00025f;
 					}
 				}
 #endif
