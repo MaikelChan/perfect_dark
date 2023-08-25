@@ -1054,7 +1054,11 @@ Gfx *lasersightRenderDot(Gfx *gdl)
 
 	static u32 sp1 = 800;
 	static u32 sp2 = 7000;
+#ifndef PLATFORM_N64 // laser fades out farther away
+	static u32 sp3 = 9000*3;
+#else
 	static u32 sp3 = 9000;
+#endif
 	static u32 spb = 24;
 	static u32 spi = 6;
 

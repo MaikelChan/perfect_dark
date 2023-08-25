@@ -14,6 +14,10 @@
 #include "lib/sched.h"
 #include "data.h"
 #include "types.h"
+#ifndef PLATFORM_N64
+#include "game/game_13c510.h"
+#include "game/player.h"
+#endif
 
 #define SKYABS(val) (val >= 0.0f ? (val) : -(val))
 
@@ -2423,6 +2427,16 @@ void skyCreateSunArtifact(struct artifact *artifact, s32 x, s32 y)
 	s32 viewheight = viGetViewHeight();
 
 	if (x >= viewleft && x < viewleft + viewwidth && y >= viewtop && y < viewtop + viewheight) {
+#ifndef PLATFORM_N64
+		const s32 i = (artifact - schedGetWriteArtifacts()) >> 3;
+		struct coord zero = { 0.f };
+		struct environment *env = envGetCurrent();
+		struct coord sunpos;
+		sunpos.x = env->suns[i].pos[0];
+		sunpos.y = env->suns[i].pos[1];
+		sunpos.z = env->suns[i].pos[2];
+		artifact->unk02 = artifactTestLos(&sunpos, &zero) * 0xfffc;
+#endif
 		artifact->unk08 = &g_ZbufPtr1[(s32)camGetScreenWidth() * y + x];
 		artifact->unk0c.u16_2 = x;
 		artifact->unk0c.u16_1 = y;
@@ -2577,6 +2591,11 @@ Gfx *skyRenderSuns(Gfx *gdl, bool xray)
 							g_SunAlphaFracs[i] = 1.0f;
 						}
 
+#ifndef PLATFORM_N64
+						const bool prevperim = g_Vars.currentplayer->bondperimenabled;
+						playerSetPerimEnabled(g_Vars.currentplayer->prop, false);
+#endif
+
 						skyCreateSunArtifact(&artifacts[i * 8 + 0], (s32)g_SunScreenXPositions[i] - 7, (s32)g_SunScreenYPositions[i] + 1);
 						skyCreateSunArtifact(&artifacts[i * 8 + 1], (s32)g_SunScreenXPositions[i] - 5, (s32)g_SunScreenYPositions[i] - 3);
 						skyCreateSunArtifact(&artifacts[i * 8 + 2], (s32)g_SunScreenXPositions[i] - 3, (s32)g_SunScreenYPositions[i] + 5);
@@ -2585,6 +2604,10 @@ Gfx *skyRenderSuns(Gfx *gdl, bool xray)
 						skyCreateSunArtifact(&artifacts[i * 8 + 5], (s32)g_SunScreenXPositions[i] + 3, (s32)g_SunScreenYPositions[i] - 5);
 						skyCreateSunArtifact(&artifacts[i * 8 + 6], (s32)g_SunScreenXPositions[i] + 5, (s32)g_SunScreenYPositions[i] + 3);
 						skyCreateSunArtifact(&artifacts[i * 8 + 7], (s32)g_SunScreenXPositions[i] + 7, (s32)g_SunScreenYPositions[i] - 1);
+
+#ifndef PLATFORM_N64
+						playerSetPerimEnabled(g_Vars.currentplayer->prop, prevperim);
+#endif
 					}
 
 					if (1);

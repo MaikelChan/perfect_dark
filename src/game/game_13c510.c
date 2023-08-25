@@ -16,6 +16,12 @@
 #include "lib/mtx.h"
 #include "data.h"
 #include "types.h"
+#ifndef PLATFORM_N64
+#include "lib/collision.h"
+#include "lib/lib_17ce0.h"
+#include "game/player.h"
+f32 fabsf(f32 value);
+#endif
 
 u8 *var800a41a0;
 u32 var800a41a4;
@@ -96,6 +102,52 @@ s32 func0f13c710(f32 arg0)
 	return arg0;
 }
 
+#ifndef PLATFORM_N64
+
+bool artifactTestLos(struct coord *spec, struct coord *roompos)
+{
+	if (!g_Vars.currentplayer) {
+		return false;
+	}
+
+	struct coord endpos;
+	endpos.x = roompos->x + spec->x;
+	endpos.y = roompos->y + spec->y;
+	endpos.z = roompos->z + spec->z;
+
+	// get what rooms the LOS goes through
+	RoomNum outrooms[17], tmprooms[8], srcrooms[2];
+	srcrooms[0] = g_Vars.currentplayer->cam_room;
+	srcrooms[1] = -1;
+	outrooms[16] = -1;
+	portal00018148(&g_Vars.currentplayer->cam_pos, &endpos, srcrooms, tmprooms, outrooms, 16);
+
+	// cheaper LOS test against props first
+	const u32 cdtype = CDTYPE_OBJS | CDTYPE_DOORS | CDTYPE_PLAYERS | CDTYPE_CHRS;
+	const u16 geoflags = GEOFLAG_BLOCK_SIGHT | GEOFLAG_BLOCK_SHOOT;
+	if (!cdTestAToB(&g_Vars.currentplayer->cam_pos, &endpos, outrooms, cdtype, geoflags, true, 1, 0, 0)) {
+		return false;
+	}
+
+	// no prop was hit; check for bg hits
+	struct hitthing hit;
+	for (s32 i = 0; outrooms[i] != -1; ++i) {
+		if (bgTestHitInRoom(&g_Vars.currentplayer->cam_pos, &endpos, outrooms[i], &hit)) {
+			// check if it's far enough away from the end point
+			if (fabsf(hit.unk00.x - endpos.x) >= 0.1f ||
+					fabsf(hit.unk00.y - endpos.y) >= 0.1f ||
+					fabsf(hit.unk00.z - endpos.z) >= 0.1f) {
+				return false;
+			}
+		}
+	}
+
+	// nothing hit
+	return true;
+}
+
+#endif
+
 void artifactsCalculateGlaresForRoom(s32 roomnum)
 {
 	s32 i;
@@ -133,6 +185,11 @@ void artifactsCalculateGlaresForRoom(s32 roomnum)
 	struct artifact *artifacts = schedGetWriteArtifacts();
 	struct coord *campos = &g_Vars.currentplayer->cam_pos;
 	struct artifact *artifact;
+
+#ifndef PLATFORM_N64
+	const bool prevperim = g_Vars.currentplayer->bondperimenabled;
+	playerSetPerimEnabled(g_Vars.currentplayer->prop, false);
+#endif
 
 	if (g_Rooms[roomnum].gfxdata != NULL && g_Rooms[roomnum].loaded240) {
 		numlights = g_Rooms[roomnum].gfxdata->numlights;
@@ -322,6 +379,9 @@ void artifactsCalculateGlaresForRoom(s32 roomnum)
 								}
 
 								if (index < MAX_ARTIFACTS) {
+#ifndef PLATFORM_N64
+									artifact->unk02 = artifactTestLos(&spec, &g_BgRooms[roomnum].pos);
+#endif
 									artifact->unk04 = func0f13c574(f0) >> 2;
 									artifact->unk08 = &g_ZbufPtr1[viGetWidth() * yi + xi];
 									artifact->light = &roomlights[i];
@@ -336,6 +396,10 @@ void artifactsCalculateGlaresForRoom(s32 roomnum)
 			}
 		}
 	}
+
+#ifndef PLATFORM_N64
+	playerSetPerimEnabled(g_Vars.currentplayer->prop, prevperim);
+#endif
 }
 
 u8 func0f13d3c4(u8 arg0, u8 arg1)
@@ -454,6 +518,7 @@ Gfx *artifactsRenderGlaresForRoom(Gfx *gdl, s32 roomnum)
 				}
 
 				for (k = i; k < i + count; k++) {
+#ifdef PLATFORM_N64
 					u16 tmp;
 					t4 = (artifacts[k].unk02 & 0xfffc) >> 2;
 					tmp = artifacts[k].unk04;
@@ -467,6 +532,9 @@ Gfx *artifactsRenderGlaresForRoom(Gfx *gdl, s32 roomnum)
 					if (avg >= v1) {
 						t2++;
 					}
+#else
+					t2 += artifacts[k].unk02;
+#endif
 
 					artifacts[k].type = ARTIFACTTYPE_FREE;
 				}

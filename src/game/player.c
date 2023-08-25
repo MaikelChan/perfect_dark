@@ -2689,7 +2689,15 @@ Gfx *playerRenderHealthBar(Gfx *gdl)
 	Mtxf matrix;
 	Mtxf *addr = gfxAllocateMatrix();
 
+#ifdef PLATFORM_N64
 	mtx00016ae4(&matrix, 0, 370, 0, 0, 0, 0, 0, 0, -1);
+#else
+	f32 fovsc = 60.f / videoGetPlayerFovY();
+	if (fovsc > 1.01f) {
+		fovsc *= 1.1f;
+	}
+	mtx00016ae4(&matrix, 0, 370.f * fovsc, 0, 0, 0, 0, 0, 0, -1);
+#endif
 	mtxF2L(&matrix, addr);
 
 	gSPMatrix(gdl++, osVirtualToPhysical((void *)addr), G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_MODELVIEW);

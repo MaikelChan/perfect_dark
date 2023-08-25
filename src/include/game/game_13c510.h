@@ -13,5 +13,8 @@ u8 func0f13d3c4(u8 arg0, u8 arg1);
 Gfx *artifactsConfigureForGlares(Gfx *gdl);
 Gfx *artifactsUnconfigureForGlares(Gfx *gdl);
 Gfx *artifactsRenderGlaresForRoom(Gfx *gdl, s32 roomnum);
+#ifndef PLATFORM_N64
+bool artifactTestLos(struct coord *spec, struct coord *roompos);
+#endif
 
 #endif

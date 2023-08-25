@@ -361,33 +361,7 @@ void schedResetArtifacts(void)
 
 void schedUpdatePendingArtifacts(void)
 {
-	struct artifact *artifacts = schedGetPendingArtifacts();
-	s32 i;
-
-	for (i = 0; i < MAX_ARTIFACTS; i++) {
-		struct artifact *artifact = &artifacts[i];
-
-		if (artifact->type != ARTIFACTTYPE_FREE) {
-			u16 *unk08 = artifact->unk08;
-			u16 value08 = unk08[0];
-
-			if (g_SchedSpecialArtifactIndexes[g_SchedPendingArtifactsIndex] == 1) {
-				u16 *unk0c = artifact->unk0c.u16p;
-				u16 value0c = unk0c[0];
-
-				if (value0c > value08) {
-					artifact->unk02 = value08;
-				} else {
-					artifact->unk02 = value0c;
-				}
-			} else {
-				artifact->unk02 = value08;
-			}
-		}
-	}
-
 	g_SchedSpecialArtifactIndexes[g_SchedPendingArtifactsIndex] = 0;
-
 	schedIncrementPendingArtifacts();
 }
 

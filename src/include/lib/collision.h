@@ -67,5 +67,6 @@ bool cd0002ded8(struct coord *arg0, struct coord *arg1, struct prop *prop);
 s32 cdTestBlockOverlapsAnyProp(struct geoblock *geo, RoomNum *rooms, u32 types);
 s32 cd0002f02c(struct geoblock *block, RoomNum *rooms, s32 types);
 bool cdIsNearlyInSight(struct coord *viewpos, RoomNum *rooms, struct coord *targetpos, f32 distance, s32 arg4);
+bool cdTestAToB(struct coord *pos, struct coord *coord2, RoomNum *rooms, u32 types, u16 geoflags, bool checkvertical, s32 arg6, f32 ymax, f32 ymin);
 
 #endif
