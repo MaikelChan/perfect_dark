@@ -3,8 +3,8 @@
 
 #include <PR/ultratypes.h>
 
-u64 sysGetTicks(void);
-u64 sysGetTicksPerSecond(void);
+void sysInitTicks(void);
+u64 sysGetMicroseconds(void);
 
 void sysFatalError(const char *fmt, ...) __attribute__((noreturn));
 

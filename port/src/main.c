@@ -60,6 +60,7 @@ static void cleanup(void)
 
 int main(int argc, const char **argv)
 {
+	sysInitTicks();
 	fsInit();
 	configInit();
 	videoInit();

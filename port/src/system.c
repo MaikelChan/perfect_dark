@@ -2,33 +2,25 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/time.h>
 #include <SDL.h>
 #include <PR/ultratypes.h>
 #include "system.h"
 
+#define USEC_IN_SEC 1000000ULL
+
 static u64 startTick = 0;
-static u64 tickFreq = 0;
 
-static void sysInitTicks(void)
+void sysInitTicks(void)
 {
-	tickFreq = SDL_GetPerformanceFrequency();
-	startTick = SDL_GetPerformanceCounter();
+	startTick = sysGetMicroseconds();
 }
 
-u64 sysGetTicks(void)
+u64 sysGetMicroseconds(void)
 {
-	if (tickFreq == 0) {
-		sysInitTicks();
-	}
-	return (SDL_GetPerformanceCounter() - startTick);
-}
-
-u64 sysGetTicksPerSecond(void)
-{
-	if (tickFreq == 0) {
-		sysInitTicks();
-	}
-	return tickFreq;
+	struct timeval tv;
+	gettimeofday(&tv, NULL);
+	return ((u64)tv.tv_sec * USEC_IN_SEC + (u64)tv.tv_usec) - startTick;
 }
 
 void sysFatalError(const char *fmt, ...)

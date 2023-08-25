@@ -15,6 +15,9 @@
 #define EEPROM_FNAME "./eeprom.bin"
 #define OS_COUNTER_RATE 46875000ULL
 
+#define OS_COUNTER_NUM (OS_COUNTER_RATE / 1000ULL)
+#define OS_COUNTER_DEN (1000000ULL / 1000ULL)
+
 u64 osClockRate = OS_CLOCK_RATE;
 u32 osMemSize = 16 * 1024 * 1024; /* expansion pak installed plus some extra */
 s32 osTvType = OS_TV_NTSC;        /* 0 = PAL, 1 = NTSC, 2 = MPAL */
@@ -26,7 +29,7 @@ s32 osViClock = VI_NTSC_CLOCK;
 OSTime osGetTime(void)
 {
 	// u64 should be enough to last a while
-	return (sysGetTicks() * OS_COUNTER_RATE) / sysGetTicksPerSecond();
+	return (sysGetMicroseconds() * OS_COUNTER_NUM) / OS_COUNTER_DEN;
 }
 
 u32 osGetCount(void)

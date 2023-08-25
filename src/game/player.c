@@ -4491,21 +4491,21 @@ Gfx *playerRenderShield(Gfx *gdl)
 #ifndef PLATFORM_N64
 Gfx *playerSetVisionMode(Gfx *gdl)
 {
-	if (g_Vars.currentplayer) {
-		if (g_Vars.currentplayer->isdead == false
-				&& g_InCutscene == 0
-				&& (!g_Vars.currentplayer->eyespy || (g_Vars.currentplayer->eyespy && !g_Vars.currentplayer->eyespy->active))
-				&& ((g_Vars.currentplayer->devicesactive & ~g_Vars.currentplayer->devicesinhibit) & DEVICE_NIGHTVISION)) {
-				gDPGrayscaleEXT(gdl++, G_ON);
+	u32 grayscale = G_OFF;
+
+	if (!g_InCutscene && g_Vars.currentplayer && !g_Vars.currentplayer->isdead &&
+			(!g_Vars.currentplayer->eyespy || (g_Vars.currentplayer->eyespy && !g_Vars.currentplayer->eyespy->active))) {
+		if ((g_Vars.currentplayer->devicesactive & ~g_Vars.currentplayer->devicesinhibit) & DEVICE_NIGHTVISION) {
+				grayscale = G_ON;
 				gDPSetGrayscaleColorEXT(gdl++, 0x00, 0xFF, 0x00, 0xFF);
-		} else if (g_Vars.currentplayer->isdead == false
-				&& g_InCutscene == 0
-				&& (!g_Vars.currentplayer->eyespy || (g_Vars.currentplayer->eyespy && !g_Vars.currentplayer->eyespy->active))
-				&& ((g_Vars.currentplayer->devicesactive & ~g_Vars.currentplayer->devicesinhibit) & DEVICE_IRSCANNER)) {
-				gDPGrayscaleEXT(gdl++, G_ON);
+		} else if ((g_Vars.currentplayer->devicesactive & ~g_Vars.currentplayer->devicesinhibit) & DEVICE_IRSCANNER) {
+				grayscale = G_ON;
 				gDPSetGrayscaleColorEXT(gdl++, 0xFF, 0x00, 0x00, 0xFF);
 		}
 	}
+
+	gDPGrayscaleEXT(gdl++, grayscale);
+
 	return gdl;
 }
 #endif
