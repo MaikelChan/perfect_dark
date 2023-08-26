@@ -5695,6 +5695,9 @@ struct mp3vars {
 	/*0x5e*/ s16 var8009c3ee;
 	/*0x60*/ u8 var8009c3f0;
 	/*0x61*/ u8 var8009c3f1;
+#ifndef PLATFORM_N64
+	/*0x62*/ u8 reset;
+#endif
 };
 
 struct rdptask {

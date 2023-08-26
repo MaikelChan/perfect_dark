@@ -681,12 +681,12 @@ void aSetVolumeImpl(uint8_t flags, int16_t v, int16_t t, int16_t r) {
     }
 }
 
-void aPlayMP3Impl(const void *mp3file, u32 mp3size, void *out) {
+void aPlayMP3Impl(const void *mp3file, u32 mp3size, void *out, int reset) {
     static mp3dec_t mp3d;
     static const u8 *curdata = NULL; // pointer to the mp3 we're currently processing
     static s32 dataptr = 0; // byte index into curdata
 
-    if (mp3file != curdata) {
+    if (mp3file != curdata || reset) {
         // new mp3, reinit decoder
         mp3dec_init(&mp3d);
         curdata = mp3file;
