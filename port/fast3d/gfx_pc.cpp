@@ -1452,9 +1452,14 @@ static void gfx_sp_tri1(uint8_t vtx1_idx, uint8_t vtx2_idx, uint8_t vtx3_idx, bo
             u -= rdp.texture_tile[rdp.first_tile_index + tile].uls / 4.0f;
             v -= rdp.texture_tile[rdp.first_tile_index + tile].ult / 4.0f;
 
-            if ((rdp.other_mode_h & (3U << G_MDSFT_TEXTFILT)) != G_TF_POINT) {
-                // Linear filter adds 0.5f to the coordinates
-                if (!is_rect) {
+            if (!is_rect) {
+                if (!(rdp.other_mode_h & G_TP_PERSP)) {
+                    u *= 0.5f;
+                    v *= 0.5f;
+                }
+
+                if ((rdp.other_mode_h & (3U << G_MDSFT_TEXTFILT)) != G_TF_POINT) {
+                    // Linear filter adds 0.5f to the coordinates
                     u += 0.5f;
                     v += 0.5f;
                 }
