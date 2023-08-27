@@ -34,7 +34,7 @@ ROMID ?= ntsc-final
 #
 # Supported values: -O0, -O1, -O2, -O3, -Os, -Og
 
-GCC_OPT_LVL = -O0
+GCC_OPT_LVL = -Og
 
 # ROM_SIZE - The desired ROM size in megabytes.
 #

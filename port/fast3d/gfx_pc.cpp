@@ -1796,8 +1796,8 @@ static void gfx_dp_set_tile(uint8_t fmt, uint32_t siz, uint32_t line, uint32_t t
     }
 
     if (fmt == G_IM_FMT_RGBA && siz < G_IM_SIZ_16b) {
-        // HACK: sometimes the game will submit G_IM_FMT_RGBA, G_IM_SIZ_8b/4b, intending it to read as I8/I4
-        fmt = G_IM_FMT_I;
+        // HACK: sometimes the game will submit G_IM_FMT_RGBA, G_IM_SIZ_8b/4b, intending it to read as CI8/CI4 with RGBA16 palette
+        fmt = G_IM_FMT_CI;
     } else if (fmt == G_IM_FMT_IA && siz == G_IM_SIZ_32b) {
         // HACK: ... and sometimes it submits this, apparently intending it to be I8
         fmt = G_IM_FMT_I;
@@ -1812,10 +1812,6 @@ static void gfx_dp_set_tile(uint8_t fmt, uint32_t siz, uint32_t line, uint32_t t
     rdp.texture_tile[tile].shifts = shifts;
     rdp.texture_tile[tile].shiftt = shiftt;
     rdp.texture_tile[tile].line_size_bytes = line * 8;
-
-    if (rdp.texture_tile[tile].line_size_bytes > 15000) {
-        int bp = 0;
-    }
 
     // assume one texture is loaded at address 0 and another texture at any other address
     rdp.texture_tile[tile].tmem = tmem;

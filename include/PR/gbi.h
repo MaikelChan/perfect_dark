@@ -1049,7 +1049,12 @@ typedef struct {
  * First 8 words are integer portion of the 4x4 matrix
  * Last 8 words are the fraction portion of the 4x4 matrix
  */
+#ifdef GBI_FLOATS
+// 4x4 float matrix
+typedef float Mtx_t[4][4];
+#else
 typedef long Mtx_t[4][4];
+#endif
 
 typedef union {
 	Mtx_t         m;

@@ -4607,6 +4607,17 @@ void menuProcessInput(void)
 				inputs.select = 1;
 			}
 
+			#ifndef PLATFORM_N64
+			// this seems sensible to achieve 1964 parity
+			if (buttonsnow & BUTTON_RADIAL) {
+				inputs.select = 1;
+			}
+			// this will naturally feel nice w/ a switch layout
+			// with the default mapping for weapon-back
+			if (buttonsnow & BUTTON_WPNBACK) {
+				inputs.select = 1;
+			}
+			#endif
 			if (buttonsnow & B_BUTTON) {
 				inputs.back = 1;
 			}

@@ -7078,6 +7078,13 @@ bool chrTryModifyAttack(struct chrdata *chr, u32 attackflags, s32 entityid)
 			&& (chr->act_attack.flags & (ATTACKFLAG_AIMONLY | ATTACKFLAG_DONTTURN))) {
 		chr->act_attack.flags = attackflags;
 		chr->act_attack.entityid = entityid;
+#ifndef PLATFORM_N64
+		// infinitely shooting guard fix from 1964GEPD
+		struct anim *anim = chr->model->anim;
+		if (anim && anim->framea == anim->frameb) {
+				anim->frameb++;
+		}
+#endif
 		func0f031254(chr);
 		return true;
 	}

@@ -2950,7 +2950,19 @@
 #define MPWEAPON_COMBATBOOST      (VERSION == VERSION_JPN_FINAL ? 0x23 : 0x24)
 #define MPWEAPON_SHIELD           (VERSION == VERSION_JPN_FINAL ? 0x24 : 0x25)
 #define MPWEAPON_DISABLED         (VERSION == VERSION_JPN_FINAL ? 0x25 : 0x26)
+#ifdef PLATFORM_N64
 #define NUM_MPWEAPONS             (VERSION == VERSION_JPN_FINAL ? 0x26 : 0x27)
+#else // add all classic weapons to multiplayer
+#define MPWEAPON_PP9I             (VERSION == VERSION_JPN_FINAL ? 0x26 : 0x27)
+#define MPWEAPON_CC13             (VERSION == VERSION_JPN_FINAL ? 0x27 : 0x28)
+#define MPWEAPON_KL01313          (VERSION == VERSION_JPN_FINAL ? 0x28 : 0x29)
+#define MPWEAPON_KF7SPECIAL       (VERSION == VERSION_JPN_FINAL ? 0x29 : 0x2a)
+#define MPWEAPON_ZZT              (VERSION == VERSION_JPN_FINAL ? 0x2a : 0x2b)
+#define MPWEAPON_DMC              (VERSION == VERSION_JPN_FINAL ? 0x2b : 0x2c)
+#define MPWEAPON_AR53             (VERSION == VERSION_JPN_FINAL ? 0x2c : 0x2d)
+#define MPWEAPON_RCP45            (VERSION == VERSION_JPN_FINAL ? 0x2d : 0x2e)
+#define NUM_MPWEAPONS             (VERSION == VERSION_JPN_FINAL ? 0x2e : 0x2f)
+#endif
 
 #define MUSICEVENTTYPE_PLAY        1
 #define MUSICEVENTTYPE_STOP        2
@@ -4614,7 +4626,35 @@ enum weaponnum {
 #define BODY_DARK_LEATHER     0x95
 #define BODY_DARK_NEGOTIATOR  0x96
 
-#endif
-
 #define JO_ACTION_ACTIVATE           0x0001
 #define JO_ACTION_RELOAD             0x0002
+
+
+#ifdef PLATFORM_N64
+
+#define BUTTON_ACCEPT_WPNFORWARD CONT_A
+#define BUTTON_CANCEL_USE CONT_B
+
+#define BUTTON_USE BUTTON_CANCEL_USE
+#define BUTTON_CANCEL BUTTON_CANCEL_USE
+#define BUTTON_RELOAD BUTTON_USE
+#define BUTTON_ACCEPT BUTTON_ACCEPT_WPNFORWARD
+#define BUTTON_WPNFORWARD BUTTON_ACCEPT_WPNFORWARD
+
+#else
+
+// xbla behavior
+#define BUTTON_ACCEPT_USE     A_BUTTON
+// 1964 behavior
+#define BUTTON_CANCEL_USE     B_BUTTON
+
+#define BUTTON_RELOAD         X_BUTTON
+// dedicated button for mousewheel / xbla parity
+#define BUTTON_WPNBACK        L_JPAD
+// dedicated button for mousewheel / xbla parity
+#define BUTTON_WPNFORWARD     Y_BUTTON
+#define BUTTON_RADIAL         D_JPAD
+#define BUTTON_ALTMODE        L_TRIG
+#endif
+
+#endif

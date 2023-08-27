@@ -366,6 +366,8 @@ void mtxF2L(Mtxf *src, Mtxf *dst)
 	dst->l[3][2] = src30 << 16 | (src31 & 0xffff);
 	dst->l[3][3] = src32 << 16 | (src33 & 0xffff);
 #else
-	bcopy(src, dst, sizeof(*dst));
+	if (src != dst) {
+		bcopy(src, dst, sizeof(*dst));
+	}
 #endif
 }

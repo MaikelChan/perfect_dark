@@ -330,7 +330,11 @@ void playerReset(void)
 
 	if (cheatIsActive(CHEAT_CC13)) {
 		invGiveSingleWeapon(WEAPON_CC13);
+#ifndef PLATFORM_N64 // give the correct ammo for port
+		bgunSetAmmoQuantity(AMMOTYPE_PISTOL, 200);
+#else
 		bgunSetAmmoQuantity(AMMOTYPE_RIFLE, 200);
+#endif
 	}
 
 	if (cheatIsActive(CHEAT_KL01313)) {

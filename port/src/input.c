@@ -57,18 +57,16 @@ void inputSetDefaultKeyBinds(void)
 {
 	// TODO: make VK constants for all these
 	static const u32 kbbinds[][3] = {
-		{ CK_A,             SDL_SCANCODE_Q,      0                   },
 		{ CK_B,             SDL_SCANCODE_E,      0                   },
 		{ CK_X,             SDL_SCANCODE_R,      0                   },
-		{ CK_Y,             SDL_SCANCODE_R,      0                   },
 		{ CK_RTRIG,         VK_MOUSE_RIGHT,      SDL_SCANCODE_Z      },
 		{ CK_LTRIG,         SDL_SCANCODE_F,      SDL_SCANCODE_X      },
 		{ CK_ZTRIG,         VK_MOUSE_LEFT,       SDL_SCANCODE_SPACE  },
 		{ CK_START,         SDL_SCANCODE_RETURN, SDL_SCANCODE_TAB    },
-		{ CK_DPAD_D,        SDL_SCANCODE_G,      VK_MOUSE_MIDDLE     },
-		{ CK_DPAD_U,        0,      0                                },
-		{ CK_DPAD_R,        0,      0                                },
-		{ CK_DPAD_L,        0,      0                                },
+		{ CK_DPAD_D,        SDL_SCANCODE_Q,      VK_MOUSE_MIDDLE     },
+		{ CK_DPAD_U,        0,                   0                   },
+		{ CK_Y,             VK_MOUSE_WHEEL_DN,   0                   },
+		{ CK_DPAD_L,        VK_MOUSE_WHEEL_UP,   0                   },
 		{ CK_C_D,           SDL_SCANCODE_S,      0                   },
 		{ CK_C_U,           SDL_SCANCODE_W,      0                   },
 		{ CK_C_R,           SDL_SCANCODE_D,      0                   },
@@ -80,10 +78,10 @@ void inputSetDefaultKeyBinds(void)
 	};
 
 	static const u32 joybinds[][2] = {
-		{ CK_A,      SDL_CONTROLLER_BUTTON_A             },
-		{ CK_B,      SDL_CONTROLLER_BUTTON_B             },
+		{ CK_B,      SDL_CONTROLLER_BUTTON_A             },
 		{ CK_X,      SDL_CONTROLLER_BUTTON_X             },
 		{ CK_Y,      SDL_CONTROLLER_BUTTON_Y             },
+		{ CK_DPAD_L, SDL_CONTROLLER_BUTTON_B,            },
 		{ CK_DPAD_D, SDL_CONTROLLER_BUTTON_LEFTSHOULDER  },
 		{ CK_LTRIG,  SDL_CONTROLLER_BUTTON_RIGHTSHOULDER },
 		{ CK_RTRIG,  VK_JOY1_LTRIG - VK_JOY1_BEGIN       },

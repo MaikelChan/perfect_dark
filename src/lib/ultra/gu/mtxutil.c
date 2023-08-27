@@ -2,6 +2,11 @@
 
 void guMtxF2L(f32 mf[4][4], Mtx *m)
 {
+#ifdef GBI_FLOATS
+	if ((Mtx *)mf != m) {
+		bcopy(mf, m, sizeof(*m));
+	}
+#else
 	int	i, j;
 	int	e1, e2;
 	int	*ai, *af;
@@ -18,6 +23,7 @@ void guMtxF2L(f32 mf[4][4], Mtx *m)
 			*(af++) = ((e1 << 16) & 0xffff0000) | (e2 & 0xffff);
 		}
 	}
+#endif
 }
 
 void guMtxIdentF(float mf[4][4])

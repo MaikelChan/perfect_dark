@@ -235,9 +235,13 @@ void schedStartFrame(OSSched *sc)
 
 void schedAudioFrame(OSSched *sc)
 {
+	s32 i;
+
 	if (!g_SndDisabled) {
-		amgrFrame();
-		audioEndFrame();
+		for (i = 0; i < g_Vars.diffframe60; i++) {
+			amgrFrame();
+			audioEndFrame();
+		}
 	}
 }
 
