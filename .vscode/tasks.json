@@ -11,7 +11,7 @@
         {
             "label": "Build",
             "type": "shell",
-            "command": "make -f Makefile.port -j",
+            "command": "make -f Makefile.port -j GCC_OPT_LVL=-O2",
             "group": "build",
             "problemMatcher": []
         },
