@@ -1,3 +1,5 @@
+#include <string.h>
+#include <ctype.h>
 #include <SDL.h>
 #include <PR/ultratypes.h>
 #include <PR/os_thread.h>
@@ -52,6 +54,81 @@ static s32 deadzone[4] = {
 };
 
 static s32 stickCButtons = 1;
+
+static const char *ckNames[CK_TOTAL_COUNT] = {
+	"R_CBUTTONS",
+	"L_CBUTTONS",
+	"D_CBUTTONS",
+	"U_CBUTTONS",
+	"R_TRIG",
+	"L_TRIG",
+	"X_BUTTON",
+	"Y_BUTTON",
+	"R_JPAD",
+	"L_JPAD",
+	"D_JPAD",
+	"U_JPAD",
+	"START_BUTTON",
+	"Z_TRIG",
+	"B_BUTTON",
+	"A_BUTTON",
+	"STICK_XNEG",
+	"STICK_XPOS",
+	"STICK_YNEG",
+	"STICK_YPOS",
+};
+
+static const char *vkPunctNames[] = {
+	"MINUS", "EQUALS", "LEFTBRACKET", "RIGHTBRACKET", "BACKSLASH",
+	"HASH", "SEMICOLON", "APOSTROPHE", "GRAVE", "COMMA", "PERIOD", "SLASH"
+};
+
+static const char *vkMouseNames[] = {
+	"MOUSE_LEFT",
+	"MOUSE_MIDDLE",
+	"MOUSE_RIGHT",
+	"MOUSE_X1",
+	"MOUSE_X2",
+	"MOUSE_WHEEL_UP",
+	"MOUSE_WHEEL_DN",
+};
+
+static const char *vkJoyNames[] = {
+	"JOY1_A",
+	"JOY1_B",
+	"JOY1_X",
+	"JOY1_Y",
+	"JOY1_BACK",
+	"JOY1_GUIDE",
+	"JOY1_START",
+	"JOY1_LSTICK",
+	"JOY1_RSTICK",
+	"JOY1_LSHOULDER",
+	"JOY1_RSHOULDER",
+	"JOY1_DPAD_UP",
+	"JOY1_DPAD_DOWN",
+	"JOY1_DPAD_LEFT",
+	"JOY1_DPAD_RIGHT",
+	"JOY1_BUTTON_15",
+	"JOY1_BUTTON_16",
+	"JOY1_BUTTON_17",
+	"JOY1_BUTTON_18",
+	"JOY1_BUTTON_19",
+	"JOY1_TOUCHPAD",
+	"JOY1_BUTTON_21",
+	"JOY1_BUTTON_22",
+	"JOY1_BUTTON_23",
+	"JOY1_BUTTON_24",
+	"JOY1_BUTTON_25",
+	"JOY1_BUTTON_26",
+	"JOY1_BUTTON_27",
+	"JOY1_BUTTON_28",
+	"JOY1_BUTTON_29",
+	"JOY1_LTRIGGER",
+	"JOY1_RTRIGGER",
+};
+
+static char vkNames[VK_TOTAL_COUNT][64];
 
 void inputSetDefaultKeyBinds(void)
 {
@@ -179,6 +256,143 @@ static int inputEventFilter(void *data, SDL_Event *event)
 	return 0;
 }
 
+static inline void inputGetScancodeName(const SDL_Scancode sc, char *out, size_t len)
+{
+		const char *scname = SDL_GetScancodeName(sc);
+		if (scname) {
+			strncpy(out, scname, len - 1);
+			for (u32 i = 0; i < len && out[i]; ++i) {
+				if (out[i] == ' ') {
+					out[i] = '_';
+				} else {
+					out[i] = toupper(out[i]);
+				}
+			}
+		} else {
+			snprintf(out, len, "KEY%d", (s32)sc);
+		}
+}
+
+static inline void inputInitKeyNames(void)
+{
+	for (SDL_Scancode key = SDL_SCANCODE_A; key <= SDL_SCANCODE_SPACE; ++key) {
+		inputGetScancodeName(key, vkNames[key], sizeof(vkNames[key]));
+	}
+
+	// special characters
+	for (SDL_Scancode key = SDL_SCANCODE_MINUS; key < SDL_SCANCODE_CAPSLOCK; ++key) {
+		strcpy(vkNames[key], vkPunctNames[key - SDL_SCANCODE_MINUS]);
+	}
+
+	for (SDL_Scancode key = SDL_SCANCODE_CAPSLOCK; key <= SDL_SCANCODE_NUMLOCKCLEAR; ++key) {
+		inputGetScancodeName(key, vkNames[key], sizeof(vkNames[key]));
+	}
+
+	// keypad names
+	strcpy(vkNames[SDL_SCANCODE_KP_DIVIDE], "KP_DIVIDE");
+	strcpy(vkNames[SDL_SCANCODE_KP_MULTIPLY], "KP_MULTIPLY");
+	strcpy(vkNames[SDL_SCANCODE_KP_MINUS], "KP_MINUS");
+	strcpy(vkNames[SDL_SCANCODE_KP_PLUS], "KP_PLUS");
+	strcpy(vkNames[SDL_SCANCODE_KP_ENTER], "KP_ENTER");
+	strcpy(vkNames[SDL_SCANCODE_KP_PERIOD], "KP_PERIOD");
+	strcpy(vkNames[SDL_SCANCODE_KP_EQUALS], "KP_EQUALS");
+	for (SDL_Scancode key = SDL_SCANCODE_KP_1; key < SDL_SCANCODE_KP_0; ++key) {
+		char tmp[8] = "KP_1";
+		tmp[3] = '1' + (key - SDL_SCANCODE_KP_1);
+		strcpy(vkNames[key], tmp);
+	}
+
+	for (SDL_Scancode key = SDL_SCANCODE_LCTRL; key <= SDL_SCANCODE_RGUI; ++key) {
+		inputGetScancodeName(key, vkNames[key], sizeof(vkNames[key]));
+	}
+
+	// mouse names
+	for (u32 vk = VK_MOUSE_BEGIN; vk < VK_JOY1_BEGIN; ++vk) {
+		strcpy(vkNames[vk], vkMouseNames[vk - VK_MOUSE_BEGIN]);
+	}
+
+	// joystick names
+	for (u32 vk = VK_JOY1_BEGIN; vk < VK_TOTAL_COUNT; ++vk) {
+		const u32 jidx = (vk - VK_JOY1_BEGIN) / INPUT_MAX_CONTROLLER_BUTTONS;
+		const u32 jbtn = (vk - VK_JOY1_BEGIN) % INPUT_MAX_CONTROLLER_BUTTONS;
+		strcpy(vkNames[vk], vkJoyNames[jbtn]);
+		vkNames[vk][3] = '1' + jidx;
+	}
+}
+
+static inline void inputSaveBinds(void)
+{
+	char bindstr[256];
+	char keyname[256];
+	char secname[] = "Input.Player1.Binds";
+
+	bindstr[sizeof(bindstr) - 1] = '\0';
+
+	for (s32 i = 0; i < MAXCONTROLLERS; ++i) {
+		secname[12] = '1' + i;
+		for (u32 ck = 0; ck < CK_TOTAL_COUNT; ++ck) {
+			snprintf(keyname, sizeof(keyname), "%s.%s", secname, inputGetContKeyName(ck));
+			bindstr[0] = '\0';
+			for (s32 b = 0; b < MAX_BINDS; ++b) {
+				if (binds[i][ck][b]) {
+					if (b) {
+						strncat(bindstr, ", ", sizeof(bindstr) - 1);
+					}
+					strncat(bindstr, inputGetKeyName(binds[i][ck][b]), sizeof(bindstr) - 1);
+				}
+			}
+			configSetString(keyname, bindstr[0] ? bindstr : "NONE");
+		}
+	}
+}
+
+static inline void inputParseBindString(const s32 ctrl, const u32 ck, char *bindstr)
+{
+	// unbind all first
+	memset(binds[ctrl][ck], 0, sizeof(binds[ctrl][ck]));
+
+	if (!strcasecmp(bindstr, "NONE")) {
+		// explicitly nothing bound
+		return;
+	}
+
+	const char *tok = strtok(bindstr, ", ");
+	while (tok) {
+		if (tok[0]) {
+			const s32 vk = inputGetKeyByName(tok);
+			if (vk > 0) {
+				inputKeyBind(ctrl, ck, -1, vk);
+			}
+		}
+		tok = strtok(NULL, ", ");
+	}
+}
+
+static inline void inputLoadBinds(void)
+{
+	char secname[] = "Input.Player1.Binds";
+	char keyname[256];
+	char bindstr[256];
+
+	for (s32 i = 0; i < MAXCONTROLLERS; ++i) {
+		secname[12] = '1' + i;
+		for (u32 ck = 0; ck < CK_TOTAL_COUNT; ++ck) {
+			snprintf(keyname, sizeof(keyname), "%s.%s", secname, inputGetContKeyName(ck));
+			const char *cfgstr = configGetString(keyname, "");
+			if (cfgstr[0]) {
+				strncpy(bindstr, cfgstr, sizeof(bindstr) - 1);
+				bindstr[sizeof(bindstr) - 1] = '\0';
+				inputParseBindString(i, ck, bindstr);
+			}
+		}
+	}
+}
+
+void inputSaveConfig(void)
+{
+	inputSaveBinds();
+}
+
 s32 inputInit(void)
 {
 	if (!SDL_WasInit(SDL_INIT_GAMECONTROLLER | SDL_INIT_HAPTIC)) {
@@ -207,6 +421,8 @@ s32 inputInit(void)
 
 	// since the main event loop is elsewhere, we can receive some events we need using a watcher
 	SDL_AddEventWatch(inputEventFilter, NULL);
+
+	inputInitKeyNames();
 
 	inputSetDefaultKeyBinds();
 
@@ -240,6 +456,8 @@ s32 inputInit(void)
 	if (overrideMask) {
 		connectedMask = overrideMask;
 	}
+
+	inputLoadBinds();
 
 	return connectedMask;
 }
@@ -506,4 +724,68 @@ void inputMouseGetScaledDelta(f32 *dx, f32 *dy)
 	}
 	if (dx) *dx = mdx;
 	if (dy) *dy = mdy;
+}
+
+const char *inputGetContKeyName(u32 ck)
+{
+	if (ck >= CK_TOTAL_COUNT) {
+		return "";
+	}
+	return ckNames[ck];
+}
+
+s32 inputGetContKeyByName(const char *name)
+{
+	for (u32 i = 0; i < CK_TOTAL_COUNT; ++i) {
+		if (!strcmp(name, ckNames[i])) {
+			return i;
+		}
+	}
+	fprintf(stderr, "unknown bind name: `%s`\n", name);
+	return -1;
+}
+
+const char *inputGetKeyName(s32 vk)
+{
+	if (vk < 0 || vk >= VK_TOTAL_COUNT) {
+		vk = 0;
+	}
+	if (!vkNames[vk][0]) {
+		snprintf(vkNames[vk], sizeof(vkNames[vk]), "UNKNOWN%d", vk);
+	}
+	return vkNames[vk];
+}
+
+s32 inputGetKeyByName(const char *name)
+{
+	s32 start = 0;
+	s32 end = 0;
+
+	if (!strncmp(name, "JOY", 3) && isdigit(name[3])) {
+		const s32 idx = name[3] - '1';
+		if (idx >= 0 && idx < INPUT_MAX_CONTROLLERS) {
+			start = VK_JOY1_BEGIN + idx * INPUT_MAX_CONTROLLER_BUTTONS;
+			end = start + INPUT_MAX_CONTROLLER_BUTTONS;
+		}
+	} else if (!strncmp(name, "MOUSE", 5)) {
+		start = VK_MOUSE_BEGIN;
+		end = VK_JOY1_BEGIN;
+	} else if (!strncmp(name, "UNKNOWN", 7) && isdigit(name[7])) {
+		const s32 key = atoi(name + 7);
+		if (key >= 0 && key < VK_TOTAL_COUNT) {
+			return key;
+		}
+	} else {
+		end = VK_MOUSE_BEGIN;
+	}
+
+	for (s32 i = start; i < end; ++i) {
+		if (!strcmp(vkNames[i], name)) {
+			return i;
+		}
+	}
+
+	fprintf(stderr, "unknown key name: `%s`\n", name);
+
+	return -1;
 }

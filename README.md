@@ -41,7 +41,7 @@ N64 pad buttons X and Y (or `X_BUTTON`, `Y_BUTTON` in the code) refer to the res
 | Action          | Keyboard and mouse | Xbox pad | N64 pad    |
 | -               | -                  | -        | -          |
 | Fire / Accept   | LMB/Space          | RT       | Z Trigger  |
-| Aim mode        | RMB/Z              | LT       | Z Trigger  |
+| Aim mode        | RMB/Z              | LT       | R Trigger  |
 | Use / Cancel    | E                  | N/A      | B          |
 | Use / Accept    | N/A                | A        | A          |
 | Reload          | R                  | X        | X `(0x40)` |

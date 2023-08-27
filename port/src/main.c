@@ -54,6 +54,7 @@ void bootCreateSched(void)
 
 static void cleanup(void)
 {
+	inputSaveConfig();
 	configSave(CONFIG_FNAME);
 	// TODO: actually shut down all subsystems
 }

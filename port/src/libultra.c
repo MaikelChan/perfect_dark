@@ -3,6 +3,7 @@
 #include <stdarg.h>
 #include <stdint.h>
 #include <string.h>
+#include <errno.h>
 #include <PR/os_internal.h>
 #include <PR/rcp.h>
 #include "system.h"
@@ -23,6 +24,9 @@ u32 osMemSize = 16 * 1024 * 1024; /* expansion pak installed plus some extra */
 s32 osTvType = OS_TV_NTSC;        /* 0 = PAL, 1 = NTSC, 2 = MPAL */
 s32 osResetType = 0;              /* 0 = cold reset */
 s32 osViClock = VI_NTSC_CLOCK;
+
+static u8 eeprom[EEPROM_SIZE];
+static s32 eepromLoaded = 0;
 
 /* Time */
 
@@ -247,6 +251,31 @@ s32 __osMotorAccess(OSPfs *pfs, s32 cmd)
 
 /* Eeprom */
 
+static inline void osEeepromLoad(const char *fname)
+{
+	if (!eepromLoaded) {
+		eepromLoaded = 1;
+		FILE *fp = fsFileOpenRead(fname);
+		if (fp) {
+			fread(eeprom, 1, EEPROM_SIZE, fp);
+			fsFileClose(fp);
+		} else {
+			printf("could not read EEPROM from `%s`: %s\n", fname, strerror(errno));
+		}
+	}
+}
+
+static inline void osEeepromSave(const char *fname)
+{
+	FILE* fp = fsFileOpenWrite(fname);
+	if (fp) {
+		fwrite(eeprom, 1, EEPROM_SIZE, fp);
+		fsFileClose(fp);
+	} else {
+		fprintf(stderr, "could not save EEPROM to `%s`: %s\n", fname, strerror(errno));
+	}
+}
+
 s32 osEepromProbe(OSMesgQueue *mq)
 {
 	return EEPROM_TYPE_16K;
@@ -254,34 +283,22 @@ s32 osEepromProbe(OSMesgQueue *mq)
 
 s32 osEepromLongRead(OSMesgQueue *mq, u8 address, u8 *buffer, int nbytes)
 {
-	u8 content[EEPROM_SIZE];
-	s32 ret = -1;
-	FILE *fp = fsFileOpenRead(EEPROM_FNAME);
-	if (fp == NULL) {
-		return -1;
-	}
-	if (fread(content, 1, EEPROM_SIZE, fp) == EEPROM_SIZE) {
-		memcpy(buffer, content + address * 8, nbytes);
-		ret = 0;
-	}
-	fsFileClose(fp);
-	return ret;
+	osEeepromLoad(EEPROM_FNAME);
+
+	memcpy(buffer, eeprom + address * 8, nbytes);
+
+	return 0;
 }
 
 s32 osEepromLongWrite(OSMesgQueue *mq, u8 address, u8 *buffer, int nbytes)
 {
-	u8 content[EEPROM_SIZE] = { 0 };
-	if (address != 0 || nbytes != EEPROM_SIZE) {
-		osEepromLongRead(mq, 0, content, EEPROM_SIZE);
-	}
-	memcpy(content + address * 8, buffer, nbytes);
-	FILE* fp = fsFileOpenWrite(EEPROM_FNAME);
-	if (fp == NULL) {
-		return -1;
-	}
-	s32 ret = fwrite(content, 1, EEPROM_SIZE, fp) == EEPROM_SIZE ? 0 : -1;
-	fsFileClose(fp);
-	return ret;
+	osEeepromLoad(EEPROM_FNAME);
+
+	memcpy(eeprom + address * 8, buffer, nbytes);
+
+	osEeepromSave(EEPROM_FNAME);
+
+	return 0;
 }
 
 /* Pfs */

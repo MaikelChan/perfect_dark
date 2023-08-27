@@ -237,7 +237,8 @@ COMMON_CFLAGS := $(C_DEFINES) -DAVOID_UB=1 $(INCLUDES) $(TARGET_CFLAGS) -g \
   -Wno-tautological-compare \
   -Wno-unused-but-set-variable \
   -Wno-unused-value \
-  -Wno-unused-variable
+  -Wno-unused-variable \
+  -Wno-format-truncation
 
 CFLAGS := $(COMMON_CFLAGS) -Wno-pointer-sign
 CXXFLAGS := $(COMMON_CFLAGS) -Wno-unused-function

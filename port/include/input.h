@@ -91,6 +91,18 @@ s32 inputButtonPressed(s32 idx, u16 contbtn);
 // if bind is -1, picks a bind slot automatically
 void inputKeyBind(s32 idx, u32 ck, s32 bind, u32 vk);
 
+// get VK_ value from human-readable name
+s32 inputGetKeyByName(const char *name);
+
+// get human-readable name from VK_ value
+const char *inputGetKeyName(s32 vk);
+
+// get CK_ value from human-readable name
+s32 inputGetContKeyByName(const char *name);
+
+// get human-readable name from CK_ value
+const char *inputGetContKeyName(u32 ck);
+
 // strength is 0 .. 1; 0 strength turns it off
 void inputRumble(s32 idx, f32 strength, f32 time);
 
@@ -112,5 +124,8 @@ void inputMouseGetScaledDelta(f32 *dx, f32 *dy);
 
 // call this every frame
 void inputUpdate(void);
+
+// call this before configSave()
+void inputSaveConfig(void);
 
 #endif
