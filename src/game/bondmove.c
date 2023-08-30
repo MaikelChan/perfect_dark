@@ -575,11 +575,11 @@ void bmoveResetMoveData(struct movedata *data)
 	data->analogpitch = 0;
 	data->analogstrafe = 0;
 	data->analogwalk = 0;
+	data->alt1tapcount = 0;
 #ifndef PLATFORM_N64
 	data->freelookdx = 0.0f;
 	data->freelookdy = 0.0f;
 #endif
-	data->alt1tapcount = 0;
 }
 
 /**
@@ -646,6 +646,10 @@ void bmoveProcessInput(bool allowc1x, bool allowc1y, bool allowc1buttons, bool i
 	u32 stack;
 	f32 increment2;
 	f32 newverta;
+#ifndef PLATFORM_N64
+	const bool allowmlook = (g_Vars.currentplayernum == 0) && (allowc1x || allowc1y);
+	bool allowmcross = false;
+#endif
 
 	controlmode = optionsGetControlMode(g_Vars.currentplayerstats->mpindex);
 	weaponnum = bgunGetWeaponNum(HAND_RIGHT);
@@ -698,8 +702,10 @@ void bmoveProcessInput(bool allowc1x, bool allowc1y, bool allowc1buttons, bool i
 	movedata.analogwalk = movedata.c1stickysafe;
 
 #ifndef PLATFORM_N64
-	if (g_Vars.currentplayernum == 0 && (allowc1x || allowc1y)) {
+	if (allowmlook) {
 		inputMouseGetScaledDelta(&movedata.freelookdx, &movedata.freelookdy);
+		allowmcross = (g_PlayerMouseAimMode == MOUSEAIM_CLASSIC) &&
+			(movedata.freelookdx || movedata.freelookdy || g_Vars.currentplayer->swivelpos[0] || g_Vars.currentplayer->swivelpos[1]);
 	}
 #endif
 
@@ -903,7 +909,7 @@ void bmoveProcessInput(bool allowc1x, bool allowc1y, bool allowc1buttons, bool i
 							}
 						} else {
 							for (i = 0; i < numsamples; i++) {
-								#ifndef PLATFORM_N64
+#ifndef PLATFORM_N64
 								if (joyGetButtonsPressedOnSample(i, contpad1, c1allowedbuttons & BUTTON_WPNFORWARD)) {
 									movedata.weaponforwardoffset++;
 									g_Vars.currentplayer->invdowntime = -1;
@@ -911,7 +917,7 @@ void bmoveProcessInput(bool allowc1x, bool allowc1y, bool allowc1buttons, bool i
 									movedata.weaponbackoffset++;
 									g_Vars.currentplayer->invdowntime = -1;
 								}
-								#else
+#else
 								if (joyGetButtonsOnSample(i, contpad1, c1allowedbuttons & A_BUTTON)
 										|| joyGetButtonsOnSample(i, contpad2, c2allowedbuttons & A_BUTTON)) {
 									if (g_Vars.currentplayer->invdowntime > -2) {
@@ -938,12 +944,12 @@ void bmoveProcessInput(bool allowc1x, bool allowc1y, bool allowc1buttons, bool i
 
 									g_Vars.currentplayer->invdowntime = 0;
 								}
-								#endif
+#endif
 							}
 						}
 					}
 
-					#ifdef PLATFORM_N64
+#ifdef PLATFORM_N64
 					// Handle B button activation
 					if (allowc1buttons) {
 						for (i = 0; i < numsamples; i++) {
@@ -985,7 +991,7 @@ void bmoveProcessInput(bool allowc1x, bool allowc1y, bool allowc1buttons, bool i
 							}
 						}
 					}
-				#endif
+#endif
 
 					// Handle manual zoom in and out (sniper, farsight and horizon scanner)
 					if (canmanualzoom && g_Vars.currentplayer->insightaimmode) {
@@ -1187,8 +1193,10 @@ void bmoveProcessInput(bool allowc1x, bool allowc1y, bool allowc1buttons, bool i
 						movedata.cannaturalturn = !g_Vars.currentplayer->insightaimmode;
 
 #ifndef PLATFORM_N64
-						movedata.cannaturalpitch = movedata.cannaturalpitch || (movedata.freelookdy != 0.0f);
-						movedata.cannaturalturn = movedata.cannaturalturn  || (movedata.freelookdx != 0.0f);
+						if (g_PlayerMouseAimMode == MOUSEAIM_LOCKED) {
+							movedata.cannaturalpitch = movedata.cannaturalpitch || (movedata.freelookdy != 0.0f);
+							movedata.cannaturalturn = movedata.cannaturalturn  || (movedata.freelookdx != 0.0f);
+						}
 #endif
 
 						if (g_Vars.tickmode == TICKMODE_AUTOWALK) {
@@ -1277,6 +1285,30 @@ void bmoveProcessInput(bool allowc1x, bool allowc1y, bool allowc1buttons, bool i
 						}
 					}
 
+#ifndef PLATFORM_N64
+					// Handle turning and looking up/down via mouselook when aiming
+					if (g_Vars.currentplayer->insightaimmode && allowmcross) {
+						if (g_Vars.currentplayer->swivelpos[0] > 0.9f) {
+							movedata.aimturnrightspeed = (g_Vars.currentplayer->swivelpos[0] - 0.9f) / 0.1f;
+							movedata.aimturnleftspeed = 0.f;
+						} else if (g_Vars.currentplayer->swivelpos[0] < -0.9f) {
+							movedata.aimturnleftspeed = (g_Vars.currentplayer->swivelpos[0] - -0.9f) / -0.1f;
+							movedata.aimturnrightspeed = 0.f;
+						}
+						if (g_Vars.currentplayer->swivelpos[1] > 0.9f) {
+							movedata.speedvertaup = (g_Vars.currentplayer->swivelpos[1] - 0.9f) / 0.1f;
+							movedata.speedvertadown = 0.f;
+						} else if (g_Vars.currentplayer->swivelpos[1] < -0.9f) {
+							movedata.speedvertadown = (g_Vars.currentplayer->swivelpos[1] - -0.9f) / -0.1f;
+							movedata.speedvertaup = 0.f;
+						}
+					} else {
+						// Reset mouse aim position when not mouse aiming
+						g_Vars.currentplayer->swivelpos[0] = 0.f;
+						g_Vars.currentplayer->swivelpos[1] = 0.f;
+					}
+#endif
+
 					// Handle A button
 					if (allowc1buttons) {
 						if (g_Vars.currentplayer->invdowntime < -2) {
@@ -1287,7 +1319,7 @@ void bmoveProcessInput(bool allowc1x, bool allowc1y, bool allowc1buttons, bool i
 							}
 						} else {
 							for (i = 0; i < numsamples; i++) {
-								#ifndef PLATFORM_N64
+#ifndef PLATFORM_N64
 								if (joyGetButtonsPressedOnSample(i, contpad1, c1allowedbuttons & BUTTON_WPNFORWARD)) {
 									movedata.weaponforwardoffset++;
 									g_Vars.currentplayer->invdowntime = -1;
@@ -1295,7 +1327,7 @@ void bmoveProcessInput(bool allowc1x, bool allowc1y, bool allowc1buttons, bool i
 									movedata.weaponbackoffset++;
 									g_Vars.currentplayer->invdowntime = -1;
 								}
-								#else
+#else
 								if (joyGetButtonsOnSample(i, contpad1, invbuttons & c1allowedbuttons)) {
 									if (g_Vars.currentplayer->invdowntime > -2) {
 										if (joyGetButtonsPressedOnSample(i, contpad1, shootbuttons & c1allowedbuttons)) {
@@ -1323,7 +1355,7 @@ void bmoveProcessInput(bool allowc1x, bool allowc1y, bool allowc1buttons, bool i
 
 									g_Vars.currentplayer->invdowntime = 0;
 								}
-								#endif
+#endif
 							}
 						}
 					}
@@ -1333,21 +1365,21 @@ void bmoveProcessInput(bool allowc1x, bool allowc1y, bool allowc1buttons, bool i
 						for (i = 0; i < numsamples; i++) {
 							if (joyGetButtonsOnSample(i, contpad1, c1allowedbuttons & (B_BUTTON | BUTTON_CANCEL_USE | BUTTON_ACCEPT_USE))) {
 								if (g_Vars.currentplayer->usedowntime >= -1) {
-									#ifdef PLATFORM_N64
+#ifdef PLATFORM_N64
 									if (joyGetButtonsPressedOnSample(i, contpad1, shootbuttons & c1allowedbuttons)
 											&& g_Vars.currentplayer->usedowntime >= 0
 											&& bgunConsiderToggleGunFunction(g_Vars.currentplayer->usedowntime, true, false, 0) != USETIMER_CONTINUE) {
 										g_Vars.currentplayer->usedowntime = -3;
 									}
-									#endif
+#endif
 
 									if (g_Vars.currentplayer->usedowntime >= 0) {
 										if (g_Vars.currentplayer->usedowntime > TICKS(25)) {
-											#ifdef PLATFORM_N64
+#ifdef PLATFORM_N64
 											s32 result = bgunConsiderToggleGunFunction(g_Vars.currentplayer->usedowntime, false, false, 0);
-											#else
+#else
 											s32 result = USETIMER_CONTINUE;
-										    #endif
+#endif
 
 											if (result == USETIMER_STOP) {
 												g_Vars.currentplayer->usedowntime = -1;
@@ -1361,11 +1393,11 @@ void bmoveProcessInput(bool allowc1x, bool allowc1y, bool allowc1buttons, bool i
 										}
 									}
 								} else {
-									#ifdef PLATFORM_N64
+#ifdef PLATFORM_N64
 									if (g_Vars.currentplayer->usedowntime >= -2) {
 										bgunConsiderToggleGunFunction(g_Vars.currentplayer->usedowntime, false, false, 0);
 									}
-									#endif
+#endif
 								}
 							} else {
 								// Released B
@@ -1380,7 +1412,7 @@ void bmoveProcessInput(bool allowc1x, bool allowc1y, bool allowc1buttons, bool i
 					}
 
 
-					#ifndef PLATFORM_N64
+#ifndef PLATFORM_N64
 					if (allowc1buttons) {
 						// handle L button : alt switching
 						for (i = 0; i< numsamples; i++) {
@@ -1451,7 +1483,7 @@ void bmoveProcessInput(bool allowc1x, bool allowc1y, bool allowc1buttons, bool i
 							}
 						}
 					}
-					#endif
+#endif
 
 					// Handle manual zoom in and out (sniper, farsight and horizon scanner)
 					if (canmanualzoom && g_Vars.currentplayer->insightaimmode) {
@@ -1538,7 +1570,7 @@ void bmoveProcessInput(bool allowc1x, bool allowc1y, bool allowc1buttons, bool i
 					}
 
 					// Handle mine detonation
-					#ifdef PLATFORM_N64
+#ifdef PLATFORM_N64
 					if ((((c1buttons & invbuttons) && (c1buttonsthisframe & B_BUTTON))
 							|| ((c1buttons & B_BUTTON) && (c1buttonsthisframe & invbuttons)))
 							&& weaponnum == WEAPON_REMOTEMINE) {
@@ -1549,7 +1581,7 @@ void bmoveProcessInput(bool allowc1x, bool allowc1y, bool allowc1buttons, bool i
 						g_Vars.currentplayer->invdowntime = -2;
 						g_Vars.currentplayer->usedowntime = -2;
 					}
-					#else
+#else
 					if ((((c1buttons & BUTTON_RADIAL) && (c1buttonsthisframe & BUTTON_CANCEL_USE))
 							|| ((c1buttons & BUTTON_CANCEL_USE) && (c1buttonsthisframe & BUTTON_RADIAL)))
 							&& weaponnum == WEAPON_REMOTEMINE) {
@@ -1572,7 +1604,7 @@ void bmoveProcessInput(bool allowc1x, bool allowc1y, bool allowc1buttons, bool i
 						g_Vars.currentplayer->invdowntime = -2;
 						g_Vars.currentplayer->usedowntime = -2;
 					}
-					#endif
+#endif
 				}
 
 				movedata.aiming = g_Vars.currentplayer->insightaimmode;
@@ -1653,7 +1685,7 @@ void bmoveProcessInput(bool allowc1x, bool allowc1y, bool allowc1buttons, bool i
 #ifdef PLATFORM_N64
 		zoomfov = 60;
 #else
-		zoomfov = videoGetPlayerFovY();
+		zoomfov = g_PlayerDefaultFovY;
 #endif
 
 		// FarSight in secondary function
@@ -1668,8 +1700,8 @@ void bmoveProcessInput(bool allowc1x, bool allowc1y, bool allowc1buttons, bool i
 				eraserfov = 60;
 			}
 #else
-			if (eraserfov > videoGetPlayerFovY()) {
-				eraserfov = videoGetPlayerFovY();
+			if (eraserfov > g_PlayerDefaultFovY) {
+				eraserfov = g_PlayerDefaultFovY;
 			}
 #endif
 
@@ -1711,7 +1743,7 @@ void bmoveProcessInput(bool allowc1x, bool allowc1y, bool allowc1buttons, bool i
 		}
 #else
 		if (zoomfov <= 0) {
-			zoomfov = videoGetPlayerFovY();
+			zoomfov = g_PlayerDefaultFovY;
 		}
 #endif
 
@@ -1849,9 +1881,7 @@ void bmoveProcessInput(bool allowc1x, bool allowc1y, bool allowc1buttons, bool i
 				}
 
 #ifndef PLATFORM_N64
-				if (movedata.freelookdy) {
-					fVar25 += movedata.freelookdy;
-				}
+				fVar25 += movedata.freelookdy;
 #endif
 
 				g_Vars.currentplayer->speedverta = -fVar25 * tmp;
@@ -1892,9 +1922,7 @@ void bmoveProcessInput(bool allowc1x, bool allowc1y, bool allowc1buttons, bool i
 		}
 
 #ifndef PLATFORM_N64
-		if (movedata.freelookdx) {
-			fVar25 += movedata.freelookdx;
-		}
+		fVar25 += movedata.freelookdx;
 #endif
 
 		g_Vars.currentplayer->speedthetacontrol = fVar25 * tmp;
@@ -1999,8 +2027,8 @@ void bmoveProcessInput(bool allowc1x, bool allowc1y, bool allowc1buttons, bool i
 				xscale = 1.f;
 				yscale = 1.f;
 			}
-			x = g_Vars.currentplayer->speedtheta * 0.3f * xscale + g_Vars.currentplayer->gunextraaimx;
-			y = -g_Vars.currentplayer->speedverta * 0.1f * yscale + g_Vars.currentplayer->gunextraaimy;
+			x = g_Vars.currentplayer->speedtheta * 0.3f * g_PlayerCrosshairSway * xscale + g_Vars.currentplayer->gunextraaimx;
+			y = -g_Vars.currentplayer->speedverta * 0.1f * g_PlayerCrosshairSway * yscale + g_Vars.currentplayer->gunextraaimy;
 #endif
 
 			bgunSwivelWithDamp(x, y, PAL ? 0.955f : 0.963f);
@@ -2009,6 +2037,21 @@ void bmoveProcessInput(bool allowc1x, bool allowc1y, bool allowc1buttons, bool i
 		// Adjust crosshair's position on screen
 		// when holding aim and moving stick
 		bgunSetAimType(0);
+#ifndef PLATFORM_N64
+		if (allowmcross) {
+			// joystick is inactive, move crosshair using the mouse
+			const f32 xscale = 320.f / (f32)videoGetWidth();
+			const f32 yscale = 240.f / (f32)videoGetHeight();
+			f32 x = g_Vars.currentplayer->swivelpos[0] + movedata.freelookdx * xscale;
+			f32 y = g_Vars.currentplayer->swivelpos[1] + movedata.freelookdy * yscale;
+			x = (x < -1.f) ? -1.f : ((x > 1.f) ? 1.f : x);
+			y = (y < -1.f) ? -1.f : ((y > 1.f) ? 1.f : y);
+			g_Vars.currentplayer->swivelpos[0] = x;
+			g_Vars.currentplayer->swivelpos[1] = y;
+			bgunSwivelWithDamp(x, y, 0.01f);
+			return;
+		}
+#endif
 		bgunSwivelWithoutDamp((movedata.c1stickxraw * 0.65f) / 80.0f, (movedata.c1stickyraw * 0.65f) / 80.0f);
 	}
 }

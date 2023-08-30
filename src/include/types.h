@@ -2816,8 +2816,11 @@ struct player {
 	/*0x1c64*/ s32 unk1c64;
 	/*0x1c68*/ u32 unk1c68;
 	/*0x1c6c*/ u32 unk1c6c;
-	s16 altdowntime; // for alt-modes, used like invdowntime and amdowntime
-	s16 amdowntime; // for alt-modes, used like invdowntime and amdowntime
+	/*0x1c70*/ s16 altdowntime; // for alt-modes, used like invdowntime and amdowntime
+	/*0x1c72*/ s16 amdowntime; // for alt-modes, used like invdowntime and amdowntime
+#ifndef PLATFORM_N64
+	/*0x1c74*/ f32 swivelpos[2];
+#endif
 };
 
 struct ailist {
@@ -4303,6 +4306,11 @@ struct activemenu {
 	/*0x32*/ u8 allbots; // when player holds R on the bot command screen
 	/*0x33*/ u8 prevallbots; // used when opening "Pick Target" menu for attack command
 	/*0x34*/ s8 origscreennum; // original screen number before using allbots
+
+#ifndef PLATFORM_N64
+	/*    */ f32 mousex;
+	/*    */ f32 mousey;
+#endif
 };
 
 struct briefing {
@@ -5041,11 +5049,12 @@ struct movedata {
 	/*0xa0*/ s32 analogpitch;
 	/*0xa4*/ s32 analogstrafe;
 	/*0xa8*/ s32 analogwalk;
+	/*0xac*/ s32 alt1tapcount;
 #ifndef PLATFORM_N64
 	/*    */ f32 freelookdx; // how much the mouse moved ...
-	/*    */ f32 freelookdy; // ... in normalized window coordinates
+	/*    */ f32 freelookdy; // ... scaled by sensitivity
 #endif
-	/*0xac*/ s32 alt1tapcount;
+
 };
 
 struct attackanimgroup {

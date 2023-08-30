@@ -4651,7 +4651,6 @@ enum weaponnum {
 #define JO_ACTION_ACTIVATE           0x0001
 #define JO_ACTION_RELOAD             0x0002
 
-
 #ifdef PLATFORM_N64
 
 #define BUTTON_ACCEPT_WPNFORWARD CONT_A
@@ -4677,6 +4676,10 @@ enum weaponnum {
 #define BUTTON_WPNFORWARD     Y_BUTTON
 #define BUTTON_RADIAL         D_JPAD
 #define BUTTON_ALTMODE        L_TRIG
+
+#define MOUSEAIM_CLASSIC 0 // crosshair moves around the screen in aim mode
+#define MOUSEAIM_LOCKED 1  // crosshair locked to the center of the screen in aim mode
+
 #endif
 
 #endif

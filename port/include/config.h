@@ -18,6 +18,10 @@ s32 configGetInt(const char *key, s32 defval);
 f32 configGetFloat(const char *key, f32 defval);
 const char *configGetString(const char *key, const char *defval);
 
+// get value as above and clamp it in between minval, maxval
+s32 configGetIntClamped(const char *key, s32 defval, s32 minval, s32 maxval);
+f32 configGetFloatClamped(const char *key, f32 defval, f32 minval, f32 maxval);
+
 // set value of a config variable, will create it if it doesn't exist
 // key is a string of the form "SECTION.KEY"
 void configSetInt(const char *key, s32 val);

@@ -12,6 +12,9 @@
 #include "lib/str.h"
 #include "data.h"
 #include "types.h"
+#ifndef PLATFORM_N64
+#include "input.h"
+#endif
 
 void amTick(void)
 {
@@ -62,6 +65,24 @@ void amTick(void)
 				toggle = false;
 
 				g_AmMenus[g_AmIndex].allbots = false;
+
+#ifndef PLATFORM_N64
+				if (j == 0 && g_Vars.currentplayernum == 0 && inputMouseIsLocked()) {
+					f32 mdx, mdy;
+					struct activemenu *am = &g_AmMenus[g_AmIndex];
+					inputMouseGetScaledDelta(&mdx, &mdy);
+					if (mdx || mdy) {
+						am->mousex += mdx * 4.f;
+						am->mousey += mdy * 4.f;
+						am->mousex = (am->mousex > 127.f) ? 127.f : (am->mousex < -128.f) ? -128.f : am->mousex;
+						am->mousey = (am->mousey > 127.f) ? 127.f : (am->mousey < -128.f) ? -128.f : am->mousey;
+					}
+					const s32 newstickx = (s32)cstickx + (s32)am->mousex;
+					const s32 newsticky = (s32)csticky - (s32)am->mousey;
+					cstickx = (newstickx < -128) ? -128 : (newstickx > 127) ? 127 : newstickx;
+					csticky = (newsticky < -128) ? -128 : (newsticky > 127) ? 127 : newsticky;
+				}
+#endif
 
 				if (g_Vars.currentplayer->activemenumode == AMMODE_EDIT) {
 					buttonsstate = buttonsstate & D_JPAD;
@@ -337,6 +358,12 @@ void amTick(void)
 				}
 			}
 		}
+#ifndef PLATFORM_N64
+		else {
+			g_AmMenus[g_AmIndex].mousex = 0.f;
+			g_AmMenus[g_AmIndex].mousey = 0.f;
+		}
+#endif
 
 		if (g_Vars.currentplayer->activemenumode != AMMODE_EDIT) {
 			s16 dist;

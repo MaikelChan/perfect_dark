@@ -182,16 +182,18 @@
 
 #ifndef PLATFORM_N64
 
-/* Extended RDP commands */
+/* Extended commands */
 
 #define G_SETFB_EXT         0x21
 #define G_SETTIMG_FB_EXT    0x23
 #define G_INVALTEXCACHE_EXT 0x34
+#define G_TEXRECT_WIDE_EXT  0x37
+#define G_FILLRECT_WIDE_EXT 0x38
 #define G_SETGRAYSCALE_EXT  0x39
 #define G_SETINTENSITY_EXT  0x40
 #define G_COPYFB_EXT        0x41
 
-/* Extended RDP command macros */
+/* Extended command macros */
 
 #define gDPSetFramebufferTargetEXT(pkt, f, s, w, i) \
     gSetImage(pkt, G_SETFB_EXT, f, s, w, i)
@@ -226,6 +228,44 @@
 
 #define gDPSetGrayscaleColorEXT(pkt, r, g, b, lerp) DPRGBColor(pkt, G_SETINTENSITY_EXT, r, g, b, lerp)
 
-#endif
+// NOTE: these will function correctly only if you pass `gdl++` as `pkt`
+
+#define gDPFillRectangleWideEXT(pkt, ulx, uly, lrx, lry)                         \
+{                                                                                \
+    Gfx *_g0 = (Gfx*)(pkt), *_g1 = (Gfx*)(pkt);                                  \
+                                                                                 \
+    _g0->words.w0 = _SHIFTL(G_FILLRECT_WIDE_EXT, 24, 8) | _SHIFTL((lrx), 2, 22); \
+    _g0->words.w1 = _SHIFTL((lry), 2, 22);                                       \
+    _g1->words.w0 = _SHIFTL((ulx), 2, 22);                                       \
+    _g1->words.w1 = _SHIFTL((uly), 2, 22);                                       \
+}
+
+#define gSPTextureRectangleWideEXT(pkt, xl, yl, xh, yh, tile, s, t, dsdx, dtdy) \
+{                                                                               \
+    Gfx *_g0 = (Gfx*)(pkt), *_g1 = (Gfx*)(pkt), *_g2 = (Gfx*)(pkt);             \
+                                                                                \
+    _g0->words.w0 = _SHIFTL(G_TEXRECT_WIDE_EXT, 24, 8) | _SHIFTL((xh), 0, 24);  \
+    _g0->words.w1 = _SHIFTL((yh), 0, 24);                                       \
+    _g1->words.w0 = (_SHIFTL(tile, 24, 3) | _SHIFTL((xl), 0, 24));              \
+    _g1->words.w1 = _SHIFTL((yl), 0, 24);                                       \
+    _g2->words.w0 = (_SHIFTL(s, 16, 16) | _SHIFTL(t, 0, 16));                   \
+    _g2->words.w1 = (_SHIFTL(dsdx, 16, 16) | _SHIFTL(dtdy, 0, 16));             \
+}
+
+#define gDPFillRectangleEXT gDPFillRectangleWideEXT
+#define gSPTextureRectangleEXT gSPTextureRectangleWideEXT
+
+#undef gDPFillRectangleScaled
+#define gDPFillRectangleScaled(pkt, x1, y1, x2, y2) gDPFillRectangleEXT(pkt, (x1) * g_ScaleX, y1, (x2) * g_ScaleX, y2)
+
+#undef gDPHudRectangle
+#define gDPHudRectangle(pkt, x1, y1, x2, y2) gDPFillRectangleEXT(pkt, (x1) * g_ScaleX, y1, ((x2 + 1)) * g_ScaleX, (y2) + 1)
+
+#else // PLATFORM_N64
+
+#define gDPFillRectangleEXT gDPFillRectangle
+#define gSPTextureRectangleEXT gSPTextureRectangle
+
+#endif // PLATFORM_N64
 
 #endif

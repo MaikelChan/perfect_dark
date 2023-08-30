@@ -7496,12 +7496,12 @@ void bgunCreateFx(struct hand *hand, s32 handnum, struct weaponfunc *funcdef, s3
 
 static inline f32 bgunGetFovOffsetZ(void)
 {
-	return (videoGetPlayerFovY() - 60.f) / 3.f;
+	return (g_PlayerDefaultFovY - 60.f) / 3.f;
 }
 
 static inline f32 bgunGetFovOffsetY(void)
 {
-	return (videoGetPlayerFovY() - 60.f) / (2.75f * 4.f);
+	return (g_PlayerDefaultFovY - 60.f) / (2.75f * 4.f);
 }
 
 #endif

@@ -8,16 +8,8 @@
 #include "system.h"
 #include "fs.h"
 
-#define FS_MAX_FILES 2048
-
 static char baseDir[FS_MAXPATH + 1];
 static char exeDir[FS_MAXPATH + 1];
-
-static struct {
-	char *name[FS_MAXPATH + 1];
-	s32 size;
-	void *data;
-} fileSlots[FS_MAX_FILES];
 
 const char *fsFullPath(const char *relPath)
 {

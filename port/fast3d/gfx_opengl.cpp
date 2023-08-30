@@ -560,12 +560,6 @@ static struct ShaderProgram* gfx_opengl_create_and_load_new_shader(uint64_t shad
     vs_buf[vs_len] = '\0';
     fs_buf[fs_len] = '\0';
 
-    /*puts("Vertex shader:");
-    puts(vs_buf);
-    puts("Fragment shader:");
-    puts(fs_buf);
-    puts("End");*/
-
     const GLchar* sources[2] = { vs_buf, fs_buf };
     const GLint lengths[2] = { (GLint)vs_len, (GLint)fs_len };
     GLint success;
@@ -575,13 +569,11 @@ static struct ShaderProgram* gfx_opengl_create_and_load_new_shader(uint64_t shad
     glCompileShader(vertex_shader);
     glGetShaderiv(vertex_shader, GL_COMPILE_STATUS, &success);
     if (!success) {
-        GLint max_length = 0;
+        GLint max_length = 1024;
         glGetShaderiv(vertex_shader, GL_INFO_LOG_LENGTH, &max_length);
         char error_log[1024];
-        // fprintf(stderr, "Vertex shader compilation failed\n");
         glGetShaderInfoLog(vertex_shader, max_length, &max_length, &error_log[0]);
-        // fprintf(stderr, "%s\n", &error_log[0]);
-        abort();
+        sysFatalError("Vertex shader compilation failed:\n%s", error_log);
     }
 
     GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
@@ -589,13 +581,11 @@ static struct ShaderProgram* gfx_opengl_create_and_load_new_shader(uint64_t shad
     glCompileShader(fragment_shader);
     glGetShaderiv(fragment_shader, GL_COMPILE_STATUS, &success);
     if (!success) {
-        GLint max_length = 0;
+        GLint max_length = 1024;
         glGetShaderiv(fragment_shader, GL_INFO_LOG_LENGTH, &max_length);
         char error_log[1024];
-        fprintf(stderr, "Fragment shader compilation failed\n");
         glGetShaderInfoLog(fragment_shader, max_length, &max_length, &error_log[0]);
-        fprintf(stderr, "%s\n", &error_log[0]);
-        std::abort();
+        sysFatalError("Fragment shader compilation failed:\n%s", error_log);
     }
 
     GLuint shader_program = glCreateProgram();
@@ -815,11 +805,14 @@ static void APIENTRY gl_debug(GLenum source, GLenum type, GLuint id, GLenum seve
 }
 
 static void gfx_opengl_init(void) {
-    gladLoadGLLoader(SDL_GL_GetProcAddress);
+    if (!gladLoadGLLoader(SDL_GL_GetProcAddress)) {
+        sysFatalError("Could not load OpenGL. Ensure your GPU supports at least OpenGL 2.1.");
+    }
 
     void APIENTRY (*pglDebugMessageCallback)(DEBUGPROC, const void *) = (void  APIENTRY (*)(DEBUGPROC, const void *))SDL_GL_GetProcAddress("glDebugMessageCallback");
-    if (pglDebugMessageCallback)
+    if (pglDebugMessageCallback) {
         pglDebugMessageCallback(gl_debug, NULL);
+    }
 
     glGenBuffers(1, &opengl_vbo);
     glBindBuffer(GL_ARRAY_BUFFER, opengl_vbo);

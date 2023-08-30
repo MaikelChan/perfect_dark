@@ -150,6 +150,18 @@ const char *configGetString(const char *key, const char *defval)
 	return defval;
 }
 
+s32 configGetIntClamped(const char *key, s32 defval, s32 minval, s32 maxval)
+{
+	const s32 ret = configGetInt(key, defval);
+	return (ret < minval) ? minval : ((ret > maxval) ? maxval : ret);
+}
+
+f32 configGetFloatClamped(const char *key, f32 defval, f32 minval, f32 maxval)
+{
+	const f32 ret = configGetFloat(key, defval);
+	return (ret < minval) ? minval : ((ret > maxval) ? maxval : ret);
+}
+
 static s32 configCmp(const struct configentry *a, const struct configentry *b) {
 	char tmpa[CONFIG_MAX_SECNAME + 1];
 	char tmpb[CONFIG_MAX_SECNAME + 1];

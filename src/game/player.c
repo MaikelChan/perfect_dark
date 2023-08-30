@@ -202,6 +202,12 @@ s16 g_DeathAnimations[] = {
 
 s32 g_NumDeathAnimations = 0;
 
+#ifndef PLATFORM_N64
+f32 g_PlayerDefaultFovY = 60.f;
+f32 g_PlayerCrosshairSway = 1.f;
+s32 g_PlayerMouseAimMode = MOUSEAIM_CLASSIC;
+#endif
+
 /**
  * Choose which location to spawn into from the given pads. Write the position
  * and rooms to the dstpos and dstrooms pointers and return the angle that the
@@ -2070,8 +2076,8 @@ void playerTweenFovY(f32 targetfovy)
 	f32 speed = 15.0f / 30.0f;
 
 #ifndef PLATFORM_N64
-	if (videoGetPlayerFovY() > 60.0f) { // adjust zoom speed depending on non-default fov setting (higher fov == faster zoom)
-		speed /= videoGetPlayerFovY() / 60.0f;
+	if (g_PlayerDefaultFovY > 60.0f) { // adjust zoom speed depending on non-default fov setting (higher fov == faster zoom)
+		speed /= g_PlayerDefaultFovY / 60.0f;
 	}
 #endif
 
@@ -2696,7 +2702,7 @@ Gfx *playerRenderHealthBar(Gfx *gdl)
 #ifdef PLATFORM_N64
 	mtx00016ae4(&matrix, 0, 370, 0, 0, 0, 0, 0, 0, -1);
 #else
-	f32 fovsc = 60.f / videoGetPlayerFovY();
+	f32 fovsc = 60.f / g_PlayerDefaultFovY;
 	if (fovsc > 1.01f) {
 		fovsc *= 1.1f;
 	}
@@ -3150,7 +3156,7 @@ void playerConfigureVi(void)
 #ifdef PLATFORM_N64
 	playermgrSetFovY(60);
 #else
-	playermgrSetFovY(videoGetPlayerFovY());
+	playermgrSetFovY(g_PlayerDefaultFovY);
 #endif
 	playermgrSetAspectRatio(ratio);
 	playermgrSetViewSize(playerGetViewportWidth(), playerGetViewportHeight());
@@ -3161,7 +3167,7 @@ void playerConfigureVi(void)
 #ifdef PLATFORM_N64
 	viSetFovAspectAndSize(60, ratio, playerGetViewportWidth(), playerGetViewportHeight());
 #else
-	viSetFovAspectAndSize(videoGetPlayerFovY(), ratio, playerGetViewportWidth(), playerGetViewportHeight());
+	viSetFovAspectAndSize(g_PlayerDefaultFovY, ratio, playerGetViewportWidth(), playerGetViewportHeight());
 #endif
 
 	viSetViewPosition(playerGetViewportLeft(), playerGetViewportTop());
@@ -3228,7 +3234,7 @@ void playerTick(bool arg0)
 #ifdef PLATFORM_N64
 	playermgrSetFovY(60);
 #else
-	playermgrSetFovY(videoGetPlayerFovY());
+	playermgrSetFovY(g_PlayerDefaultFovY);
 #endif
 	playermgrSetAspectRatio(aspectratio);
 	playermgrSetViewSize(playerGetViewportWidth(), playerGetViewportHeight());
@@ -3238,7 +3244,7 @@ void playerTick(bool arg0)
 #ifdef PLATFORM_N64
 	viSetFovAspectAndSize(60, aspectratio, playerGetViewportWidth(), playerGetViewportHeight());
 #else
-	viSetFovAspectAndSize(videoGetPlayerFovY(), aspectratio, playerGetViewportWidth(), playerGetViewportHeight());
+	viSetFovAspectAndSize(g_PlayerDefaultFovY, aspectratio, playerGetViewportWidth(), playerGetViewportHeight());
 #endif
 	viSetViewPosition(playerGetViewportLeft(), playerGetViewportTop());
 	viSetSize(playerGetFbWidth(), playerGetFbHeight());

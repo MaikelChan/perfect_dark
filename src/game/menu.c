@@ -761,7 +761,7 @@ void menuCalculateItemSize(struct menuitem *item, s16 *width, s16 *height, struc
 		}
 
 		if (item->flags & MENUITEMFLAG_BIGFONT) {
-			*height = 28;
+			*height = 26;
 			*width += 36;
 		}
 

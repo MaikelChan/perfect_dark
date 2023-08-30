@@ -19,7 +19,6 @@ s32 videoGetNativeHeight(void);
 s32 videoGetWidth(void);
 s32 videoGetHeight(void);
 f32 videoGetAspect(void);
-f32 videoGetPlayerFovY(void);
 
 s32 videoCreateFramebuffer(u32 w, u32 h);
 void videoSetFramebuffer(s32 target);

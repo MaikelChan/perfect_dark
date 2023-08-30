@@ -2179,7 +2179,7 @@ static void gfx_dp_fill_rectangle(int32_t ulx, int32_t uly, int32_t lrx, int32_t
     uint32_t mode = (rdp.other_mode_h & (3U << G_MDSFT_CYCLETYPE));
 
     // OTRTODO: This is a bit of a hack for widescreen screen fades, but it'll work for now...
-    if (ulx == 0 && uly == 0 && lrx == (319 * 4) && lry == (239 * 4)) {
+    if (ulx == 0 && uly == 0 && lrx == (int32_t)((SCREEN_WIDTH - 1) * 4) && lry == (int32_t)((SCREEN_HEIGHT - 1) * 4)) {
         ulx = -1024;
         uly = -1024;
         lrx = 2048;
@@ -2491,6 +2491,33 @@ static void gfx_run_dl(Gfx* cmd) {
                 gfx_dp_fill_rectangle(C1(12, 12), C1(0, 12), C0(12, 12), C0(0, 12));
                 break;
 #endif
+            case G_FILLRECT_WIDE_EXT: {
+                int32_t lrx, lry, ulx, uly;
+                lrx = (int32_t)(C0(0, 24) << 8) >> 8;
+                lry = (int32_t)(C1(0, 24) << 8) >> 8;
+                ++cmd;
+                ulx = (int32_t)(C0(0, 24) << 8) >> 8;
+                uly = (int32_t)(C1(0, 24) << 8) >> 8;
+                gfx_dp_fill_rectangle(ulx, uly, lrx, lry);
+                break;
+            }
+            case G_TEXRECT_WIDE_EXT: {
+                int32_t lrx, lry, tile, ulx, uly;
+                uint32_t uls, ult, dsdx, dtdy;
+                lrx = (int32_t)((C0(0, 24) << 8)) >> 8;
+                lry = (int32_t)((C1(0, 24) << 8)) >> 8;
+                tile = C1(24, 3);
+                ++cmd;
+                ulx = (int32_t)((C0(0, 24) << 8)) >> 8;
+                uly = (int32_t)((C1(0, 24) << 8)) >> 8;
+                ++cmd;
+                uls = C0(16, 16);
+                ult = C0(0, 16);
+                dsdx = C1(16, 16);
+                dtdy = C1(0, 16);
+                gfx_dp_texture_rectangle(ulx, uly, lrx, lry, tile, uls, ult, dsdx, dtdy, opcode == G_TEXRECTFLIP);
+                break;
+            }
             case G_SETSCISSOR:
                 gfx_dp_set_scissor(C1(24, 2), C0(12, 12), C0(0, 12), C1(12, 12), C1(0, 12));
                 break;

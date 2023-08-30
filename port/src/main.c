@@ -6,6 +6,7 @@
 
 #include "lib/main.h"
 #include "bss.h"
+#include "data.h"
 
 #include "video.h"
 #include "audio.h"
@@ -59,6 +60,14 @@ static void cleanup(void)
 	// TODO: actually shut down all subsystems
 }
 
+static void gameLoadConfig(void)
+{
+	osMemSize = configGetIntClamped("Game.MemorySize", 16, 4, 2048) * 1024 * 1024;
+	g_PlayerCrosshairSway = configGetFloatClamped("Game.CrosshairSway", g_PlayerCrosshairSway, 0.f, 10.f);
+	g_PlayerDefaultFovY = configGetFloatClamped("Game.FovY", g_PlayerDefaultFovY, 5.f, 175.f);
+	g_PlayerMouseAimMode = configGetIntClamped("Game.MouseAimMode", g_PlayerMouseAimMode, 0, 1);
+}
+
 int main(int argc, const char **argv)
 {
 	sysInitTicks();
@@ -69,11 +78,11 @@ int main(int argc, const char **argv)
 	audioInit();
 	romdataInit();
 
+	gameLoadConfig();
+
 	atexit(cleanup);
 
 	bootCreateSched();
-
-	osMemSize = configGetInt("Game.MemorySize", 16) * 1024 * 1024;
 
 	g_OsMemSize = osGetMemSize();
 
