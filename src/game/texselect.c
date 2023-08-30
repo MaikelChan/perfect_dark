@@ -448,8 +448,8 @@ void texSelect(Gfx **gdlptr, struct textureconfig *tconfig, u32 arg2, s32 arg3, 
 				depth = tconfig->depth;
 			}
 
-			if (tex && tex->unk0c_02) {
-				tex0f173e50(tex, &depth2, &lrs);
+			if (tex && tex->hasloddata) {
+				texGetDepthAndSize(tex, &depth2, &lrs);
 			} else {
 				switch (depth) {
 				case G_IM_SIZ_32b:
@@ -541,7 +541,7 @@ void texSelect(Gfx **gdlptr, struct textureconfig *tconfig, u32 arg2, s32 arg3, 
 				s32 line;
 
 				if (tile > 0) {
-					if (tex && tex->unk0c_02) {
+					if (tex && tex->hasloddata) {
 						width = texGetWidthAtLod(tex, tile);
 						height = texGetHeightAtLod(tex, tile);
 					} else {

@@ -134,9 +134,9 @@ bool artifactTestLos(struct coord *spec, struct coord *roompos)
 	for (s32 i = 0; outrooms[i] != -1; ++i) {
 		if (bgTestHitInRoom(&g_Vars.currentplayer->cam_pos, &endpos, outrooms[i], &hit)) {
 			// check if it's far enough away from the end point
-			if (fabsf(hit.unk00.x - endpos.x) >= 0.1f ||
-					fabsf(hit.unk00.y - endpos.y) >= 0.1f ||
-					fabsf(hit.unk00.z - endpos.z) >= 0.1f) {
+			if (fabsf(hit.pos.x - endpos.x) >= 0.1f ||
+					fabsf(hit.pos.y - endpos.y) >= 0.1f ||
+					fabsf(hit.pos.z - endpos.z) >= 0.1f) {
 				return false;
 			}
 		}

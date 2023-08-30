@@ -1248,9 +1248,17 @@ void frEndSession(bool hidetargets)
 	s32 j;
 	s16 propnums[256];
 	s16 *propnumptr;
+#ifdef AVOID_UB
+	RoomNum rooms[21];
+#else
 	RoomNum rooms[20];
+#endif
 	u32 stack1;
+#ifdef AVOID_UB
+	RoomNum rooms2[11]; // prevent bgRoomGetNeighbours from writing out of bounds
+#else
 	RoomNum rooms2[10];
+#endif
 	u32 stack2;
 
 	if (g_FrDataLoaded) {

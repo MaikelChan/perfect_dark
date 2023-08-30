@@ -856,7 +856,11 @@ Gfx *weatherRenderRain(Gfx *gdl, struct weatherdata *weather, s32 arg2)
 		u32 stack2;
 		struct coord distcamtobbmax;
 		struct coord distcamtobbmin;
+#ifdef AVOID_UB
+		RoomNum neighbours[21];
+#else
 		RoomNum neighbours[20];
+#endif
 
 		particledata = weather->particledata[arg2];
 		numtris = 0;
@@ -1063,7 +1067,7 @@ Gfx *weatherRenderRain(Gfx *gdl, struct weatherdata *weather, s32 arg2)
 			}
 
 			for (scale = 1.0f, t = 0; t < numtestrooms; t++) {
-				numneighbours = bgRoomGetNeighbours(testrooms[t], neighbours, ARRAYCOUNT(neighbours));
+				numneighbours = bgRoomGetNeighbours(testrooms[t], neighbours, 20);
 
 				for (n = 0; n < numneighbours; n++) {
 					if (g_Rooms[neighbours[n]].flags & ROOMFLAG_ONSCREEN) {
@@ -2872,7 +2876,11 @@ Gfx *weatherRenderSnow(Gfx *gdl, struct weatherdata *weather, s32 arg2)
 	s32 i; // 184
 	struct coord sp178;
 	struct coord sp16c;
+#ifdef AVOID_UB
+	RoomNum sp144[21]; // prevent bgRoomGetNeighbours from writing out of bounds
+#else
 	RoomNum sp144[20];
+#endif
 	struct coord sp124;
 	struct coord sp118;
 	f32 f26;
@@ -3003,7 +3011,7 @@ Gfx *weatherRenderSnow(Gfx *gdl, struct weatherdata *weather, s32 arg2)
 
 	// 4c54
 	for (i = 0; i < sp1268; i++) {
-		numneighbours = bgRoomGetNeighbours(sp126c[i], sp144, ARRAYCOUNT(sp144));
+		numneighbours = bgRoomGetNeighbours(sp126c[i], sp144, 20);
 
 		for (j2 = 0; j2 < numneighbours; j2++) {
 			a0 = true;

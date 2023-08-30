@@ -243,7 +243,11 @@ f32 playerChooseSpawnLocation(f32 chrradius, struct coord *dstpos, RoomNum *dstr
 	s32 stack3[2];
 	RoomNum tmppadrooms[2];
 	f32 bestsqdist;
+#ifdef AVOID_UB
+	RoomNum neighbours[21]; // prevent bgRoomGetNeighbours from writing out of bounds
+#else
 	RoomNum neighbours[20];
+#endif
 
 	// Iterate all spawn pads and populate the category arrays
 	for (p = 0; p < numpads; p++) {

@@ -184,6 +184,7 @@ static struct RDP {
     uint64_t combine_mode;
     bool grayscale;
     bool tex_lod;
+    bool tex_detail;
 
     uint8_t prim_lod_fraction;
     struct RGBA env_color, prim_color, fog_color, fill_color, grayscale_color;
@@ -842,7 +843,7 @@ static void import_texture(int i, int tile, bool importReplacement) {
     const uint32_t tmem_index = rdp.texture_tile[tile].tmem_index;
     const uint8_t palette_index = rdp.texture_tile[tile].palette;
 
-    if ((rdp.tex_lod && tile == rdp.first_tile_index) || !rdp.loaded_texture[tmem_index].addr) {
+    if (rdp.tex_lod || !rdp.loaded_texture[tmem_index].addr) {
         // set up miplevel 0; also acts as a catch-all for when .addr is NULL because my texture loader sucks
         rdp.loaded_texture[tmem_index].line_size_bytes = rdp.texture_tile[tile].line_size_bytes;
         rdp.loaded_texture[tmem_index].full_image_line_size_bytes = rdp.texture_tile[tile].line_size_bytes;
@@ -1323,7 +1324,7 @@ static void gfx_sp_tri1(uint8_t vtx1_idx, uint8_t vtx2_idx, uint8_t vtx3_idx, bo
 
     for (int i = 0; i < 2; i++) {
         // TODO: fix this; for now just ignore smaller mips
-        const uint32_t tile = rdp.first_tile_index + (rdp.tex_lod ? 0 : i);
+        const uint32_t tile = rdp.first_tile_index + (rdp.tex_lod ? rdp.tex_detail : i);
         if (comb->used_textures[i]) {
             if (rdp.textures_changed[i]) {
                 gfx_flush();
@@ -1427,7 +1428,7 @@ static void gfx_sp_tri1(uint8_t vtx1_idx, uint8_t vtx2_idx, uint8_t vtx3_idx, bo
             }
 
             // TODO: fix this; for now just ignore smaller mips
-            const uint32_t tile = (rdp.tex_lod ? 0 : t);
+            const uint32_t tile = (rdp.tex_lod ? rdp.tex_detail : t);
 
             float u = v_arr[i]->u / 32.0f;
             float v = v_arr[i]->v / 32.0f;
@@ -2222,6 +2223,7 @@ static void gfx_sp_set_other_mode(uint32_t shift, uint32_t num_bits, uint64_t mo
     rdp.other_mode_h = (uint32_t)(om >> 32);
     rdp.palette_fmt = rdp.other_mode_h & (3U << G_MDSFT_TEXTLUT);
     rdp.tex_lod = (rdp.other_mode_h & G_TL_LOD) != 0;
+    rdp.tex_detail = (rdp.other_mode_h & (2U << G_MDSFT_TEXTDETAIL)) == G_TD_DETAIL;
 }
 
 static void gfx_sp_set_vertex_colors(uint32_t count, const struct NormalColor *vcn) {

@@ -1152,7 +1152,7 @@ void preprocessModel(u8 *base, u32 ofs)
 				const u32 maxSize = (texturesEnd > texconfigs[i].textureptr) ? (texturesEnd - texconfigs[i].textureptr) : 0;
 				// figure out the format and unswizzle
 				const s32 format = texConfigToFormat(&texconfigs[i]);
-				texSwapAltRowBytesInternal(texdata, texconfigs[i].width, texconfigs[i].height, format, maxSize);
+				texSwizzleInternal(texdata, texconfigs[i].width, texconfigs[i].height, format, maxSize);
 			}
 		}
 	}

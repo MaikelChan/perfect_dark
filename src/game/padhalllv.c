@@ -76,9 +76,15 @@ void navSetSeed(u32 upper, u32 lower)
 struct waypoint *waypointFindClosestToPos(struct coord *pos, RoomNum *rooms)
 {
 	struct waypoint *closest = NULL;
+#ifdef AVOID_UB
+	 // prevent bgRoomGetNeighbours or roomsAppend from writing out of bounds
+	RoomNum allrooms[31];
+	RoomNum neighbours[11];
+#else
 	RoomNum allrooms[30];
-	s32 candlen = 0;
 	RoomNum neighbours[10];
+#endif
+	s32 candlen = 0;
 	s32 i;
 	s32 j;
 	struct waypoint *candwaypoints[10];
@@ -94,8 +100,8 @@ struct waypoint *waypointFindClosestToPos(struct coord *pos, RoomNum *rooms)
 	allrooms[i] = -1;
 
 	for (i = 0; rooms[i] != -1; i++) {
-		bgRoomGetNeighbours(rooms[i], neighbours, ARRAYCOUNT(neighbours));
-		roomsAppend(neighbours, allrooms, ARRAYCOUNT(allrooms));
+		bgRoomGetNeighbours(rooms[i], neighbours, 10);
+		roomsAppend(neighbours, allrooms, 30);
 	}
 
 	if (g_StageSetup.waypoints != NULL) {
