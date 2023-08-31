@@ -48,11 +48,11 @@ using namespace std;
 #define SCALE_8_3(VAL_) ((VAL_) / 0x24)
 
 // SCREEN_WIDTH and SCREEN_HEIGHT are defined in the headerfile
-#define HALF_SCREEN_WIDTH (SCREEN_WIDTH / 2)
-#define HALF_SCREEN_HEIGHT (SCREEN_HEIGHT / 2)
+#define HALF_SCREEN_WIDTH (SCREEN_WIDTH / 2.f)
+#define HALF_SCREEN_HEIGHT (SCREEN_HEIGHT / 2.f)
 
-#define RATIO_X (gfx_current_dimensions.width / (2.0f * HALF_SCREEN_WIDTH))
-#define RATIO_Y (gfx_current_dimensions.height / (2.0f * HALF_SCREEN_HEIGHT))
+#define RATIO_X (gfx_current_dimensions.width / (float)SCREEN_WIDTH)
+#define RATIO_Y (gfx_current_dimensions.height / (float)SCREEN_HEIGHT)
 
 #define MAX_BUFFERED 256
 // #define MAX_LIGHTS 2
@@ -123,6 +123,10 @@ static struct RSP {
     int16_t fog_mul, fog_offset;
 
     uint32_t extra_geometry_mode;
+
+    uint32_t aspect_mode;
+    float aspect_ofs;
+    float aspect_scale;
 
     float depth_zfar;
 
@@ -997,12 +1001,11 @@ static void gfx_sp_pop_matrix(uint32_t count) {
     }
 }
 
-static float gfx_adjust_x_for_aspect_ratio(float x) {
+static float gfx_adjust_x_for_aspect_ratio(float x, float w = 1.f) {
     if (fbActive) {
         return x;
     } else {
-        return x * ((float)gfx_current_window_dimensions.width / gfx_current_window_dimensions.height) /
-            ((float)gfx_current_dimensions.width / (float)gfx_current_dimensions.height);
+        return (rsp.aspect_ofs * w + x) * rsp.aspect_scale / gfx_current_dimensions.aspect_ratio;
     }
 }
 
@@ -1029,7 +1032,7 @@ static void gfx_sp_vertex(size_t n_vertices, size_t dest_index, const Vtx* verti
         float z = v->v[0] * rsp.MP_matrix[0][2] + v->v[1] * rsp.MP_matrix[1][2] + v->v[2] * rsp.MP_matrix[2][2] + rsp.MP_matrix[3][2];
         float w = v->v[0] * rsp.MP_matrix[0][3] + v->v[1] * rsp.MP_matrix[1][3] + v->v[2] * rsp.MP_matrix[2][3] + rsp.MP_matrix[3][3];
 
-        x = gfx_adjust_x_for_aspect_ratio(x);
+        x = gfx_adjust_x_for_aspect_ratio(x, w);
 
         short U = v->s * rsp.texture_scaling_factor.s >> 16;
         short V = v->t * rsp.texture_scaling_factor.t >> 16;
@@ -1634,18 +1637,39 @@ static void gfx_sp_geometry_mode(uint32_t clear, uint32_t set) {
     rsp.geometry_mode |= set;
 }
 
+static inline void gfx_update_aspect_mode(void) {
+    rsp.aspect_scale = rsp.aspect_mode ? (4.f / 3.f) : gfx_current_window_dimensions.aspect_ratio;
+    if (rsp.aspect_mode == G_ASPECT_LEFT_EXT) {
+        rsp.aspect_ofs = 1.f - 3.f * gfx_current_dimensions.aspect_ratio / 4.f;
+    } else if (rsp.aspect_mode == G_ASPECT_RIGHT_EXT) {
+        rsp.aspect_ofs = 3.f * gfx_current_dimensions.aspect_ratio / 4.f - 1.f;
+    } else {
+        rsp.aspect_ofs = 0.f;
+    }
+}
+
 static void gfx_sp_extra_geometry_mode(uint32_t clear, uint32_t set) {
     rsp.extra_geometry_mode &= ~clear;
     rsp.extra_geometry_mode |= set;
+    rsp.aspect_mode = (rsp.extra_geometry_mode & G_ASPECT_MODE_EXT);
+    gfx_update_aspect_mode();
 }
 
-static void gfx_adjust_viewport_or_scissor(XYWidthHeight* area) {
+static void gfx_adjust_viewport_or_scissor(XYWidthHeight* area, bool preserve_aspect = false) {
     if (!fbActive) {
         area->width *= RATIO_X;
-        area->height *= RATIO_Y;
         area->x *= RATIO_X;
+        area->height *= RATIO_Y;
         area->y = SCREEN_HEIGHT - area->y;
         area->y *= RATIO_Y;
+        if (preserve_aspect) {
+            // preserve 4:3
+            const float ratio = (4.f / 3.f) / gfx_current_dimensions.aspect_ratio;
+            const float midx = gfx_current_dimensions.width * 0.5f;
+            area->x = midx + (area->x - midx) * ratio;
+            area->x += rsp.aspect_ofs * gfx_current_dimensions.width * 0.5f;
+            area->width *= ratio;
+        }
 
         if (!game_renders_to_framebuffer ||
             (gfx_msaa_level > 1 && gfx_current_dimensions.width == gfx_current_game_window_viewport.width &&
@@ -1771,7 +1795,7 @@ static void gfx_dp_set_scissor(uint32_t mode, uint32_t ulx, uint32_t uly, uint32
     rdp.scissor.width = width;
     rdp.scissor.height = height;
 
-    gfx_adjust_viewport_or_scissor(&rdp.scissor);
+    gfx_adjust_viewport_or_scissor(&rdp.scissor, rsp.aspect_mode != 0);
 
     rdp.viewport_or_scissor_changed = true;
 }
@@ -2086,7 +2110,7 @@ static void gfx_draw_rectangle(int32_t ulx, int32_t uly, int32_t lrx, int32_t lr
     ur->w = 1.0f;
 
     // The coordinates for texture rectangle shall bypass the viewport setting
-    struct XYWidthHeight default_viewport = { 0, SCREEN_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT };
+    struct XYWidthHeight default_viewport = { 0, (int16_t)SCREEN_HEIGHT, (uint32_t)SCREEN_WIDTH, (uint32_t)SCREEN_HEIGHT };
     struct XYWidthHeight viewport_saved = rdp.viewport;
     uint32_t geometry_mode_saved = rsp.geometry_mode;
 
@@ -2179,7 +2203,7 @@ static void gfx_dp_fill_rectangle(int32_t ulx, int32_t uly, int32_t lrx, int32_t
     uint32_t mode = (rdp.other_mode_h & (3U << G_MDSFT_CYCLETYPE));
 
     // OTRTODO: This is a bit of a hack for widescreen screen fades, but it'll work for now...
-    if (ulx == 0 && uly == 0 && lrx == (int32_t)((SCREEN_WIDTH - 1) * 4) && lry == (int32_t)((SCREEN_HEIGHT - 1) * 4)) {
+    if (ulx == 0 && uly == 0 && lrx == 319 * 4 && lry == 239 * 4) {
         ulx = -1024;
         uly = -1024;
         lrx = 2048;
@@ -2347,6 +2371,9 @@ static void gfx_run_dl(Gfx* cmd) {
                 break;
             case (uint8_t)G_CLEARGEOMETRYMODE:
                 gfx_sp_geometry_mode(cmd->words.w1, 0);
+                break;
+            case G_EXTRAGEOMETRYMODE_EXT:
+                gfx_sp_extra_geometry_mode(~C0(0, 24), cmd->words.w1);
                 break;
 #endif
             case (uint8_t)G_TRI1:
@@ -2677,6 +2704,9 @@ extern "C" void gfx_start_frame(void) {
     }
 
     fbActive = 0;
+
+    // update aspect scale and offset
+    gfx_update_aspect_mode();
 }
 
 uint32_t num_dls = 0;

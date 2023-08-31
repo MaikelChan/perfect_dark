@@ -12,8 +12,8 @@
 
 extern "C" void sysFatalError(const char *fmt, ...) __attribute__((noreturn));
 
-#define SCREEN_WIDTH (gfx_current_native_viewport.width)
-#define SCREEN_HEIGHT (gfx_current_native_viewport.height)
+#define SCREEN_WIDTH ((int32_t)gfx_current_native_viewport.width)
+#define SCREEN_HEIGHT ((int32_t)gfx_current_native_viewport.height)
 
 extern uintptr_t gfxFramebuffer;
 

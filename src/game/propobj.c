@@ -20915,6 +20915,12 @@ Gfx *countdownTimerRender(Gfx *gdl)
 		secs = (s32)floorf(value60 * (1.0f / 60.0f)) - mins * 60;
 		ms = (s32)floorf(value60 * 1.6666666269302f) - mins * 6000 - secs * 100;
 
+#ifndef PLATFORM_N64
+		if (playercount == 1) {
+			gSPSetExtraGeometryModeEXT(gdl++, G_ASPECT_CENTER_EXT);
+		}
+#endif
+
 		gdl = text0f153628(gdl);
 		gdl = bgunDrawHudInteger(gdl, (mins % 100) / 10, viewright - 18, HUDHALIGN_MIDDLE, y, HUDVALIGN_MIDDLE, 0x00ff00a0);
 		gdl = bgunDrawHudInteger(gdl, mins % 10, viewright - 14, HUDHALIGN_MIDDLE, y, HUDVALIGN_MIDDLE, 0x00ff00a0);
@@ -20925,6 +20931,10 @@ Gfx *countdownTimerRender(Gfx *gdl)
 		gdl = bgunDrawHudInteger(gdl, (ms % 100) / 10, viewright + 14, HUDHALIGN_MIDDLE, y, HUDVALIGN_MIDDLE, 0x00ff00a0);
 		gdl = bgunDrawHudInteger(gdl, ms % 10, viewright + 18, HUDHALIGN_MIDDLE, y, HUDVALIGN_MIDDLE, 0x00ff00a0);
 		gdl = text0f153780(gdl);
+
+#ifndef PLATFORM_N64
+		gSPClearExtraGeometryModeEXT(gdl++, G_ASPECT_CENTER_EXT);
+#endif
 	}
 
 	return gdl;

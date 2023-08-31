@@ -189,7 +189,17 @@ Gfx *hudmsgRenderMissionTimer(Gfx *gdl, u32 alpha)
 	x = viewleft + g_HudPaddingX + 3;
 	y = timery;
 
+#ifndef PLATFORM_N64
+	if (PLAYERCOUNT() < 2) {
+		gSPExtraGeometryModeEXT(gdl++, G_ASPECT_MODE_EXT, G_ASPECT_LEFT_EXT);
+	}
+#endif
+
 	gdl = textRender(gdl, &x, &y, buffer, g_CharsNumeric, g_FontNumeric, textcolour, 0x000000a0, viGetWidth(), viGetHeight_hack(), 0, 0);
+
+#ifndef PLATFORM_N64
+	gSPClearExtraGeometryModeEXT(gdl++, G_ASPECT_MODE_EXT);
+#endif
 
 	return gdl;
 }
@@ -271,6 +281,12 @@ Gfx *hudmsgRenderZoomRange(Gfx *gdl, u32 alpha)
 	x2 = x + textwidth;
 	y2 = y + textheight;
 
+#ifndef PLATFORM_N64
+	if (playercount == 1) {
+		gSPSetExtraGeometryModeEXT(gdl++, G_ASPECT_CENTER_EXT);
+	}
+#endif
+
 	gdl = text0f1538e4(gdl, &x, &y, &x2, &y2);
 	gdl = textRender(gdl, &x, &y, text, g_CharsNumeric, g_FontNumeric, colour, 0x000000a0, viGetWidth(), viGetHeight(), 0, 0);
 
@@ -297,6 +313,10 @@ Gfx *hudmsgRenderZoomRange(Gfx *gdl, u32 alpha)
 
 	gdl = text0f1538e4(gdl, &x, &y, &x2, &y2);
 	gdl = textRender(gdl, &x, &y, text, g_CharsNumeric, g_FontNumeric, colour, 0x000000a0, viGetWidth(), viGetHeight(), 0, 0);
+
+#ifndef PLATFORM_N64
+	gSPClearExtraGeometryModeEXT(gdl++, G_ASPECT_CENTER_EXT);
+#endif
 
 	return gdl;
 }
@@ -1362,6 +1382,9 @@ Gfx *hudmsgsRender(Gfx *gdl)
 	s32 y;
 	s32 timerthing = 255;
 	s32 spdc = true;
+#ifndef PLATFORM_N64
+	const s32 playercount = PLAYERCOUNT();
+#endif
 
 #if PAL
 	g_ScaleX = 1;
@@ -1425,6 +1448,18 @@ Gfx *hudmsgsRender(Gfx *gdl)
 		if (msg->type == HUDMSGTYPE_INGAMESUBTITLE && playerIsHealthVisible()) {
 			y += (s32)(16.0f * playerGetHealthBarHeightFrac());
 		}
+
+#ifndef PLATFORM_N64
+		if (playercount < 2 && msg->state >= HUDMSGSTATE_FADINGIN) {
+			if (msg->alignh == HUDMSGALIGN_SCREENLEFT || msg->alignh == HUDMSGALIGN_LEFT) {
+				gSPExtraGeometryModeEXT(gdl++, G_ASPECT_MODE_EXT, G_ASPECT_LEFT_EXT);
+			} else if (msg->alignh == HUDMSGALIGN_RIGHT) {
+				gSPExtraGeometryModeEXT(gdl++, G_ASPECT_MODE_EXT, G_ASPECT_RIGHT_EXT);
+			} else {
+				gSPExtraGeometryModeEXT(gdl++, G_ASPECT_MODE_EXT, G_ASPECT_CENTER_EXT);
+			}
+		}
+#endif
 
 		if (msg->type == HUDMSGTYPE_CUTSCENESUBTITLE) {
 #if VERSION >= VERSION_NTSC_1_0
@@ -1581,6 +1616,10 @@ Gfx *hudmsgsRender(Gfx *gdl)
 			}
 			break;
 		}
+
+#ifndef PLATFORM_N64
+		gSPClearExtraGeometryModeEXT(gdl++, G_ASPECT_MODE_EXT);
+#endif
 
 		if (msg->type == HUDMSGTYPE_CUTSCENESUBTITLE) {
 			gDPSetScissor(gdl++, 0,

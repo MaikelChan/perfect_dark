@@ -322,6 +322,9 @@ Gfx *radarRender(Gfx *gdl)
 		if (optionsGetEffectiveScreenSize() != SCREENSIZE_FULL) {
 			g_RadarY -= 6;
 		}
+#ifndef PLATFORM_N64
+		gSPExtraGeometryModeEXT(gdl++, G_ASPECT_MODE_EXT, G_ASPECT_RIGHT_EXT);
+#endif
 	}
 
 	gdl = radarRenderBackground(gdl, tconfig, g_RadarX, g_RadarY, 0x10);
@@ -411,6 +414,10 @@ Gfx *radarRender(Gfx *gdl)
 
 		gdl = radarDrawDot(gdl, g_Vars.currentplayer->prop, &pos, colour, 0, 0);
 	}
+
+#ifndef PLATFORM_N64
+	gSPClearExtraGeometryModeEXT(gdl++, G_ASPECT_MODE_EXT);
+#endif
 
 	g_ScaleX = 1;
 

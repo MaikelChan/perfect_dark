@@ -184,14 +184,23 @@
 
 /* Extended commands */
 
-#define G_SETFB_EXT         0x21
-#define G_SETTIMG_FB_EXT    0x23
-#define G_INVALTEXCACHE_EXT 0x34
-#define G_TEXRECT_WIDE_EXT  0x37
-#define G_FILLRECT_WIDE_EXT 0x38
-#define G_SETGRAYSCALE_EXT  0x39
-#define G_SETINTENSITY_EXT  0x40
-#define G_COPYFB_EXT        0x41
+#define G_SETFB_EXT             0x21
+#define G_SETTIMG_FB_EXT        0x23
+#define G_INVALTEXCACHE_EXT     0x34
+#define G_TEXRECT_WIDE_EXT      0x37
+#define G_FILLRECT_WIDE_EXT     0x38
+#define G_SETGRAYSCALE_EXT      0x39
+#define G_EXTRAGEOMETRYMODE_EXT 0x3a
+#define G_SETINTENSITY_EXT      0x40
+#define G_COPYFB_EXT            0x41
+
+/* G_EXTRAGEOMETRYMODE flags */
+
+#define G_INVERT_CULLING_EXT 0x00000001
+#define G_ASPECT_LEFT_EXT    0x00000010
+#define G_ASPECT_RIGHT_EXT   0x00000020
+#define G_ASPECT_CENTER_EXT  (G_ASPECT_LEFT_EXT | G_ASPECT_RIGHT_EXT)
+#define G_ASPECT_MODE_EXT    G_ASPECT_CENTER_EXT
 
 /* Extended command macros */
 
@@ -251,6 +260,17 @@
     _g2->words.w0 = (_SHIFTL(s, 16, 16) | _SHIFTL(t, 0, 16));                   \
     _g2->words.w1 = (_SHIFTL(dsdx, 16, 16) | _SHIFTL(dtdy, 0, 16));             \
 }
+
+#define gSPExtraGeometryModeEXT(pkt, c, s)                                                 \
+{                                                                                       \
+    Gfx* _g = (Gfx*)(pkt);                                                              \
+                                                                                        \
+    _g->words.w0 = _SHIFTL(G_EXTRAGEOMETRYMODE_EXT, 24, 8) | _SHIFTL(~(u32)(c), 0, 24); \
+    _g->words.w1 = (u32)(s);                                                            \
+}
+
+#define gSPSetExtraGeometryModeEXT(pkt, word) gSPExtraGeometryModeEXT((pkt), 0, word)
+#define gSPClearExtraGeometryModeEXT(pkt, word) gSPExtraGeometryModeEXT((pkt), word, 0)
 
 #define gDPFillRectangleEXT gDPFillRectangleWideEXT
 #define gSPTextureRectangleEXT gSPTextureRectangleWideEXT

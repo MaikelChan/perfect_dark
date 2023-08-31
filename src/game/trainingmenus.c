@@ -22,6 +22,9 @@
 #include "lib/main.h"
 #include "data.h"
 #include "types.h"
+#ifndef PLATFORM_N64
+#include "video.h"
+#endif
 
 #define NUM_BIO_LOCATIONS 14
 
@@ -1582,6 +1585,10 @@ MenuDialogHandlerResult ciCharacterProfileMenuDialog(s32 operation, struct menud
 		if (bodynum == BODY_THEKING) {
 			scale = 0.8f;
 		}
+
+#ifndef PLATFORM_N64
+		x = (float)x * (4.f / 3.f) / videoGetAspect();
+#endif
 
 		menuConfigureModel(&g_Menus[g_MpPlayerNum].menumodel, x, y, 0, 0, 0, 0, scale,
 				MENUMODELFLAG_HASSCALE | MENUMODELFLAG_HASPOSITION | MENUMODELFLAG_HASROTATION);

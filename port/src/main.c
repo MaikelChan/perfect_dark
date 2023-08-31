@@ -66,6 +66,8 @@ static void gameLoadConfig(void)
 	g_PlayerCrosshairSway = configGetFloatClamped("Game.CrosshairSway", g_PlayerCrosshairSway, 0.f, 10.f);
 	g_PlayerDefaultFovY = configGetFloatClamped("Game.FovY", g_PlayerDefaultFovY, 5.f, 175.f);
 	g_PlayerMouseAimMode = configGetIntClamped("Game.MouseAimMode", g_PlayerMouseAimMode, 0, 1);
+	g_PlayerMouseAimSpeedX = configGetFloatClamped("Game.MouseAimSpeedX", g_PlayerMouseAimSpeedX, 0.f, 10.f);
+	g_PlayerMouseAimSpeedY = configGetFloatClamped("Game.MouseAimSpeedY", g_PlayerMouseAimSpeedY, 0.f, 10.f);
 }
 
 int main(int argc, const char **argv)

@@ -2019,16 +2019,14 @@ void bmoveProcessInput(bool allowc1x, bool allowc1y, bool allowc1buttons, bool i
 			x = g_Vars.currentplayer->speedtheta * 0.3f + g_Vars.currentplayer->gunextraaimx;
 			y = -g_Vars.currentplayer->speedverta * 0.1f + g_Vars.currentplayer->gunextraaimy;
 #else
-			f32 xscale, yscale;
+			f32 scale;
 			if (movedata.freelookdx || movedata.freelookdy) {
-				xscale = 320.f / (f32)videoGetWidth();
-				yscale = 240.f / (f32)videoGetHeight();
+				scale = g_PlayerCrosshairSway * 240.f / (f32)videoGetHeight();
 			} else {
-				xscale = 1.f;
-				yscale = 1.f;
+				scale = g_PlayerCrosshairSway;
 			}
-			x = g_Vars.currentplayer->speedtheta * 0.3f * g_PlayerCrosshairSway * xscale + g_Vars.currentplayer->gunextraaimx;
-			y = -g_Vars.currentplayer->speedverta * 0.1f * g_PlayerCrosshairSway * yscale + g_Vars.currentplayer->gunextraaimy;
+			x = g_Vars.currentplayer->speedtheta * 0.3f * scale + g_Vars.currentplayer->gunextraaimx;
+			y = -g_Vars.currentplayer->speedverta * 0.1f * scale + g_Vars.currentplayer->gunextraaimy;
 #endif
 
 			bgunSwivelWithDamp(x, y, PAL ? 0.955f : 0.963f);
@@ -2040,8 +2038,8 @@ void bmoveProcessInput(bool allowc1x, bool allowc1y, bool allowc1buttons, bool i
 #ifndef PLATFORM_N64
 		if (allowmcross) {
 			// joystick is inactive, move crosshair using the mouse
-			const f32 xscale = 320.f / (f32)videoGetWidth();
-			const f32 yscale = 240.f / (f32)videoGetHeight();
+			const f32 xscale = g_PlayerMouseAimSpeedX * 320.f / (f32)videoGetWidth();
+			const f32 yscale = g_PlayerMouseAimSpeedY * 240.f / (f32)videoGetHeight();
 			f32 x = g_Vars.currentplayer->swivelpos[0] + movedata.freelookdx * xscale;
 			f32 y = g_Vars.currentplayer->swivelpos[1] + movedata.freelookdy * yscale;
 			x = (x < -1.f) ? -1.f : ((x > 1.f) ? 1.f : x);

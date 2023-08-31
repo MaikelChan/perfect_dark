@@ -532,6 +532,8 @@ extern struct menudialogdef g_HangarListMenuDialog;
 extern f32 g_PlayerCrosshairSway;
 extern f32 g_PlayerDefaultFovY;
 extern s32 g_PlayerMouseAimMode;
+extern f32 g_PlayerMouseAimSpeedX;
+extern f32 g_PlayerMouseAimSpeedY;
 #endif
 
 #endif

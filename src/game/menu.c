@@ -2185,9 +2185,7 @@ Gfx *menuRenderModel(Gfx *gdl, struct menumodel *menumodel, s32 modeltype)
 				gSPMatrix(gdl++, osVirtualToPhysical(camGetPerspectiveMtxL()), G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
 			} else {
 				f32 aspect = (f32) (g_MenuScissorX2 - g_MenuScissorX1) / (f32) (g_MenuScissorY2 - g_MenuScissorY1);
-#ifndef PLATFORM_N64
-				aspect *= videoGetAspect() / (4.0f / 3.0f);
-#endif
+
 				static u32 znear = 10;
 				static u32 zfar = 300;
 
@@ -5182,6 +5180,10 @@ Gfx *menuRender(Gfx *gdl)
 		gdl = menuRenderBackgroundLayer1(gdl, g_MenuData.bg, 1.0f);
 	}
 
+#ifndef PLATFORM_N64
+	gSPSetExtraGeometryModeEXT(gdl++, G_ASPECT_CENTER_EXT);
+#endif
+
 	// Calculate hudpiece things then render it
 	if (g_MenuData.unk5d5_05) {
 		g_MenuData.hudpiece.curanimnum = 0;
@@ -5279,7 +5281,13 @@ Gfx *menuRender(Gfx *gdl)
 	if ((g_MenuData.bg || g_MenuData.nextbg != 255)
 			&& (!g_Vars.currentplayer->eyespy || !g_Vars.currentplayer->eyespy->active)) {
 		gdl = func0f0d49c8(gdl);
+#ifndef PLATFORM_N64
+		gSPClearExtraGeometryModeEXT(gdl++, G_ASPECT_CENTER_EXT);
+#endif
 		gdl = playerRenderHealthBar(gdl);
+#ifndef PLATFORM_N64
+		gSPSetExtraGeometryModeEXT(gdl++, G_ASPECT_CENTER_EXT);
+#endif
 		gdl = func0f0d479c(gdl);
 	}
 
@@ -5490,6 +5498,10 @@ Gfx *menuRender(Gfx *gdl)
 		gdl = menuRenderBanner(gdl, x1, y1, x2, y2, PLAYERCOUNT() < 2, g_MenuData.bannernum);
 #endif
 	}
+
+#ifndef PLATFORM_N64
+	gSPClearExtraGeometryModeEXT(gdl++, G_ASPECT_MODE_EXT);
+#endif
 
 	gdl = func0f0d49c8(gdl);
 

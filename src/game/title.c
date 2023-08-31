@@ -345,6 +345,10 @@ Gfx *titleRenderLegal(Gfx *gdl)
 #endif
 		gdl = text0f153628(gdl);
 
+#ifndef PLATFORM_N64
+		gSPSetExtraGeometryModeEXT(gdl++, G_ASPECT_CENTER_EXT);
+#endif
+
 		elem = g_LegalElements;
 		end = &g_LegalElements[ARRAYCOUNT(g_LegalElements)];
 
@@ -510,6 +514,10 @@ Gfx *titleRenderLegal(Gfx *gdl)
 #endif
 			}
 		}
+
+#ifndef PLATFORM_N64
+		gSPClearExtraGeometryModeEXT(gdl++, G_ASPECT_MODE_EXT);
+#endif
 
 		gdl = text0f153780(gdl);
 	}

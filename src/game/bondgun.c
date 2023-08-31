@@ -12724,6 +12724,12 @@ Gfx *bgunDrawHud(Gfx *gdl)
 
 	gdl = text0f153628(gdl);
 
+#ifndef PLATFORM_N64
+	if (playercount < 2) {
+		gSPExtraGeometryModeEXT(gdl++, G_ASPECT_MODE_EXT, G_ASPECT_RIGHT_EXT);
+	}
+#endif
+
 	if (playercount >= 2) {
 		barwidth = 5;
 		reserveheight = 26;
@@ -12944,6 +12950,9 @@ Gfx *bgunDrawHud(Gfx *gdl)
 		}
 
 		if (ammoindex == -1) {
+#ifndef PLATFORM_N64
+			gSPClearExtraGeometryModeEXT(gdl++, G_ASPECT_MODE_EXT);
+#endif
 			gdl = text0f153780(gdl);
 			g_ScaleX = 1;
 			return gdl;
@@ -12968,6 +12977,12 @@ Gfx *bgunDrawHud(Gfx *gdl)
 		} else if (playercount >= 3 && (playernum & 1) == 1) {
 			xpos -= 14;
 		}
+
+#ifndef PLATFORM_N64
+		if (playercount < 2) {
+			gSPExtraGeometryModeEXT(gdl++, G_ASPECT_MODE_EXT, G_ASPECT_LEFT_EXT);
+		}
+#endif
 
 		if (lefthand->clipsizes[ammoindex] > 0 && (weapon->ammos[ammoindex]->flags & AMMOFLAG_EQUIPPEDISRESERVE) == 0) {
 			gdl = bgunDrawHudGauge(gdl,
@@ -13002,6 +13017,12 @@ Gfx *bgunDrawHud(Gfx *gdl)
 		} else if (playercount >= 3 && (playernum % 2) == 0) {
 			xpos += 15;
 		}
+
+#ifndef PLATFORM_N64
+		if (playercount < 2) {
+			gSPExtraGeometryModeEXT(gdl++, G_ASPECT_MODE_EXT, G_ASPECT_RIGHT_EXT);
+		}
+#endif
 
 		// Mag
 		ammoheld = player->ammoheldarr[ammotype];
@@ -13055,6 +13076,10 @@ Gfx *bgunDrawHud(Gfx *gdl)
 			gdl = bgunDrawHudString(gdl, text, xpos + barwidth - 2, false, bottom - reserveheight + 1, 0, 0x00ffc0a0);
 		}
 	}
+
+#ifndef PLATFORM_N64
+	gSPClearExtraGeometryModeEXT(gdl++, G_ASPECT_MODE_EXT);
+#endif
 
 	gdl = text0f153780(gdl);
 
