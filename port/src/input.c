@@ -8,6 +8,7 @@
 #include "input.h"
 #include "video.h"
 #include "config.h"
+#include "system.h"
 
 #define MAX_BINDS 4
 #define TRIG_THRESHOLD (30 * 256)
@@ -741,7 +742,7 @@ s32 inputGetContKeyByName(const char *name)
 			return i;
 		}
 	}
-	fprintf(stderr, "unknown bind name: `%s`\n", name);
+	sysLogPrintf(LOG_WARNING, "unknown bind name: `%s`", name);
 	return -1;
 }
 
@@ -785,7 +786,7 @@ s32 inputGetKeyByName(const char *name)
 		}
 	}
 
-	fprintf(stderr, "unknown key name: `%s`\n", name);
+	sysLogPrintf(LOG_WARNING, "unknown key name: `%s`", name);
 
 	return -1;
 }

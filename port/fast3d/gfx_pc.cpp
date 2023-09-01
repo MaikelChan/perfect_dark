@@ -430,7 +430,7 @@ static void gfx_generate_cc(struct ColorCombiner* comb, const ColorCombinerKey& 
                         val = SHADER_COMBINED;
                         break;
                     default:
-                        fprintf(stderr, "Unsupported ccmux: %d\n", c[i][0][j]);
+                        sysLogPrintf(LOG_WARNING, "Unsupported ccmux: %d", c[i][0][j]);
                         break;
                 }
                 shader_id0 |= (uint64_t)val << (i * 32 + j * 4);
@@ -878,7 +878,7 @@ static void import_texture(int i, int tile, bool importReplacement) {
         } else if (siz == G_IM_SIZ_32b) {
             import_texture_rgba32(tile, importReplacement);
         } else {
-            abort();
+            sysFatalError("Bad size for RGBA texture in tile %d: %02x", tile, siz);
         }
     } else if (fmt == G_IM_FMT_IA) {
         if (siz == G_IM_SIZ_4b) {
@@ -888,7 +888,7 @@ static void import_texture(int i, int tile, bool importReplacement) {
         } else if (siz == G_IM_SIZ_16b) {
             import_texture_ia16(tile, importReplacement);
         } else {
-            abort();
+            sysFatalError("Bad size for IA texture in tile %d: %02x", tile, siz);
         }
     } else if (fmt == G_IM_FMT_CI) {
         if (siz == G_IM_SIZ_4b) {
@@ -896,7 +896,7 @@ static void import_texture(int i, int tile, bool importReplacement) {
         } else if (siz == G_IM_SIZ_8b) {
             import_texture_ci8(tile, importReplacement);
         } else {
-            abort();
+            sysFatalError("Bad size for CI texture in tile %d: %02x", tile, siz);
         }
     } else if (fmt == G_IM_FMT_I) {
         if (siz == G_IM_SIZ_4b) {
@@ -904,10 +904,10 @@ static void import_texture(int i, int tile, bool importReplacement) {
         } else if (siz == G_IM_SIZ_8b) {
             import_texture_i8(tile, importReplacement);
         } else {
-            abort();
+            sysFatalError("Bad size for I texture in tile %d: %02x", tile, siz);
         }
     } else {
-        abort();
+        sysFatalError("Bad texture format in tile %d: %02x %02x", tile, fmt, siz);
     }
 }
 
@@ -2590,9 +2590,7 @@ static void gfx_run_dl(Gfx* cmd) {
             case G_RDPTILESYNC:
                 break;
             default:
-                fprintf(stderr, "gfx: unknown opcode %d, words %08x %08x\n", (s8)opcode, cmd->words.w0, cmd->words.w1);
-                fflush(stderr);
-                SUPPORT_CHECK(0 && "Unknown GBI opcode");
+                sysFatalError("Unknown GBI opcode 0x%02x at %p.\nw0 %08x\nw1 %08x", opcode, cmd, cmd->words.w0, cmd->words.w1);
                 break;
         }
         ++cmd;

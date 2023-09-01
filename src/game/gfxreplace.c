@@ -329,7 +329,11 @@ void gfxReplaceGbiCommands(Gfx *startgdl, Gfx *endgdl, s32 type)
 
 void gfxReplaceGbiCommandsRecursively(struct roomblock *block, s32 type)
 {
+#ifndef AVOID_UB
+	// Sometimes block is NULL when this is called.
+	// If UBSan is being used, this will crash in this instance.
 	if (block->type == ROOMBLOCKTYPE_PARENT);
+#endif
 
 	while (true) {
 		if (!block) {

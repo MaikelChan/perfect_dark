@@ -12,6 +12,7 @@
 #include "game/texdecompress.h"
 #include "preprocess.h"
 #include "romdata.h"
+#include "system.h"
 
 static inline f32 swapF32(f32 x) { *(u32 *)&x = PD_BE32(*(u32 *)&x); return x; }
 static inline u32 swapU32(u32 x) { return PD_BE32(x); }
@@ -413,7 +414,7 @@ static u8 *preprocessModelNode(struct modelnode *node, u8 *base, u32 ofs)
 					}
 					break;
 				default:
-					fprintf(stderr, "preprocessModelNode: node at %p: unknown node->type: 0x%02x\n", node, node->type & 0xff);
+					sysLogPrintf(LOG_ERROR, "preprocessModelNode: node at %p: unknown node->type: 0x%02x", node, node->type & 0xff);
 					break;
 			}
 		}
@@ -939,9 +940,7 @@ static void preprocessPropObj(struct defaultobj *obj)
 			break;
 		}
 		default: {
-			fprintf(stderr, "unknown objtype: %02x @ %p\n", obj->type, obj);
-			fflush(stderr);
-			assert(0 && "Unknown object type in prop list");
+			sysFatalError("Unknown object type in prop list: %02x\nat %p", obj->type, obj);
 			break;
 		}
 	}

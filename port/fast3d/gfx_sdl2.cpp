@@ -8,6 +8,8 @@
 #include <time.h>
 #endif
 
+#include "system.h"
+
 #include "gfx_window_manager_api.h"
 #include "gfx_screen_config.h"
 
@@ -63,7 +65,9 @@ static void gfx_sdl_init(const char* game_name, const char* gfx_api_name, bool s
     window_width = width;
     window_height = height;
 
-    SDL_Init(SDL_INIT_VIDEO);
+    if (SDL_Init(SDL_INIT_VIDEO) != 0) {
+        sysFatalError("Could not init SDL:\n%s", SDL_GetError());
+    }
 
     SDL_EventState(SDL_DROPFILE, SDL_ENABLE);
 
@@ -97,9 +101,15 @@ static void gfx_sdl_init(const char* game_name, const char* gfx_api_name, bool s
     }
 
     wnd = SDL_CreateWindow(title, posX, posY, window_width, window_height, flags);
+    if (!wnd) {
+        sysFatalError("Could not open SDL window:\n%s", SDL_GetError());
+    }
 
     if (use_opengl) {
         ctx = SDL_GL_CreateContext(wnd);
+        if (!ctx) {
+            sysFatalError("Could not create GL2.1 context:\n%s", SDL_GetError());
+        }
         SDL_GL_MakeCurrent(wnd, ctx);
         SDL_GL_SetSwapInterval(1);
     }

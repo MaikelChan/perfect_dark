@@ -3,6 +3,7 @@
 #include <SDL.h>
 #include "config.h"
 #include "audio.h"
+#include "system.h"
 
 static SDL_AudioDeviceID dev;
 static const s16 *nextBuf;
@@ -12,7 +13,7 @@ static u32 queueLimit = 8192;
 s32 audioInit(void)
 {
 	if (SDL_InitSubSystem(SDL_INIT_AUDIO) != 0) {
-		fprintf(stderr, "SDL audio init error: %s\n", SDL_GetError());
+		sysLogPrintf(LOG_ERROR, "SDL audio init error: %s", SDL_GetError());
 		return -1;
 	}
 
@@ -28,7 +29,7 @@ s32 audioInit(void)
 
 	dev = SDL_OpenAudioDevice(NULL, 0, &want, &have, 0);
 	if (dev == 0) {
-		fprintf(stderr, "SDL_OpenAudio error: %s\n", SDL_GetError());
+		sysLogPrintf(LOG_ERROR, "SDL_OpenAudio error: %s", SDL_GetError());
 		return -1;
 	}
 

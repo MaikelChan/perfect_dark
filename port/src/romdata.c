@@ -38,6 +38,7 @@ u32 g_RomFileSize;
 
 static u8 *romDataSeg;
 static u32 romDataSegSize;
+static const char *romName = ROMDATA_ROM_NAME;
 
 struct romfile {
 	u8 **segstart;
@@ -120,10 +121,12 @@ static preprocessfunc filePreprocFuncs[] = {
 
 static inline void romdataLoadRom(void)
 {
-	g_RomFile = fsFileLoad(ROMDATA_ROM_NAME, &g_RomFileSize);
+	sysLogPrintf(LOG_NOTE, "ROM file: %s", romName);
+
+	g_RomFile = fsFileLoad(romName, &g_RomFileSize);
 
 	if (!g_RomFile) {
-		sysFatalError("Could not open ROM file " ROMDATA_ROM_NAME ".\nEnsure that it is in the data directory.");
+		sysFatalError("Could not open ROM file %s.\nEnsure that it is in the data directory.", romName);
 	}
 
 	if (g_RomFileSize != ROMDATA_ROM_SIZE) {
@@ -190,16 +193,14 @@ static inline void romdataInitSegment(struct romfile *seg)
 		// no external data, just make it point to the rom
 		if (g_RomFile) {
 			newData = g_RomFile + (uintptr_t)seg->data;
-			printf("loading segment %s from ROM (offset %08x pointer %p)\n", seg->name, (u32)seg->data, newData);
-			fflush(stdout);
+			sysLogPrintf(LOG_NOTE, "loading segment %s from ROM (offset %08x pointer %p)", seg->name, (u32)seg->data, newData);
 		} else {
 			sysFatalError("No ROM or external file for segment:\n%s", seg->name);
 		}
 	} else {
 		// loaded external data
 		seg->external = 1;
-		printf("loading segment %s from file (pointer %p)\n", seg->name, newData);
-		fflush(stdout);
+		sysLogPrintf(LOG_NOTE, "loading segment %s from file (pointer %p)", seg->name, newData);
 	}
 
 	seg->data = newData;
@@ -275,7 +276,6 @@ static inline void romdataInitFiles(void)
 	for (i = 1; nameOffsets[i]; ++i) {
 		const u32 ofs = PD_BE32(nameOffsets[i]);
 		fileSlots[i].name = (const char *)nameOffsets + ofs; // ofs is relative to the start of the name table
-		printf("file %d name `%s` ofs %d size %u\n", i, fileSlots[i].name, fileSlots[i].data - g_RomFile, fileSlots[i].size);
 	}
 }
 
@@ -290,6 +290,11 @@ static inline struct romfile *romdataGetSeg(const char *name)
 
 s32 romdataInit(void)
 {
+	const char *altRomName = sysArgGetString("--rom-file");
+	if (altRomName) {
+		romName = altRomName;
+	}
+
 	romdataLoadRom();
 
 	// set segments to point to the rom or load them externally
@@ -300,8 +305,7 @@ s32 romdataInit(void)
 	// load file table from the files segment
 	romdataInitFiles();
 
-	printf("romdataInit: loaded rom, size = %u\n", g_RomFileSize);
-	fflush(stdout);
+	sysLogPrintf(LOG_NOTE, "romdataInit: loaded rom, size = %u", g_RomFileSize);
 
 	return 0;
 }
@@ -309,11 +313,11 @@ s32 romdataInit(void)
 s32 romdataFileGetSize(s32 fileNum)
 {
 	if (fileNum < 1 || fileNum >= ROMDATA_MAX_FILES) {
-		fprintf(stderr, "romdataFileGetSize: invalid file num %d", fileNum);
+		sysLogPrintf(LOG_ERROR, "romdataFileGetSize: invalid file num %d", fileNum);
 		return -1;
 	}
 	if (!fileSlots[fileNum].data) {
-		fprintf(stderr, "romdataFileGetSize: file %d is not loaded", fileNum);
+		sysLogPrintf(LOG_ERROR, "romdataFileGetSize: file %d is not loaded", fileNum);
 		return -1;
 	}
 	return fileSlots[fileNum].size;
@@ -322,11 +326,11 @@ s32 romdataFileGetSize(s32 fileNum)
 u8 *romdataFileGetData(s32 fileNum)
 {
 	if (fileNum < 1 || fileNum >= ROMDATA_MAX_FILES) {
-		fprintf(stderr, "romdataFileGetData: invalid file num %d", fileNum);
+		sysLogPrintf(LOG_ERROR, "romdataFileGetData: invalid file num %d", fileNum);
 		return NULL;
 	}
 	if (!fileSlots[fileNum].data) {
-		fprintf(stderr, "romdataFileGetData: file %d is not loaded, loading", fileNum);
+		sysLogPrintf(LOG_NOTE, "romdataFileGetData: file %d is not loaded, loading", fileNum);
 		return romdataFileLoad(fileNum, NULL);
 	}
 	return fileSlots[fileNum].data;
@@ -335,7 +339,7 @@ u8 *romdataFileGetData(s32 fileNum)
 u8 *romdataFileLoad(s32 fileNum, u32 *outSize)
 {
 	if (fileNum < 1 || fileNum >= ROMDATA_MAX_FILES) {
-		fprintf(stderr, "romdataFileLoad: invalid file num %d", fileNum);
+		sysLogPrintf(LOG_ERROR, "romdataFileLoad: invalid file num %d", fileNum);
 		return NULL;
 	}
 
@@ -349,7 +353,7 @@ u8 *romdataFileLoad(s32 fileNum, u32 *outSize)
 			u32 size = 0;
 			out = fsFileLoad(tmp, &size);
 			if (out && size) {
-				printf("file %d (%s) loaded externally\n", fileNum, fileSlots[fileNum].name);
+				sysLogPrintf(LOG_NOTE, "file %d (%s) loaded externally", fileNum, fileSlots[fileNum].name);
 				fileSlots[fileNum].data = out;
 				fileSlots[fileNum].size = size;
 				fileSlots[fileNum].external = 1;
@@ -371,7 +375,7 @@ u8 *romdataFileLoad(s32 fileNum, u32 *outSize)
 void romdataFilePreprocess(s32 fileNum, s32 loadType, u8 *data, u32 size)
 {
 	if (fileNum < 1 || fileNum >= ROMDATA_MAX_FILES) {
-		fprintf(stderr, "romdataFilePreprocess: invalid file num %d", fileNum);
+		sysLogPrintf(LOG_ERROR, "romdataFilePreprocess: invalid file num %d", fileNum);
 		return;
 	}
 
@@ -386,12 +390,12 @@ void romdataFilePreprocess(s32 fileNum, s32 loadType, u8 *data, u32 size)
 void romdataFileFree(s32 fileNum)
 {
 	if (fileNum < 1 || fileNum >= ROMDATA_MAX_FILES) {
-		fprintf(stderr, "fsFileFree: invalid file num %d", fileNum);
+		sysLogPrintf(LOG_ERROR, "fsFileFree: invalid file num %d", fileNum);
 		return;
 	}
 
 	if (!fileSlots[fileNum].external) {
-		fprintf(stderr, "fsFileFree: file %d not external", fileNum);
+		sysLogPrintf(LOG_ERROR, "fsFileFree: file %d not external", fileNum);
 		return;
 	}
 

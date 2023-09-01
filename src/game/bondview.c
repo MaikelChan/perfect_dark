@@ -1952,6 +1952,9 @@ Gfx *bviewDrawNvLens(Gfx *gdl)
 	s32 viewbottom = viewtop + viewheight;
 	s32 brightness;
 	s32 y;
+#ifdef AVOID_UB
+	u32 mpindex = g_Vars.currentplayerstats->mpindex % MAX_PLAYERS;
+#endif
 
 	var8007f840++;
 
@@ -1973,9 +1976,15 @@ Gfx *bviewDrawNvLens(Gfx *gdl)
 		skySetOverexposure(brightness, brightness, brightness);
 	}
 
+#ifdef AVOID_UB
+	if (g_Menus[mpindex].curdialog == NULL) {
+		gdl = bviewDrawMotionBlur(gdl, 0x00ff0000, 0x60);
+	}
+#else
 	if (g_Menus[g_Vars.currentplayerstats->mpindex].curdialog == NULL) {
 		gdl = bviewDrawMotionBlur(gdl, 0x00ff0000, 0x60);
 	}
+#endif
 
 	gDPPipeSync(gdl++);
 
@@ -2034,6 +2043,9 @@ Gfx *bviewDrawIrLens(Gfx *gdl)
 	s32 viewcentrey;
 	f32 viewheightf;
 	s32 a0;
+#ifdef AVOID_UB
+	u32 mpindex = g_Vars.currentplayerstats->mpindex % MAX_PLAYERS;
+#endif
 
 #if VERSION < VERSION_NTSC_1_0
 	static s32 fsscanline = 0;
@@ -2198,9 +2210,15 @@ Gfx *bviewDrawIrLens(Gfx *gdl)
 #endif
 	}
 
+#ifdef AVOID_UB
+	if (g_Menus[mpindex].curdialog == NULL) {
+		gdl = bviewDrawMotionBlur(gdl, 0xff000000, 0x40);
+	}
+#else
 	if (g_Menus[g_Vars.currentplayerstats->mpindex].curdialog == NULL) {
 		gdl = bviewDrawMotionBlur(gdl, 0xff000000, 0x40);
 	}
+#endif
 
 	return gdl;
 }

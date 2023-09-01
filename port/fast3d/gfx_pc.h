@@ -10,7 +10,7 @@
 
 #include <PR/gbi.h>
 
-extern "C" void sysFatalError(const char *fmt, ...) __attribute__((noreturn));
+#include "system.h"
 
 #define SCREEN_WIDTH ((int32_t)gfx_current_native_viewport.width)
 #define SCREEN_HEIGHT ((int32_t)gfx_current_native_viewport.height)

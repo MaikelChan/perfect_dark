@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <PR/ultratypes.h>
+#include "system.h"
 
 u8 g_CrashHasMessage = 0;
 s32 g_CrashEnabled = 0;
@@ -16,7 +17,7 @@ void crashCreateThread(void)
 void crashSetMessage(char *string)
 {
 	strncpy(crashMsg, string, sizeof(crashMsg) - 1);
-	fprintf(stderr, "crashSetMessage: %s\n", crashMsg);
+	sysLogPrintf(LOG_ERROR, "crashSetMessage: %s", crashMsg);
 	g_CrashHasMessage = 1;
 }
 

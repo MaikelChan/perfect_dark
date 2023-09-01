@@ -54,7 +54,7 @@ void *fsFileLoad(const char *name, u32 *outSize)
 
 	FILE *f = fopen(fullName, "rb");
 	if (!f) {
-		fprintf(stderr, "fsFileLoad: could not find file: %s\n", fullName);
+		sysLogPrintf(LOG_ERROR, "fsFileLoad: could not find file: %s", fullName);
 		return NULL;
 	}
 
@@ -63,7 +63,7 @@ void *fsFileLoad(const char *name, u32 *outSize)
 	fseek(f, 0, SEEK_SET);
 
 	if (size < 0) {
-		fprintf(stderr, "fsFileLoad: empty file or invalid size (%d): %s\n", size, fullName);
+		sysLogPrintf(LOG_ERROR, "fsFileLoad: empty file or invalid size (%d): %s", size, fullName);
 		fclose(f);
 		return NULL;
 	}
@@ -72,7 +72,7 @@ void *fsFileLoad(const char *name, u32 *outSize)
 	if (size) {
 		buf = sysMemZeroAlloc(size + 1); // sick hack for a free null terminator
 		if (!buf) {
-			fprintf(stderr, "fsFileLoad: could not alloc %d bytes for file: %s\n", size, fullName);
+			sysLogPrintf(LOG_ERROR, "fsFileLoad: could not alloc %d bytes for file: %s", size, fullName);
 			fclose(f);
 			return NULL;
 		}

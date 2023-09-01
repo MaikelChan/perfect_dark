@@ -1,4 +1,5 @@
 #include <ultra64.h>
+#include <string.h>
 #include "constants.h"
 #include "game/atan2f.h"
 #include "game/camera.h"
@@ -600,6 +601,9 @@ bool camIsPosInFovAndVisibleRoom(RoomNum *rooms, struct coord *pos, f32 arg2)
 	RoomNum room;
 	bool hasdata = false;
 	struct drawslot *thisthing;
+#ifdef AVOID_UB
+	static struct drawslot dslot;
+#endif
 	struct screenbox box;
 
 	for (i = 0, room = rooms[i]; room != -1; i++, room = rooms[i]) {
@@ -637,5 +641,10 @@ bool camIsPosInFovAndVisibleRoom(RoomNum *rooms, struct coord *pos, f32 arg2)
 		return false;
 	}
 
+#ifdef AVOID_UB
+	memcpy(&dslot.box, &box, sizeof(box));
+	return camIsPosInScreenBox(pos, arg2, &dslot);
+#else
 	return camIsPosInScreenBox(pos, arg2, (struct drawslot *) &(((u8 *) &box)[-((uintptr_t) &(((struct drawslot *)0)->box))]));
+#endif
 }

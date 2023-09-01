@@ -799,8 +799,7 @@ typedef void (APIENTRY *DEBUGPROC)(GLenum source,
 
 static void APIENTRY gl_debug(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *msg, const void *p) {
     if (severity > 0x826B) {
-        printf("GL: from %04x: type %04x: %s\n", source, type, msg);
-        fflush(stdout);
+        sysLogPrintf(LOG_WARNING, "GL: %s", msg);
     }
 }
 

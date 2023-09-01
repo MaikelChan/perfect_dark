@@ -8,9 +8,11 @@
 #include "data.h"
 #include "types.h"
 #else
-#include <stdio.h>
 #include <stdarg.h>
+#include <stdio.h>
+#include "system.h"
 #include "types.h"
+#include "lib/crash.h"
 #endif
 
 void rmonproc()
@@ -72,14 +74,17 @@ char *rmonProut(char *dst, const char *src, size_t count)
 
 void rmonPrintf(const char *format, ...)
 {
+#ifndef PLATFORM_N64
+	char msg[2048];
+#endif
 	va_list ap;
 	va_start(ap, format);
 
 #ifdef PLATFORM_N64
 	_Printf(rmonProut, NULL, format, ap);
 #else
-	fprintf(stderr, "rmonPrintf: ");
-	vfprintf(stderr, format, ap);
+	vsnprintf(msg, sizeof(msg), format, ap);
 	va_end(ap);
+	sysLogPrintf(LOG_NOTE, "rmonPrintf: %s", msg);
 #endif
 }

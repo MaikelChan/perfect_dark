@@ -1270,6 +1270,10 @@ Gfx *amRender(Gfx *gdl)
 	g_ScaleX = g_ViRes == VIRES_HI ? 2 : 1;
 #endif
 
+#ifndef PLATFORM_N64
+	gSPSetExtraGeometryModeEXT(gdl++, G_ASPECT_CENTER_EXT);
+#endif
+
 	g_AmIndex = g_Vars.currentplayernum;
 	g_Vars.currentplayer->commandingaibot = NULL;
 
@@ -1696,6 +1700,10 @@ Gfx *amRender(Gfx *gdl)
 
 		RECT(gdl++, a2, y, part1left + barwidth, y + barheight);
 	}
+#endif
+
+#ifndef PLATFORM_N64
+	gSPClearExtraGeometryModeEXT(gdl++, G_ASPECT_CENTER_EXT);
 #endif
 
 	g_ScaleX = 1;

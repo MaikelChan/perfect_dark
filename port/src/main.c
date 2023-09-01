@@ -32,6 +32,8 @@ u32 g_VmNumPageMisses = 0;
 u32 g_VmNumPageReplaces = 0;
 u8 g_VmShowStats = 0;
 
+extern s32 g_StageNum;
+
 s32 bootGetMemSize(void)
 {
 	return (s32)g_OsMemSize;
@@ -55,6 +57,7 @@ void bootCreateSched(void)
 
 static void cleanup(void)
 {
+	sysLogPrintf(LOG_NOTE, "shutdown");
 	inputSaveConfig();
 	configSave(CONFIG_FNAME);
 	// TODO: actually shut down all subsystems
@@ -72,7 +75,7 @@ static void gameLoadConfig(void)
 
 int main(int argc, const char **argv)
 {
-	sysInitTicks();
+	sysInit(argc, argv);
 	fsInit();
 	configInit();
 	videoInit();
@@ -94,8 +97,14 @@ int main(int argc, const char **argv)
 		sysFatalError("Could not alloc %u bytes for memp heap.", g_MempHeapSize);
 	}
 
-	printf("memp heap at %p - %p\n", g_MempHeap, g_MempHeap + g_MempHeapSize);
-	printf("rom  file at %p - %p\n", g_RomFile, g_RomFile + g_RomFileSize);
+	sysLogPrintf(LOG_NOTE, "memp heap at %p - %p", g_MempHeap, g_MempHeap + g_MempHeapSize);
+	sysLogPrintf(LOG_NOTE, "rom  file at %p - %p", g_RomFile, g_RomFile + g_RomFileSize);
+
+	g_SndDisabled = sysArgCheck("--no-sound");
+	g_StageNum = sysArgGetInt("--boot-stage", STAGE_TITLE);
+	if (g_StageNum != STAGE_TITLE) {
+		sysLogPrintf(LOG_NOTE, "boot stage set to 0x%02x", g_StageNum);
+	}
 
 	mainProc();
 
