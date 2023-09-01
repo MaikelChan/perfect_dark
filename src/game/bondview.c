@@ -211,7 +211,7 @@ Gfx *bviewPrepareStaticRgba16(Gfx *gdl, u32 colour, u32 alpha)
 	gDPSetTexturePersp(gdl++, G_TP_NONE);
 	gDPSetColorDither(gdl++, G_CD_DISABLE);
 	gDPSetAlphaDither(gdl++, G_AD_NOISE);
-	gDPSetRenderMode(gdl++, G_RM_CLD_SURF, G_RM_NOOP2);
+	gDPSetRenderMode(gdl++, G_RM_CLD_SURF, G_RM_CLD_SURF2);
 
 	return gdl;
 }
@@ -245,7 +245,7 @@ Gfx *bviewPrepareStaticI8(Gfx *gdl, u32 colour, u32 alpha)
 	gDPSetTexturePersp(gdl++, G_TP_NONE);
 	gDPSetColorDither(gdl++, G_CD_DISABLE);
 	gDPSetAlphaDither(gdl++, G_AD_NOISE);
-	gDPSetRenderMode(gdl++, G_RM_CLD_SURF, G_RM_NOOP2);
+	gDPSetRenderMode(gdl++, G_RM_CLD_SURF, G_RM_CLD_SURF2);
 
 	return gdl;
 }

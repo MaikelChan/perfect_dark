@@ -145,6 +145,19 @@ struct RawTexMetadata {
     float h_byte_scale = 1, v_pixel_scale = 1;
 };
 
+struct LoadedTexture {
+    const uint8_t* addr;
+    uint32_t orig_size_bytes;
+    uint32_t full_size_bytes; // full_image_line_size_bytes * height
+    uint32_t size_bytes; // line_size_bytes * height
+    uint32_t full_image_line_size_bytes;
+    uint32_t line_size_bytes;
+    uint32_t tex_flags;
+    struct RawTexMetadata raw_tex_metadata;
+    bool masked;
+    bool blended;
+};
+
 static struct RDP {
     uint16_t palette[256];
     const uint8_t* palette_addrs[2];
@@ -157,18 +170,6 @@ static struct RDP {
         struct RawTexMetadata raw_tex_metadata;
     } texture_to_load;
     struct {
-        const uint8_t* addr;
-        uint32_t orig_size_bytes;
-        uint32_t full_size_bytes; // full_image_line_size_bytes * height
-        uint32_t size_bytes; // line_size_bytes * height
-        uint32_t full_image_line_size_bytes;
-        uint32_t line_size_bytes;
-        uint32_t tex_flags;
-        struct RawTexMetadata raw_tex_metadata;
-        bool masked;
-        bool blended;
-    } loaded_texture[8];
-    struct {
         uint8_t fmt;
         uint8_t siz;
         uint8_t cms, cmt;
@@ -178,8 +179,8 @@ static struct RDP {
         uint16_t tmem;               // 0-511, in 64-bit word units
         uint32_t line_size_bytes;
         uint8_t palette;
-        uint8_t tmem_index; // 0 or 1 for offset 0 kB or offset 2 kB, respectively
     } texture_tile[8];
+    LoadedTexture loaded_texture[512]; // for each tmem location
     bool textures_changed[2];
 
     uint8_t first_tile_index;
@@ -579,13 +580,13 @@ static void gfx_texture_cache_delete(const uint8_t* orig_addr) {
     }
 }
 
-static void import_texture_rgba16(int tile, bool importReplacement) {
-    const RawTexMetadata* metadata = &rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].raw_tex_metadata;
-    const uint8_t* addr = rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].addr;
-    const uint32_t size_bytes = rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].size_bytes;
+static void import_texture_rgba16(int tile, const LoadedTexture& loaded_texture, bool importReplacement) {
+    const RawTexMetadata* metadata = &loaded_texture.raw_tex_metadata;
+    const uint8_t* addr = loaded_texture.addr;
+    const uint32_t size_bytes = loaded_texture.size_bytes;
     const uint32_t full_image_line_size_bytes =
-        rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].full_image_line_size_bytes;
-    const uint32_t line_size_bytes = rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].line_size_bytes;
+        loaded_texture.full_image_line_size_bytes;
+    const uint32_t line_size_bytes = loaded_texture.line_size_bytes;
     // SUPPORT_CHECK(full_image_line_size_bytes == line_size_bytes);
     // TODO: this trips in some places with a garbage size in full_image_line_size_bytes
     // probably wherever framebuffer effects are used
@@ -607,16 +608,16 @@ static void import_texture_rgba16(int tile, bool importReplacement) {
     const uint32_t height = size_bytes / rdp.texture_tile[tile].line_size_bytes;
 
     gfx_rapi->upload_texture(tex_upload_buffer, width, height);
-    // DumpTexture(rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].otr_path, rgba32_buf, width, height);
+    // DumpTexture(loaded_texture.otr_path, rgba32_buf, width, height);
 }
 
-static void import_texture_rgba32(int tile, bool importReplacement) {
-    const RawTexMetadata* metadata = &rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].raw_tex_metadata;
-    const uint8_t* addr = rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].addr;
-    const uint32_t size_bytes = rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].size_bytes;
+static void import_texture_rgba32(int tile, const LoadedTexture& loaded_texture, bool importReplacement) {
+    const RawTexMetadata* metadata = &loaded_texture.raw_tex_metadata;
+    const uint8_t* addr = loaded_texture.addr;
+    const uint32_t size_bytes = loaded_texture.size_bytes;
     const uint32_t full_image_line_size_bytes =
-        rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].full_image_line_size_bytes;
-    const uint32_t line_size_bytes = rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].line_size_bytes;
+        loaded_texture.full_image_line_size_bytes;
+    const uint32_t line_size_bytes = loaded_texture.line_size_bytes;
     SUPPORT_CHECK(full_image_line_size_bytes == line_size_bytes);
 
     uint32_t *dest = (uint32_t *)tex_upload_buffer;
@@ -628,16 +629,16 @@ static void import_texture_rgba32(int tile, bool importReplacement) {
     const uint32_t width = rdp.texture_tile[tile].line_size_bytes / 2;
     const uint32_t height = (size_bytes / 2) / rdp.texture_tile[tile].line_size_bytes;
     gfx_rapi->upload_texture(tex_upload_buffer, width, height);
-    // DumpTexture(rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].otr_path, addr, width, height);
+    // DumpTexture(loaded_texture.otr_path, addr, width, height);
 }
 
-static void import_texture_ia4(int tile, bool importReplacement) {
-    const RawTexMetadata* metadata = &rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].raw_tex_metadata;
-    const uint8_t* addr = rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].addr;
-    const uint32_t size_bytes = rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].size_bytes;
+static void import_texture_ia4(int tile, const LoadedTexture& loaded_texture, bool importReplacement) {
+    const RawTexMetadata* metadata = &loaded_texture.raw_tex_metadata;
+    const uint8_t* addr = loaded_texture.addr;
+    const uint32_t size_bytes = loaded_texture.size_bytes;
     const uint32_t full_image_line_size_bytes =
-        rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].full_image_line_size_bytes;
-    const uint32_t line_size_bytes = rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].line_size_bytes;
+        loaded_texture.full_image_line_size_bytes;
+    const uint32_t line_size_bytes = loaded_texture.line_size_bytes;
     SUPPORT_CHECK(full_image_line_size_bytes == line_size_bytes);
 
     uint8_t *dest = tex_upload_buffer;
@@ -657,16 +658,16 @@ static void import_texture_ia4(int tile, bool importReplacement) {
     const uint32_t height = size_bytes / rdp.texture_tile[tile].line_size_bytes;
 
     gfx_rapi->upload_texture(tex_upload_buffer, width, height);
-    // DumpTexture(rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].otr_path, rgba32_buf, width, height);
+    // DumpTexture(loaded_texture.otr_path, rgba32_buf, width, height);
 }
 
-static void import_texture_ia8(int tile, bool importReplacement) {
-    const RawTexMetadata* metadata = &rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].raw_tex_metadata;
-    const uint8_t* addr = rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].addr;
-    const uint32_t size_bytes = rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].size_bytes;
+static void import_texture_ia8(int tile, const LoadedTexture& loaded_texture, bool importReplacement) {
+    const RawTexMetadata* metadata = &loaded_texture.raw_tex_metadata;
+    const uint8_t* addr = loaded_texture.addr;
+    const uint32_t size_bytes = loaded_texture.size_bytes;
     const uint32_t full_image_line_size_bytes =
-        rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].full_image_line_size_bytes;
-    const uint32_t line_size_bytes = rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].line_size_bytes;
+        loaded_texture.full_image_line_size_bytes;
+    const uint32_t line_size_bytes = loaded_texture.line_size_bytes;
     SUPPORT_CHECK(full_image_line_size_bytes == line_size_bytes);
 
     uint8_t *dest = tex_upload_buffer;
@@ -683,16 +684,16 @@ static void import_texture_ia8(int tile, bool importReplacement) {
     const uint32_t height = size_bytes / rdp.texture_tile[tile].line_size_bytes;
 
     gfx_rapi->upload_texture(tex_upload_buffer, width, height);
-    // DumpTexture(rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].otr_path, rgba32_buf, width, height);
+    // DumpTexture(loaded_texture.otr_path, rgba32_buf, width, height);
 }
 
-static void import_texture_ia16(int tile, bool importReplacement) {
-    const RawTexMetadata* metadata = &rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].raw_tex_metadata;
-    const uint8_t* addr = rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].addr;
-    const uint32_t size_bytes = rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].size_bytes;
+static void import_texture_ia16(int tile, const LoadedTexture& loaded_texture, bool importReplacement) {
+    const RawTexMetadata* metadata = &loaded_texture.raw_tex_metadata;
+    const uint8_t* addr = loaded_texture.addr;
+    const uint32_t size_bytes = loaded_texture.size_bytes;
     const uint32_t full_image_line_size_bytes =
-        rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].full_image_line_size_bytes;
-    const uint32_t line_size_bytes = rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].line_size_bytes;
+        loaded_texture.full_image_line_size_bytes;
+    const uint32_t line_size_bytes = loaded_texture.line_size_bytes;
     SUPPORT_CHECK(full_image_line_size_bytes == line_size_bytes);
 
     uint8_t *dest = tex_upload_buffer;
@@ -709,16 +710,16 @@ static void import_texture_ia16(int tile, bool importReplacement) {
     const uint32_t height = size_bytes / rdp.texture_tile[tile].line_size_bytes;
 
     gfx_rapi->upload_texture(tex_upload_buffer, width, height);
-    // DumpTexture(rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].otr_path, rgba32_buf, width, height);
+    // DumpTexture(loaded_texture.otr_path, rgba32_buf, width, height);
 }
 
-static void import_texture_i4(int tile, bool importReplacement) {
-    const RawTexMetadata* metadata = &rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].raw_tex_metadata;
-    const uint8_t* addr = rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].addr;
-    const uint32_t size_bytes = rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].size_bytes;
+static void import_texture_i4(int tile, const LoadedTexture& loaded_texture, bool importReplacement) {
+    const RawTexMetadata* metadata = &loaded_texture.raw_tex_metadata;
+    const uint8_t* addr = loaded_texture.addr;
+    const uint32_t size_bytes = loaded_texture.size_bytes;
     const uint32_t full_image_line_size_bytes =
-        rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].full_image_line_size_bytes;
-    const uint32_t line_size_bytes = rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].line_size_bytes;
+        loaded_texture.full_image_line_size_bytes;
+    const uint32_t line_size_bytes = loaded_texture.line_size_bytes;
     SUPPORT_CHECK(full_image_line_size_bytes == line_size_bytes);
 
     uint8_t *dest = tex_upload_buffer;
@@ -736,16 +737,16 @@ static void import_texture_i4(int tile, bool importReplacement) {
     const uint32_t height = size_bytes / rdp.texture_tile[tile].line_size_bytes;
 
     gfx_rapi->upload_texture(tex_upload_buffer, width, height);
-    // DumpTexture(rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].otr_path, rgba32_buf, width, height);
+    // DumpTexture(loaded_texture.otr_path, rgba32_buf, width, height);
 }
 
-static void import_texture_i8(int tile, bool importReplacement) {
-    const RawTexMetadata* metadata = &rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].raw_tex_metadata;
-    const uint8_t* addr = rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].addr;
-    const uint32_t size_bytes = rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].size_bytes;
+static void import_texture_i8(int tile, const LoadedTexture& loaded_texture, bool importReplacement) {
+    const RawTexMetadata* metadata = &loaded_texture.raw_tex_metadata;
+    const uint8_t* addr = loaded_texture.addr;
+    const uint32_t size_bytes = loaded_texture.size_bytes;
     uint32_t full_image_line_size_bytes =
-        rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].full_image_line_size_bytes;
-    const uint32_t line_size_bytes = rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].line_size_bytes;
+        loaded_texture.full_image_line_size_bytes;
+    const uint32_t line_size_bytes = loaded_texture.line_size_bytes;
     SUPPORT_CHECK(full_image_line_size_bytes == line_size_bytes);
 
     uint8_t *dest = tex_upload_buffer;
@@ -761,7 +762,7 @@ static void import_texture_i8(int tile, bool importReplacement) {
     const uint32_t height = size_bytes / rdp.texture_tile[tile].line_size_bytes;
 
     gfx_rapi->upload_texture(tex_upload_buffer, width, height);
-    // DumpTexture(rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].otr_path, rgba32_buf, width, height);
+    // DumpTexture(loaded_texture.otr_path, rgba32_buf, width, height);
 }
 
 static inline void palette_to_rgba32(const uint16_t palentry, uint8_t *rgba32_buf) {
@@ -785,13 +786,13 @@ static inline void palette_to_rgba32(const uint16_t palentry, uint8_t *rgba32_bu
     }
 }
 
-static void import_texture_ci4(int tile, bool importReplacement) {
-    const RawTexMetadata* metadata = &rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].raw_tex_metadata;
-    const uint8_t* addr = rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].addr;
-    const uint32_t size_bytes = rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].size_bytes;
+static void import_texture_ci4(int tile, const LoadedTexture& loaded_texture, bool importReplacement) {
+    const RawTexMetadata* metadata = &loaded_texture.raw_tex_metadata;
+    const uint8_t* addr = loaded_texture.addr;
+    const uint32_t size_bytes = loaded_texture.size_bytes;
     const uint32_t full_image_line_size_bytes =
-        rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].full_image_line_size_bytes;
-    const uint32_t line_size_bytes = rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].line_size_bytes;
+        loaded_texture.full_image_line_size_bytes;
+    const uint32_t line_size_bytes = loaded_texture.line_size_bytes;
     const uint32_t pal_idx = rdp.texture_tile[tile].palette; // 0-15
     const uint16_t* palette = (const uint16_t *)(rdp.palette + pal_idx * 16); // 16 pixel entries, 16 bits each
     SUPPORT_CHECK(full_image_line_size_bytes == line_size_bytes);
@@ -813,13 +814,13 @@ static void import_texture_ci4(int tile, bool importReplacement) {
     gfx_rapi->upload_texture(tex_upload_buffer, width, height);
 }
 
-static void import_texture_ci8(int tile, bool importReplacement) {
-    const RawTexMetadata* metadata = &rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].raw_tex_metadata;
-    const uint8_t* addr = rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].addr;
-    const uint32_t size_bytes = rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].size_bytes;
+static void import_texture_ci8(int tile, const LoadedTexture& loaded_texture, bool importReplacement) {
+    const RawTexMetadata* metadata = &loaded_texture.raw_tex_metadata;
+    const uint8_t* addr = loaded_texture.addr;
+    const uint32_t size_bytes = loaded_texture.size_bytes;
     const uint32_t full_image_line_size_bytes =
-        rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].full_image_line_size_bytes;
-    const uint32_t line_size_bytes = rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].line_size_bytes;
+        loaded_texture.full_image_line_size_bytes;
+    const uint32_t line_size_bytes = loaded_texture.line_size_bytes;
 
     for (uint32_t i = 0, j = 0; i < size_bytes; j += full_image_line_size_bytes - line_size_bytes) {
         for (uint32_t k = 0; k < line_size_bytes; i++, k++, j++) {
@@ -837,28 +838,28 @@ static void import_texture_ci8(int tile, bool importReplacement) {
     const uint32_t height = size_bytes / result_line_size;
 
     gfx_rapi->upload_texture(tex_upload_buffer, width, height);
-    // DumpTexture(rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].otr_path, rgba32_buf, width, height);
+    // DumpTexture(loaded_texture.otr_path, rgba32_buf, width, height);
 }
 
 static void import_texture(int i, int tile, bool importReplacement) {
+    LoadedTexture& loaded_texture = rdp.loaded_texture[rdp.texture_tile[tile].tmem];
     const uint8_t fmt = rdp.texture_tile[tile].fmt;
     const uint8_t siz = rdp.texture_tile[tile].siz;
-    const uint32_t texFlags = rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].tex_flags;
-    const uint32_t tmem_index = rdp.texture_tile[tile].tmem_index;
+    const uint32_t tex_flags = loaded_texture.tex_flags;
     const uint8_t palette_index = rdp.texture_tile[tile].palette;
 
-    if (rdp.tex_lod || !rdp.loaded_texture[tmem_index].addr) {
+    if (rdp.tex_lod || !loaded_texture.addr) {
         // set up miplevel 0; also acts as a catch-all for when .addr is NULL because my texture loader sucks
-        rdp.loaded_texture[tmem_index].line_size_bytes = rdp.texture_tile[tile].line_size_bytes;
-        rdp.loaded_texture[tmem_index].full_image_line_size_bytes = rdp.texture_tile[tile].line_size_bytes;
-        rdp.loaded_texture[tmem_index].full_size_bytes = rdp.loaded_texture[tmem_index].full_image_line_size_bytes * rdp.texture_tile[tile].height;
-        rdp.loaded_texture[tmem_index].size_bytes = rdp.loaded_texture[tmem_index].line_size_bytes * rdp.texture_tile[tile].height;
-        rdp.loaded_texture[tmem_index].orig_size_bytes = rdp.loaded_texture[tmem_index].size_bytes;
-        rdp.loaded_texture[tmem_index].addr = rdp.texture_to_load.addr;
+        loaded_texture.line_size_bytes = rdp.texture_tile[tile].line_size_bytes;
+        loaded_texture.full_image_line_size_bytes = rdp.texture_tile[tile].line_size_bytes;
+        loaded_texture.full_size_bytes = loaded_texture.full_image_line_size_bytes * rdp.texture_tile[tile].height;
+        loaded_texture.size_bytes = loaded_texture.line_size_bytes * rdp.texture_tile[tile].height;
+        loaded_texture.orig_size_bytes = loaded_texture.size_bytes;
+        loaded_texture.addr = rdp.texture_to_load.addr;
     }
 
-    const RawTexMetadata* metadata = &rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].raw_tex_metadata;
-    const uint8_t* orig_addr = rdp.loaded_texture[tmem_index].addr;
+    const RawTexMetadata* metadata = &loaded_texture.raw_tex_metadata;
+    const uint8_t* orig_addr = loaded_texture.addr;
     SUPPORT_CHECK(orig_addr);
 
     TextureCacheKey key;
@@ -874,35 +875,35 @@ static void import_texture(int i, int tile, bool importReplacement) {
 
     if (fmt == G_IM_FMT_RGBA) {
         if (siz == G_IM_SIZ_16b) {
-            import_texture_rgba16(tile, importReplacement);
+            import_texture_rgba16(tile, loaded_texture, importReplacement);
         } else if (siz == G_IM_SIZ_32b) {
-            import_texture_rgba32(tile, importReplacement);
+            import_texture_rgba32(tile, loaded_texture, importReplacement);
         } else {
             sysFatalError("Bad size for RGBA texture in tile %d: %02x", tile, siz);
         }
     } else if (fmt == G_IM_FMT_IA) {
         if (siz == G_IM_SIZ_4b) {
-            import_texture_ia4(tile, importReplacement);
+            import_texture_ia4(tile, loaded_texture, importReplacement);
         } else if (siz == G_IM_SIZ_8b) {
-            import_texture_ia8(tile, importReplacement);
+            import_texture_ia8(tile, loaded_texture, importReplacement);
         } else if (siz == G_IM_SIZ_16b) {
-            import_texture_ia16(tile, importReplacement);
+            import_texture_ia16(tile, loaded_texture, importReplacement);
         } else {
             sysFatalError("Bad size for IA texture in tile %d: %02x", tile, siz);
         }
     } else if (fmt == G_IM_FMT_CI) {
         if (siz == G_IM_SIZ_4b) {
-            import_texture_ci4(tile, importReplacement);
+            import_texture_ci4(tile, loaded_texture, importReplacement);
         } else if (siz == G_IM_SIZ_8b) {
-            import_texture_ci8(tile, importReplacement);
+            import_texture_ci8(tile, loaded_texture, importReplacement);
         } else {
             sysFatalError("Bad size for CI texture in tile %d: %02x", tile, siz);
         }
     } else if (fmt == G_IM_FMT_I) {
         if (siz == G_IM_SIZ_4b) {
-            import_texture_i4(tile, importReplacement);
+            import_texture_i4(tile, loaded_texture, importReplacement);
         } else if (siz == G_IM_SIZ_8b) {
-            import_texture_i8(tile, importReplacement);
+            import_texture_i8(tile, loaded_texture, importReplacement);
         } else {
             sysFatalError("Bad size for I texture in tile %d: %02x", tile, siz);
         }
@@ -1298,18 +1299,6 @@ static void gfx_sp_tri1(uint8_t vtx1_idx, uint8_t vtx2_idx, uint8_t vtx3_idx, bo
     if (use_grayscale) {
         cc_options |= (uint64_t)SHADER_OPT_GRAYSCALE;
     }
-    if (rdp.loaded_texture[0].masked) {
-        cc_options |= (uint64_t)SHADER_OPT_TEXEL0_MASK;
-    }
-    if (rdp.loaded_texture[1].masked) {
-        cc_options |= (uint64_t)SHADER_OPT_TEXEL1_MASK;
-    }
-    if (rdp.loaded_texture[0].blended) {
-        cc_options |= (uint64_t)SHADER_OPT_TEXEL0_BLEND;
-    }
-    if (rdp.loaded_texture[1].blended) {
-        cc_options |= (uint64_t)SHADER_OPT_TEXEL1_BLEND;
-    }
 
     // If we are not using alpha, clear the alpha components of the combiner as they have no effect
     if (!use_alpha) {
@@ -1338,7 +1327,7 @@ static void gfx_sp_tri1(uint8_t vtx1_idx, uint8_t vtx2_idx, uint8_t vtx3_idx, bo
             uint8_t cms = rdp.texture_tile[tile].cms;
             uint8_t cmt = rdp.texture_tile[tile].cmt;
 
-            uint32_t tex_size_bytes = rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].orig_size_bytes;
+            uint32_t tex_size_bytes = rdp.loaded_texture[rdp.texture_tile[tile].tmem].orig_size_bytes;
             uint32_t line_size = rdp.texture_tile[tile].line_size_bytes;
 
             if (line_size == 0) {
@@ -1837,10 +1826,8 @@ static void gfx_dp_set_tile(uint8_t fmt, uint32_t siz, uint32_t line, uint32_t t
     rdp.texture_tile[tile].shifts = shifts;
     rdp.texture_tile[tile].shiftt = shiftt;
     rdp.texture_tile[tile].line_size_bytes = line * 8;
-
-    // assume one texture is loaded at address 0 and another texture at any other address
     rdp.texture_tile[tile].tmem = tmem;
-    rdp.texture_tile[tile].tmem_index = (rdp.tex_lod && tile < 6) ? tile : 6 + (tmem > 0);
+
     rdp.textures_changed[0] = true;
     rdp.textures_changed[1] = true;
 }
@@ -1906,18 +1893,18 @@ static void gfx_dp_load_block(uint8_t tile, uint32_t uls, uint32_t ult, uint32_t
         size_bytes *= rdp.texture_to_load.raw_tex_metadata.h_byte_scale;
         size_bytes *= rdp.texture_to_load.raw_tex_metadata.v_pixel_scale;
     }
-    rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].orig_size_bytes = orig_size_bytes;
-    rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].size_bytes = size_bytes;
-    rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].full_size_bytes = size_bytes;
-    rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].line_size_bytes = size_bytes;
-    rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].full_image_line_size_bytes = size_bytes;
-    // assert(size_bytes <= 4096 && "bug: too big texture");
-    rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].tex_flags = rdp.texture_to_load.tex_flags;
-    rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].raw_tex_metadata = rdp.texture_to_load.raw_tex_metadata;
-    rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].addr = rdp.texture_to_load.addr;
 
-    rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].masked = false;
-    rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].blended = false;
+    LoadedTexture& loaded_texture = rdp.loaded_texture[rdp.texture_tile[tile].tmem];
+    loaded_texture.orig_size_bytes = orig_size_bytes;
+    loaded_texture.size_bytes = size_bytes;
+    loaded_texture.full_size_bytes = size_bytes;
+    loaded_texture.line_size_bytes = size_bytes;
+    loaded_texture.full_image_line_size_bytes = size_bytes;
+    loaded_texture.tex_flags = rdp.texture_to_load.tex_flags;
+    loaded_texture.raw_tex_metadata = rdp.texture_to_load.raw_tex_metadata;
+    loaded_texture.addr = rdp.texture_to_load.addr;
+    loaded_texture.masked = false;
+    loaded_texture.blended = false;
 
     rdp.textures_changed[0] = rdp.textures_changed[1] = true;
 }
@@ -1949,19 +1936,17 @@ static void gfx_dp_load_tile(uint8_t tile, uint32_t uls, uint32_t ult, uint32_t 
         tile_line_size_bytes *= h_byte_scale;
     }
 
-    rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].orig_size_bytes = orig_size_bytes;
-    rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].size_bytes = size_bytes;
-    rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].full_size_bytes = full_image_line_size_bytes * tile_height;
-    rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].full_image_line_size_bytes = full_image_line_size_bytes;
-    rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].line_size_bytes = tile_line_size_bytes;
-
-    //    assert(size_bytes <= 4096 && "bug: too big texture");
-    rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].tex_flags = rdp.texture_to_load.tex_flags;
-    rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].raw_tex_metadata = rdp.texture_to_load.raw_tex_metadata;
-    rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].addr = rdp.texture_to_load.addr + start_offset_bytes;
-
-    rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].masked = false;
-    rdp.loaded_texture[rdp.texture_tile[tile].tmem_index].blended = false;
+    LoadedTexture& loaded_texture = rdp.loaded_texture[rdp.texture_tile[tile].tmem];
+    loaded_texture.orig_size_bytes = orig_size_bytes;
+    loaded_texture.size_bytes = size_bytes;
+    loaded_texture.full_size_bytes = full_image_line_size_bytes * tile_height;
+    loaded_texture.full_image_line_size_bytes = full_image_line_size_bytes;
+    loaded_texture.line_size_bytes = tile_line_size_bytes;
+    loaded_texture.tex_flags = rdp.texture_to_load.tex_flags;
+    loaded_texture.raw_tex_metadata = rdp.texture_to_load.raw_tex_metadata;
+    loaded_texture.addr = rdp.texture_to_load.addr + start_offset_bytes;
+    loaded_texture.masked = false;
+    loaded_texture.blended = false;
 
     rdp.texture_tile[tile].uls = uls;
     rdp.texture_tile[tile].ult = ult;

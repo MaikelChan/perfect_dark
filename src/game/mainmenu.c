@@ -2525,6 +2525,7 @@ struct menuitem g_VideoOptionsMenuItems[] = {
 		0,
 		menuhandlerScreenSize,
 	},
+#ifdef PLATFORM_N64
 	{
 		MENUITEMTYPE_DROPDOWN,
 		0,
@@ -2541,6 +2542,7 @@ struct menuitem g_VideoOptionsMenuItems[] = {
 		0,
 		menuhandlerHiRes,
 	},
+#endif
 #if PAL
 	{
 		MENUITEMTYPE_DROPDOWN,
@@ -2587,6 +2589,7 @@ struct menuitem g_VideoOptionsMenuItems[] = {
 };
 
 struct menuitem g_2PMissionVideoOptionsMenuItems[] = {
+#ifdef PLATFORM_N64
 	{
 		MENUITEMTYPE_DROPDOWN,
 		0,
@@ -2603,6 +2606,7 @@ struct menuitem g_2PMissionVideoOptionsMenuItems[] = {
 		0,
 		menuhandlerHiRes,
 	},
+#endif
 #if PAL
 	{
 		MENUITEMTYPE_DROPDOWN,

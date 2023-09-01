@@ -2792,7 +2792,11 @@ void playerResetLoResIf4Mb(void)
 
 void playerSetHiResEnabled(bool enable)
 {
+#ifdef PLATFORM_N64
 	g_HiResEnabled = enable;
+#else
+	g_HiResEnabled = false;
+#endif
 }
 
 s16 playerGetFbWidth(void)

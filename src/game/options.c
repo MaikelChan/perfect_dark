@@ -296,7 +296,11 @@ s32 optionsGetScreenRatio(void)
 
 void optionsSetScreenRatio(s32 ratio)
 {
+#ifdef PLATFORM_N64
 	g_ScreenRatio = ratio;
+#else
+	g_ScreenRatio = SCREENRATIO_NORMAL;
+#endif
 }
 
 u8 optionsGetScreenSplit(void)
