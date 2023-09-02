@@ -31,6 +31,9 @@ void *sysMemAlloc(const u32 size);
 void *sysMemZeroAlloc(const u32 size);
 void sysMemFree(void *ptr);
 
+void crashInit(void);
+void crashShutdown(void);
+
 #ifdef __cplusplus
 }
 #endif

@@ -1295,12 +1295,19 @@ void bmoveProcessInput(bool allowc1x, bool allowc1y, bool allowc1buttons, bool i
 							movedata.aimturnleftspeed = (g_Vars.currentplayer->swivelpos[0] - -0.9f) / -0.1f;
 							movedata.aimturnrightspeed = 0.f;
 						}
+						f32 vertaup = 0.f, vertadown = 0.f;
 						if (g_Vars.currentplayer->swivelpos[1] > 0.9f) {
-							movedata.speedvertaup = (g_Vars.currentplayer->swivelpos[1] - 0.9f) / 0.1f;
-							movedata.speedvertadown = 0.f;
+							vertaup = (g_Vars.currentplayer->swivelpos[1] - 0.9f) / 0.1f;
 						} else if (g_Vars.currentplayer->swivelpos[1] < -0.9f) {
-							movedata.speedvertadown = (g_Vars.currentplayer->swivelpos[1] - -0.9f) / -0.1f;
-							movedata.speedvertaup = 0.f;
+							vertadown = (g_Vars.currentplayer->swivelpos[1] - -0.9f) / -0.1f;
+						}
+						// Uninvert pitch if needed
+						if (movedata.invertpitch) {
+							movedata.speedvertaup = vertadown;
+							movedata.speedvertadown = vertaup;
+						} else {
+							movedata.speedvertaup = vertaup;
+							movedata.speedvertadown = vertadown;
 						}
 					} else {
 						// Reset mouse aim position when not mouse aiming

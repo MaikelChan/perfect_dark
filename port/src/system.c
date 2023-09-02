@@ -112,7 +112,15 @@ void sysLogPrintf(s32 level, const char *fmt, ...)
 
 void sysFatalError(const char *fmt, ...)
 {
+	static s32 alreadyCrashed = 0;
+
+	if (alreadyCrashed) {
+		abort();
+	}
+
 	char errmsg[2048] = { 0 };
+
+	alreadyCrashed = 1;
 
 	va_list ap;
 	va_start(ap, fmt);

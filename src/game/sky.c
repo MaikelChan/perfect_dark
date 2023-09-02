@@ -15,6 +15,7 @@
 #include "data.h"
 #include "types.h"
 #ifndef PLATFORM_N64
+#include "game/gfxmemory.h"
 #include "game/game_13c510.h"
 #include "game/player.h"
 #endif
@@ -826,6 +827,7 @@ Gfx *skyRender(Gfx *gdl)
 
 			gDPSetRenderMode(gdl++, G_RM_OPA_SURF, G_RM_OPA_SURF2);
 
+#ifdef PLATFORM_N64
 			if (numvertices == 4) {
 				gdl = skyRenderTri(gdl, &watervertices2d[0], &watervertices2d[1], &watervertices2d[3], 130.0f, true);
 
@@ -846,6 +848,40 @@ Gfx *skyRender(Gfx *gdl)
 				// 1 corner is on the ground
 				gdl = skyRenderTri(gdl, &watervertices2d[0], &watervertices2d[1], &watervertices2d[2], 130.0f, true);
 			}
+#else
+			Vtx *verts = gfxAllocateVertices(5);
+			Col *cols = gfxAllocateColours(5);
+			Mtxf *mtx = gfxAllocateMatrix();
+			mtx4MultMtx4(camGetWorldToScreenMtxf(), &g_SkyMtx, mtx);
+			mtxF2L(mtx, mtx);
+
+			gSPMatrix(gdl++, osVirtualToPhysical(mtx), G_MTX_MODELVIEW | G_MTX_LOAD | G_MTX_PUSH);
+			gSPColor(gdl++, osVirtualToPhysical(cols), numvertices);
+			gSPVertex(gdl++, osVirtualToPhysical(verts), numvertices, 0);
+
+			for (s32 i = 0; i < numvertices; ++i) {
+				verts[i].x = watervertices3d[i].x;
+				verts[i].y = watervertices3d[i].y;
+				verts[i].z = watervertices3d[i].z;
+				verts[i].s = watervertices3d[i].s;
+				verts[i].t = watervertices3d[i].t;
+				verts[i].colour = i * 4;
+				cols[i].r = watervertices3d[i].r;
+				cols[i].g = watervertices3d[i].g;
+				cols[i].b = watervertices3d[i].b;
+				cols[i].a = watervertices3d[i].a;
+			}
+
+			if (numvertices == 4) {
+				gSPTri2(gdl++, 0, 1, 3, 3, 2, 0);
+			} else if (numvertices == 5) {
+				gSPTri3(gdl++, 0, 1, 2, 0, 2, 3, 0, 3, 4);
+			} else if (numvertices == 3) {
+				gSPTri1(gdl++, 0, 1, 2);
+			}
+
+			gSPPopMatrix(gdl++, G_MTX_MODELVIEW);
+#endif
 		}
 	}
 
@@ -1252,6 +1288,7 @@ Gfx *skyRender(Gfx *gdl)
 			skyvertices2d[i].y = skyClamp(skyvertices2d[i].y, camGetScreenTop() * 4.0f, (camGetScreenTop() + camGetScreenHeight()) * 4.0f - 1.0f);
 		}
 
+#ifdef PLATFORM_N64
 		if (numvertices == 4) {
 			if (cornerstate == CORNERSTATE_TOP) {
 				if (sp548 < sp54c) {
@@ -1292,6 +1329,41 @@ Gfx *skyRender(Gfx *gdl)
 			// One corner is in the sky
 			gdl = skyRenderTri(gdl, &skyvertices2d[0], &skyvertices2d[1], &skyvertices2d[2], 130.0f, true);
 		}
+#else
+		Vtx *verts = gfxAllocateVertices(5);
+		Col *cols = gfxAllocateColours(5);
+		Mtxf *mtx = gfxAllocateMatrix();
+		mtx4MultMtx4(camGetWorldToScreenMtxf(), &g_SkyMtx, mtx);
+		mtxF2L(mtx, mtx);
+
+		gSPMatrix(gdl++, osVirtualToPhysical(mtx), G_MTX_MODELVIEW | G_MTX_LOAD | G_MTX_PUSH);
+		gSPColor(gdl++, osVirtualToPhysical(cols), numvertices);
+		gSPVertex(gdl++, osVirtualToPhysical(verts), numvertices, 0);
+
+		const f32 iscale = 1.f / scale;
+		for (s32 i = 0; i < numvertices; ++i) {
+			verts[i].x = skyvertices3d[i].x;
+			verts[i].y = skyvertices3d[i].y;
+			verts[i].z = skyvertices3d[i].z;
+			verts[i].s = skyvertices3d[i].s;
+			verts[i].t = skyvertices3d[i].t;
+			verts[i].colour = i * 4;
+			cols[i].r = skyvertices3d[i].r;
+			cols[i].g = skyvertices3d[i].g;
+			cols[i].b = skyvertices3d[i].b;
+			cols[i].a = skyvertices3d[i].a;
+		}
+
+		if (numvertices == 4) {
+			gSPTri2(gdl++, 0, 1, 3, 3, 2, 0);
+		} else if (numvertices == 5) {
+			gSPTri3(gdl++, 0, 1, 2, 0, 2, 3, 0, 3, 4);
+		} else if (numvertices == 3) {
+			gSPTri1(gdl++, 0, 1, 2);
+		}
+
+		gSPPopMatrix(gdl++, G_MTX_MODELVIEW);
+#endif
 	}
 
 	return gdl;
