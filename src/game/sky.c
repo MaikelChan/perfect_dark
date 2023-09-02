@@ -855,6 +855,7 @@ Gfx *skyRender(Gfx *gdl)
 			mtx4MultMtx4(camGetWorldToScreenMtxf(), &g_SkyMtx, mtx);
 			mtxF2L(mtx, mtx);
 
+			gSPSetExtraGeometryModeEXT(gdl++, G_NO_CLIPPING_EXT);
 			gSPMatrix(gdl++, osVirtualToPhysical(mtx), G_MTX_MODELVIEW | G_MTX_LOAD | G_MTX_PUSH);
 			gSPColor(gdl++, osVirtualToPhysical(cols), numvertices);
 			gSPVertex(gdl++, osVirtualToPhysical(verts), numvertices, 0);
@@ -863,8 +864,8 @@ Gfx *skyRender(Gfx *gdl)
 				verts[i].x = watervertices3d[i].x;
 				verts[i].y = watervertices3d[i].y;
 				verts[i].z = watervertices3d[i].z;
-				verts[i].s = watervertices3d[i].s;
-				verts[i].t = watervertices3d[i].t;
+				verts[i].s = skyClamp(watervertices3d[i].s, -32768.f, 32767.f);
+				verts[i].t = skyClamp(watervertices3d[i].t, -32768.f, 32767.f);
 				verts[i].colour = i * 4;
 				cols[i].r = watervertices3d[i].r;
 				cols[i].g = watervertices3d[i].g;
@@ -881,6 +882,7 @@ Gfx *skyRender(Gfx *gdl)
 			}
 
 			gSPPopMatrix(gdl++, G_MTX_MODELVIEW);
+			gSPClearExtraGeometryModeEXT(gdl++, G_NO_CLIPPING_EXT);
 #endif
 		}
 	}
@@ -1336,17 +1338,17 @@ Gfx *skyRender(Gfx *gdl)
 		mtx4MultMtx4(camGetWorldToScreenMtxf(), &g_SkyMtx, mtx);
 		mtxF2L(mtx, mtx);
 
+		gSPSetExtraGeometryModeEXT(gdl++, G_NO_CLIPPING_EXT);
 		gSPMatrix(gdl++, osVirtualToPhysical(mtx), G_MTX_MODELVIEW | G_MTX_LOAD | G_MTX_PUSH);
 		gSPColor(gdl++, osVirtualToPhysical(cols), numvertices);
 		gSPVertex(gdl++, osVirtualToPhysical(verts), numvertices, 0);
 
-		const f32 iscale = 1.f / scale;
 		for (s32 i = 0; i < numvertices; ++i) {
 			verts[i].x = skyvertices3d[i].x;
 			verts[i].y = skyvertices3d[i].y;
 			verts[i].z = skyvertices3d[i].z;
-			verts[i].s = skyvertices3d[i].s;
-			verts[i].t = skyvertices3d[i].t;
+			verts[i].s = skyClamp(skyvertices3d[i].s, -32768.f, 32767.f);
+			verts[i].t = skyClamp(skyvertices3d[i].t, -32768.f, 32767.f);
 			verts[i].colour = i * 4;
 			cols[i].r = skyvertices3d[i].r;
 			cols[i].g = skyvertices3d[i].g;
@@ -1363,6 +1365,7 @@ Gfx *skyRender(Gfx *gdl)
 		}
 
 		gSPPopMatrix(gdl++, G_MTX_MODELVIEW);
+		gSPClearExtraGeometryModeEXT(gdl++, G_NO_CLIPPING_EXT);
 #endif
 	}
 
