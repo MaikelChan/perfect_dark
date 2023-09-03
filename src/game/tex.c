@@ -39,6 +39,9 @@ s32 g_TexLutMode;
 u32 var800ab5b4;
 struct tilestate g_TexTileStates[8];
 struct tilesize g_TexTileSizes[8];
+#ifndef PLATFORM_N64
+u32 g_TexFilter2D = G_TF_BILERP;
+#endif
 
 // Default
 u16 g_SurfaceTypeDefaultSounds[] = { SFX_HIT_STONE_8087, SFX_HIT_STONE_8088 };

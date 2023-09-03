@@ -585,6 +585,16 @@ struct menuitem g_MainMenu4MbMenuItems[] = {
 		0,
 		(void *)&g_ChangeAgentMenuDialog,
 	},
+#ifndef PLATFORM_N64
+	{
+		MENUITEMTYPE_SELECTABLE,
+		0,
+		MENUITEMFLAG_SELECTABLE_OPENSDIALOG | MENUITEMFLAG_BIGFONT,
+		L_OPTIONS_110, // "Exit Game"
+		0x00000007,
+		(void *)&g_ExitGameMenuDialog,
+	},
+#endif
 	{ MENUITEMTYPE_END },
 };
 

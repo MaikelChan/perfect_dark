@@ -3011,7 +3011,7 @@ Gfx *dialogRender(Gfx *gdl, struct menudialog *dialog, struct menu *menu, bool l
 
 				textMeasure(&textheight, &textwidth, title, g_CharsHandelGothicXs, g_FontHandelGothicXs, 0);
 
-				x = dialogleft - 1;
+				x = dialogleft - 2;
 				y = (dialogtop + dialogbottom) / 2 - textwidth - 3;
 
 				if (y < dialogtop) {
@@ -4624,11 +4624,11 @@ void menuProcessInput(void)
 			if (buttonsnow & BUTTON_RADIAL) {
 				inputs.select = 1;
 			}
-			// this will naturally feel nice w/ a switch layout
-			// with the default mapping for weapon-back
+
 			if (buttonsnow & BUTTON_WPNBACK) {
-				inputs.select = 1;
+				inputs.back = 1;
 			}
+
 			#endif
 			if (buttonsnow & B_BUTTON) {
 				inputs.back = 1;

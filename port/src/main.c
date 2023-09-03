@@ -72,6 +72,7 @@ static void gameLoadConfig(void)
 	g_PlayerMouseAimMode = configGetIntClamped("Game.MouseAimMode", g_PlayerMouseAimMode, 0, 1);
 	g_PlayerMouseAimSpeedX = configGetFloatClamped("Game.MouseAimSpeedX", g_PlayerMouseAimSpeedX, 0.f, 10.f);
 	g_PlayerMouseAimSpeedY = configGetFloatClamped("Game.MouseAimSpeedY", g_PlayerMouseAimSpeedY, 0.f, 10.f);
+	g_ViShakeIntensityMult = configGetFloatClamped("Game.ScreenShakeIntensity", 1.f, 0.f, 100.f);
 }
 
 int main(int argc, const char **argv)

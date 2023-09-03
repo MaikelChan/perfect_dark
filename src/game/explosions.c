@@ -28,6 +28,12 @@
 #include "data.h"
 #include "types.h"
 
+#ifdef PLATFORM_N64
+#define SHAKE_TIME 6
+#else
+#define SHAKE_TIME 12
+#endif
+
 struct explosion *g_Explosions;
 s32 g_MaxExplosions;
 
@@ -296,7 +302,7 @@ bool explosionCreate(struct prop *sourceprop, struct coord *exppos, RoomNum *exp
 		struct prop *expprop = propAllocate();
 
 		if (type != EXPLOSIONTYPE_16 && type != EXPLOSIONTYPE_BULLETHOLE) {
-			g_ExplosionShakeTotalTimer = 6;
+			g_ExplosionShakeTotalTimer = SHAKE_TIME;
 		}
 
 		if (expprop) {
@@ -554,8 +560,8 @@ bool explosionCreate(struct prop *sourceprop, struct coord *exppos, RoomNum *exp
  */
 void explosionShake(void)
 {
-	g_ExplosionShakeTotalTimer = 6;
-	g_ExplosionShakeIntensityTimer = 6;
+	g_ExplosionShakeTotalTimer = SHAKE_TIME;
+	g_ExplosionShakeIntensityTimer = SHAKE_TIME;
 }
 
 void explosionsUpdateShake(struct coord *arg0, struct coord *arg1, struct coord *arg2)

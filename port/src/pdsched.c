@@ -94,6 +94,7 @@ bool g_SchedViModesPending[NUM_GFXTASKS] = {false, false};
 s32 g_ViUnblackTimer = NUM_FRAMEBUFFERS + 1;
 s32 g_ViShakeDirection = 1;
 s32 g_ViShakeIntensity = 0;
+f32 g_ViShakeIntensityMult = 1.f;
 s32 g_ViShakeTimer = 0;
 u32 var8005cea0 = 0;
 u32 var8005cea4 = 0;

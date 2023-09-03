@@ -136,6 +136,9 @@ void texReset(void)
 
 	// reset backend texture cache
 	videoResetTextureCache();
+
+	// get backend texture settings
+	g_TexFilter2D = videoGetTextureFilter2D() ? G_TF_BILERP : G_TF_POINT;
 #endif
 
 	g_TexWords = mempAlloc(ALIGN16(g_TexNumConfigs * 4), MEMPOOL_STAGE);

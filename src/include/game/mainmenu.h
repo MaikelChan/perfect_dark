@@ -10,6 +10,9 @@ extern struct menudialogdef g_AcceptMissionMenuDialog;
 extern struct menudialogdef g_PreAndPostMissionBriefingMenuDialog;
 extern struct menudialogdef g_RetryMissionMenuDialog;
 extern struct menudialogdef g_NextMissionMenuDialog;
+#ifndef PLATFORM_N64
+extern struct menudialogdef g_ExitGameMenuDialog;
+#endif
 
 char *menuTextCurrentStageName(struct menuitem *item);
 char *soloMenuTextDifficulty(struct menuitem *item);

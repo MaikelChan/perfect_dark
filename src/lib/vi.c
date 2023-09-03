@@ -14,6 +14,9 @@
 #include "lib/mtx.h"
 #include "data.h"
 #include "types.h"
+#ifndef PLATFORM_N64
+#include "video.h"
+#endif
 
 #define TO_U16_A(x) ((u16)(x))
 #define TO_U16_B(x) ((x) & 0xffff)
@@ -280,6 +283,10 @@ void viHandleRetrace(void)
 	osSetIntMask(prevmask);
 #endif
 
+#ifndef PLATFORM_N64
+	videoSetWindowOffset(0, offset);
+#endif
+
 	osViSetMode(var8008dd60[1 - var8005ce74]);
 	osViBlack(g_ViUnblackTimer);
 	osViSetXScale(g_ViXScalesBySlot[1 - var8005ce74]);
@@ -460,8 +467,13 @@ void viShake(f32 intensity)
 		intensity = 0;
 	}
 
+#ifdef PLATFORM_N64
 	g_ViShakeIntensity = intensity;
 	g_ViShakeTimer = 10;
+#else
+	g_ViShakeIntensity = intensity * g_ViShakeIntensityMult;
+	g_ViShakeTimer = 20;
+#endif
 }
 
 void viSetMode(s32 mode)

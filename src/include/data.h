@@ -528,12 +528,23 @@ extern struct menudialogdef g_HtDetailsMenuDialog;
 extern struct menudialogdef g_HtFailedMenuDialog;
 extern struct menudialogdef g_HtCompletedMenuDialog;
 extern struct menudialogdef g_HangarListMenuDialog;
+
 #ifndef PLATFORM_N64
+
 extern f32 g_PlayerCrosshairSway;
 extern f32 g_PlayerDefaultFovY;
 extern s32 g_PlayerMouseAimMode;
 extern f32 g_PlayerMouseAimSpeedX;
 extern f32 g_PlayerMouseAimSpeedY;
+extern f32 g_ViShakeIntensityMult;
+extern u32 g_TexFilter2D;
+
+#define TEX_FILTER_2D g_TexFilter2D
+
+#else
+
+#define TEX_FILTER_2D G_TF_BILERP
+
 #endif
 
 #endif
