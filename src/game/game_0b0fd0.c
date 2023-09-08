@@ -209,7 +209,7 @@ f32 currentPlayerGetGunZoomFov(void)
 
 	if (weapon) {
 		f32 fov = weapon->aimsettings->zoomfov;
-		return fov;
+		return ADJUST_ZOOM_FOV(fov);
 	}
 
 	return 0;
@@ -240,8 +240,8 @@ void currentPlayerZoomOut(f32 fovpersec)
 
 		g_Vars.currentplayer->gunzoomfovs[index] *= 1.0f + amount * 0.1f;
 
-		if (g_Vars.currentplayer->gunzoomfovs[index] > 60) {
-			g_Vars.currentplayer->gunzoomfovs[index] = 60;
+		if (g_Vars.currentplayer->gunzoomfovs[index] > ADJUST_ZOOM_FOV(60)) {
+			g_Vars.currentplayer->gunzoomfovs[index] = ADJUST_ZOOM_FOV(60);
 		}
 	}
 }
@@ -271,8 +271,8 @@ void currentPlayerZoomIn(f32 fovpersec)
 
 		g_Vars.currentplayer->gunzoomfovs[index] /= 1 + amount * 0.1f;
 
-		if (g_Vars.currentplayer->gunzoomfovs[index] < 2) {
-			g_Vars.currentplayer->gunzoomfovs[index] = 2;
+		if (g_Vars.currentplayer->gunzoomfovs[index] < ADJUST_ZOOM_FOV(2)) {
+			g_Vars.currentplayer->gunzoomfovs[index] = ADJUST_ZOOM_FOV(2);
 		}
 	}
 }

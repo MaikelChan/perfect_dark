@@ -269,7 +269,11 @@ Gfx *hudmsgRenderZoomRange(Gfx *gdl, u32 alpha)
 			return gdl;
 		}
 	} else {
+#ifdef PLATFORM_N64
 		maxzoom = 60.0f / zoomfov;
+#else
+		maxzoom = g_PlayerDefaultFovY / zoomfov;
+#endif
 		curzoom = maxzoom - 1.0f / (zoomfov / zoominfovy) + 1;
 	}
 

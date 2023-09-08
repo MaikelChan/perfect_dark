@@ -208,6 +208,8 @@ f32 g_PlayerCrosshairSway = 1.f;
 s32 g_PlayerMouseAimMode = MOUSEAIM_CLASSIC;
 f32 g_PlayerMouseAimSpeedX = 0.75f;
 f32 g_PlayerMouseAimSpeedY = 0.75f;
+s32 g_PlayerFovAffectsZoom = 1;
+f32 g_PlayerFovZoomMultiplier = 1.0f;
 #endif
 
 /**

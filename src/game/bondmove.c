@@ -1712,8 +1712,8 @@ void bmoveProcessInput(bool allowc1x, bool allowc1y, bool allowc1buttons, bool i
 			}
 #endif
 
-			if (eraserfov < 2) {
-				eraserfov = 2;
+			if (eraserfov < ADJUST_ZOOM_FOV(2)) {
+				eraserfov = ADJUST_ZOOM_FOV(2);
 			}
 
 			g_Vars.currentplayer->gunzoomfovs[1] = eraserfov;

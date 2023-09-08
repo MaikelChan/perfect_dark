@@ -27,6 +27,8 @@ TARGET_PLATFORM ?=
 #
 # Supported values:
 #  * ntsc-final
+#  * pal-final
+#  * jpn-final
 
 ROMID ?= ntsc-final
 
@@ -98,7 +100,17 @@ TARGET_BIG_ENDIAN = 0 # TODO
 
 # The VERSION constant is used in the source to handle version-specific code.
 ifeq ($(ROMID),ntsc-final)
+  BIN_NAME = pd.exe
   VERSION = 2
+  IS_PAL = 0
+else ifeq ($(ROMID),pal-final)
+  BIN_NAME = pd.pal.exe
+  VERSION = 4
+  IS_PAL = 1
+else ifeq ($(ROMID),jpn-final)
+  BIN_NAME = pd.jpn.exe
+  VERSION = 5
+  IS_PAL = 0
 else
   $(error ROM version $(VERSION) is not supported)
 endif
@@ -113,7 +125,7 @@ DEFINES := \
   VERSION_TARGET=\"$(VERSION_TARGET)\" \
   VERSION_ROMID=\"$(VERSION_ROMID)\" \
   MATCHING=0 \
-  PAL=0 \
+  PAL=$(IS_PAL) \
   PIRACYCHECKS=0 \
   ROM_SIZE=$(ROM_SIZE) \
   _LANGUAGE_C=1
@@ -248,7 +260,7 @@ LDFLAGS := $(TARGET_LDFLAGS)
 # (We use this a lot)
 export ROMID
 
-BIN := $(B_DIR)/pd.exe
+BIN := $(B_DIR)/$(BIN_NAME)
 
 default: $(JSON_HEADERS) $(BIN)
 

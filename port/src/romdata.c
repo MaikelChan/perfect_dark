@@ -20,16 +20,31 @@
  * at load time, which is fucking terrible
  */
 
-#define ROMDATA_ROM_NAME "pd.ntsc-final.z64"
-#define ROMDATA_ROM_SIZE 33554432
-#define ROMDATA_ROM_HASH // TODO
-
 #define ROMDATA_FILEDIR "files"
 #define ROMDATA_SEGDIR "segs"
 
-// for ntsc-final
+#define ROMDATA_ROM_NAME "pd." VERSION_ROMID ".z64"
+#define ROMDATA_ROM_SIZE 33554432
+#define ROMDATA_ROM_HASH // TODO
+
+#if VERSION == VERSION_NTSC_FINAL
+#define ROMDATA_ROM_TITLE "Perfect Dark"
+#define ROMDATA_ROM_ID "NPDE"
 #define ROMDATA_FILES_OFS 0x28080
 #define ROMDATA_DATA_OFS 0x39850
+#elif VERSION == VERSION_PAL_FINAL
+#define ROMDATA_ROM_TITLE "Perfect Dark"
+#define ROMDATA_ROM_ID "NPDP"
+#define ROMDATA_FILES_OFS 0x28910
+#define ROMDATA_DATA_OFS 0x39850
+#elif VERSION == VERSION_JPN_FINAL
+#define ROMDATA_ROM_TITLE "PERFECT DARK"
+#define ROMDATA_ROM_ID "NPDJ"
+#define ROMDATA_FILES_OFS 0x28800
+#define ROMDATA_DATA_OFS 0x39850
+#else
+#error "This ROM version is unsupported."
+#endif
 
 #define ROMDATA_MAX_FILES 2048
 
@@ -59,37 +74,40 @@ static struct romfile fileSlots[ROMDATA_MAX_FILES];
 /* segment table for ntsc-final                                                     */
 /* size will get calculated automatically if it is 0                                */
 /* if there are replacement files in the data dir, they will be loaded instead      */
+/* offsets are specified for ntsc-final, pal-final and jpn-final in that order      */
 #define ROMSEG_LIST() \
-	ROMSEG_DECL_SEG(fontjpnsingle,      0x194b20,  0x0,      preprocessJpnFont       ) \
-	ROMSEG_DECL_SEG(fontjpnmulti,       0x19fb40,  0x0,      preprocessJpnFont       ) \
-	ROMSEG_DECL_SEG(animations,         0x1a15c0,  0x0,      preprocessAnimations    ) \
-	ROMSEG_DECL_SEG(mpconfigs,          0x7d0a40,  0x11E0,   preprocessMpConfigs     ) \
-	ROMSEG_DECL_SEG(mpstringsE,         0x7d1c20,  0x3700,   NULL                    ) \
-	ROMSEG_DECL_SEG(mpstringsJ,         0x7d5320,  0x3700,   NULL                    ) \
-	ROMSEG_DECL_SEG(mpstringsP,         0x7d8a20,  0x3700,   NULL                    ) \
-	ROMSEG_DECL_SEG(mpstringsG,         0x7dc120,  0x3700,   NULL                    ) \
-	ROMSEG_DECL_SEG(mpstringsF,         0x7df820,  0x3700,   NULL                    ) \
-	ROMSEG_DECL_SEG(mpstringsS,         0x7e2f20,  0x3700,   NULL                    ) \
-	ROMSEG_DECL_SEG(mpstringsI,         0x7e6620,  0x3700,   NULL                    ) \
-	ROMSEG_DECL_SEG(firingrange,        0x7e9d20,  0x1550,   NULL                    ) \
-	ROMSEG_DECL_SEG(fonttahoma,         0x7f7860,  0x0,      preprocessFont          ) \
-	ROMSEG_DECL_SEG(fontnumeric,        0x7f8b20,  0x0,      preprocessFont          ) \
-	ROMSEG_DECL_SEG(fonthandelgothicsm, 0x7f9d30,  0x0,      preprocessFont          ) \
-	ROMSEG_DECL_SEG(fonthandelgothicxs, 0x7fbfb0,  0x0,      preprocessFont          ) \
-	ROMSEG_DECL_SEG(fonthandelgothicmd, 0x7fdd80,  0x0,      preprocessFont          ) \
-	ROMSEG_DECL_SEG(fonthandelgothiclg, 0x8008e0,  0x0,      preprocessFont          ) \
-	ROMSEG_DECL_SEG(sfxctl,             0x80a250,  0x2fb80,  preprocessALBankFile    ) \
-	ROMSEG_DECL_SEG(sfxtbl,             0x839dd0,  0x4c2160, NULL                    ) \
-	ROMSEG_DECL_SEG(seqctl,             0xcfbf30,  0xa060,   preprocessALBankFile    ) \
-	ROMSEG_DECL_SEG(seqtbl,             0xd05f90,  0x17c070, NULL                    ) \
-	ROMSEG_DECL_SEG(sequences,          0xe82000,  0x563a0,  preprocessSequences     ) \
-	ROMSEG_DECL_SEG(texturesdata,       0x1d65f40, 0x291d60, NULL                    ) \
-	ROMSEG_DECL_SEG(textureslist,       0x1ff7ca0, 0x6d80,   preprocessTexturesList  )
+	ROMSEG_DECL_SEG(fontjpnsingle,      0x194b20,  0x180330,  0x0,       0x0,      preprocessJpnFont       ) \
+	ROMSEG_DECL_SEG(fontjpnmulti,       0x19fb40,  0x18b340,  0x0,       0x0,      preprocessJpnFont       ) \
+	ROMSEG_DECL_SEG(animations,         0x1a15c0,  0x18cdc0,  0x190c50,  0x0,      preprocessAnimations    ) \
+	ROMSEG_DECL_SEG(mpconfigs,          0x7d0a40,  0x7bc240,  0x7c00d0,  0x11e0,   preprocessMpConfigs     ) \
+	ROMSEG_DECL_SEG(mpstringsE,         0x7d1c20,  0x7bd420,  0x7c12b0,  0x3700,   NULL                    ) \
+	ROMSEG_DECL_SEG(mpstringsJ,         0x7d5320,  0x7c0b20,  0x7c49b0,  0x3700,   NULL                    ) \
+	ROMSEG_DECL_SEG(mpstringsP,         0x7d8a20,  0x7c4220,  0x7c80b0,  0x3700,   NULL                    ) \
+	ROMSEG_DECL_SEG(mpstringsG,         0x7dc120,  0x7c7920,  0x7cb7b0,  0x3700,   NULL                    ) \
+	ROMSEG_DECL_SEG(mpstringsF,         0x7df820,  0x7cb020,  0x7ceeb0,  0x3700,   NULL                    ) \
+	ROMSEG_DECL_SEG(mpstringsS,         0x7e2f20,  0x7ce720,  0x7d25b0,  0x3700,   NULL                    ) \
+	ROMSEG_DECL_SEG(mpstringsI,         0x7e6620,  0x7d1e20,  0x7d5cb0,  0x3700,   NULL                    ) \
+	ROMSEG_DECL_SEG(firingrange,        0x7e9d20,  0x7d5520,  0x7d93b0,  0x1550,   NULL                    ) \
+	ROMSEG_DECL_SEG(fonttahoma,         0x7f7860,  0x7e3060,  0x7e6ef0,  0x0,      preprocessFont          ) \
+	ROMSEG_DECL_SEG(fontnumeric,        0x7f8b20,  0x7e4320,  0x7e81b0,  0x0,      preprocessFont          ) \
+	ROMSEG_DECL_SEG(fonthandelgothicsm, 0x7f9d30,  0x7e5530,  0x7e93c0,  0x0,      preprocessFont          ) \
+	ROMSEG_DECL_SEG(fonthandelgothicxs, 0x7fbfb0,  0x7e87b0,  0x7ec640,  0x0,      preprocessFont          ) \
+	ROMSEG_DECL_SEG(fonthandelgothicmd, 0x7fdd80,  0x7eae20,  0x7eecb0,  0x0,      preprocessFont          ) \
+	ROMSEG_DECL_SEG(fonthandelgothiclg, 0x8008e0,  0x7eee70,  0x7f2d00,  0x0,      preprocessFont          ) \
+	ROMSEG_DECL_SEG(sfxctl,             0x80a250,  0x7f87e0,  0x7fc670,  0x2fb80,  preprocessALBankFile    ) \
+	ROMSEG_DECL_SEG(sfxtbl,             0x839dd0,  0x828360,  0x82c1f0,  0x4c2160, NULL                    ) \
+	ROMSEG_DECL_SEG(seqctl,             0xcfbf30,  0xcea4c0,  0xcee350,  0xa060,   preprocessALBankFile    ) \
+	ROMSEG_DECL_SEG(seqtbl,             0xd05f90,  0xcf4520,  0xcf83b0,  0x17c070, NULL                    ) \
+	ROMSEG_DECL_SEG(sequences,          0xe82000,  0xe70590,  0xe74420,  0x563a0,  preprocessSequences     ) \
+	ROMSEG_DECL_SEG(texturesdata,       0x1d65f40, 0x1d5ca20, 0x1d61f90, 0x0,      NULL                    ) \
+	ROMSEG_DECL_SEG(textureslist,       0x1ff7ca0, 0x1fee780, 0x1ff68f0, 0x0,      preprocessTexturesList  ) \
+	ROMSEG_DECL_SEG(copyright,          0x1ffea20, 0x1ff5500, 0x1ffd6b0, 0xb30,    NULL                    ) \
+	ROMSEG_DECL_SEG(fontjpn,            0x0,       0x0,       0x178c40,  0x17920,  preprocessJpnFont       )
 
 // declare the vars first
 
 #undef ROMSEG_DECL_SEG
-#define ROMSEG_DECL_SEG(name, ofs, size, preproc) u8 *ROMSEG_START(name), *ROMSEG_END(name);
+#define ROMSEG_DECL_SEG(name, ofs_ntsc, ofs_pal, ofs_jpn, size, preproc) u8 *ROMSEG_START(name), *ROMSEG_END(name);
 ROMSEG_LIST()
 
 // this is part of the animations seg and as such does not follow the naming convention
@@ -100,13 +118,21 @@ u8 *_animationsTableRomEnd;
 // then build the table
 
 #undef ROMSEG_DECL_SEG
-#define ROMSEG_DECL_SEG(name, ofs, size, preproc) { &ROMSEG_START(name), &ROMSEG_END(name), #name, (u8 *)ofs, size, preproc },
+
+#if VERSION == VERSION_NTSC_FINAL
+#define ROMSEG_DECL_SEG(name, ofs_ntsc, ofs_pal, ofs_jpn, size, preproc) { &ROMSEG_START(name), &ROMSEG_END(name), #name, (u8 *)ofs_ntsc, size, preproc },
+#elif VERSION == VERSION_PAL_FINAL
+#define ROMSEG_DECL_SEG(name, ofs_ntsc, ofs_pal, ofs_jpn, size, preproc) { &ROMSEG_START(name), &ROMSEG_END(name), #name, (u8 *)ofs_pal, size, preproc },
+#elif VERSION == VERSION_JPN_FINAL
+#define ROMSEG_DECL_SEG(name, ofs_ntsc, ofs_pal, ofs_jpn, size, preproc) { &ROMSEG_START(name), &ROMSEG_END(name), #name, (u8 *)ofs_jpn, size, preproc },
+#endif
+
 static struct romfile romSegs[] = {
 	ROMSEG_LIST()
 	{ NULL, NULL, NULL, NULL, 0, NULL },
 };
 
-/* the game sets g_LoadType to the type of file it expects,                     */
+/* the game sets g_LoadType to the type of file it expects,              */
 /* so we can hijack that in fileLoad and automatically byteswap the file */
 static preprocessfunc filePreprocFuncs[] = {
 	/* LOADTYPE_NONE  */ NULL,
@@ -133,7 +159,7 @@ static inline void romdataLoadRom(void)
 		sysFatalError("Wrong ROM file size.\nExpected: %u\nGot: %u", ROMDATA_ROM_SIZE, g_RomFileSize);
 	}
 
-	if (memcmp(g_RomFile + 0x3b, "NPDE", 4) || memcmp(g_RomFile + 0x20, "Perfect Dark", 12)) {
+	if (memcmp(g_RomFile + 0x3b, ROMDATA_ROM_ID, 4) || memcmp(g_RomFile + 0x20, ROMDATA_ROM_TITLE, sizeof(ROMDATA_ROM_TITLE) - 1)) {
 		sysFatalError("Wrong ROM file.\nEnsure that it is the correct NTSC v1.1 ROM in z64 format.");
 	}
 
@@ -169,6 +195,12 @@ static inline void romdataLoadRom(void)
 
 static inline void romdataInitSegment(struct romfile *seg)
 {
+	if (!seg->data) {
+		// unused in this ROM, skip it
+		sysLogPrintf(LOG_NOTE, "skipping segment %s", seg->name);
+		return;
+	}
+
 	if (!seg->size) {
 		// size unknown
 		if (seg[1].name) {

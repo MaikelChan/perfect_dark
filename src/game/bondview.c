@@ -2395,7 +2395,7 @@ Gfx *bviewDrawHorizonScanner(Gfx *gdl)
 	if (fovy == 0 || fovy == 60.0f) {
 		fovy = 1;
 	} else {
-		fovy = 60.0f / fovy + 1;
+		fovy = ADJUST_ZOOM_FOV(60.0f) / fovy;
 	}
 
 	sprintf(zoomtext, "%s %s%s%4.2fX", arrows, "", "", fovy);

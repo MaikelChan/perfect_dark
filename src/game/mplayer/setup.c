@@ -5227,6 +5227,7 @@ struct menuitem g_MpStuffMenuItems[] = {
 		0,
 		NULL,
 	},
+#ifdef PLATFORM_N64
 	{
 		MENUITEMTYPE_DROPDOWN,
 		0,
@@ -5235,6 +5236,7 @@ struct menuitem g_MpStuffMenuItems[] = {
 		0,
 		menuhandlerScreenRatio,
 	},
+#endif
 	{
 		MENUITEMTYPE_DROPDOWN,
 		0,

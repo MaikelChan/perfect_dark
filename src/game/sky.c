@@ -849,8 +849,8 @@ Gfx *skyRender(Gfx *gdl)
 				gdl = skyRenderTri(gdl, &watervertices2d[0], &watervertices2d[1], &watervertices2d[2], 130.0f, true);
 			}
 #else
-			Vtx *verts = gfxAllocateVertices(5);
-			Col *cols = gfxAllocateColours(5);
+			Vtx *verts = gfxAllocateVertices(numvertices);
+			Col *cols = gfxAllocateColours(numvertices);
 			Mtxf *mtx = gfxAllocateMatrix();
 			mtx4MultMtx4(camGetWorldToScreenMtxf(), &g_SkyMtx, mtx);
 			mtxF2L(mtx, mtx);
@@ -864,8 +864,8 @@ Gfx *skyRender(Gfx *gdl)
 				verts[i].x = watervertices3d[i].x;
 				verts[i].y = watervertices3d[i].y;
 				verts[i].z = watervertices3d[i].z;
-				verts[i].s = skyClamp(watervertices3d[i].s, -32768.f, 32767.f);
-				verts[i].t = skyClamp(watervertices3d[i].t, -32768.f, 32767.f);
+				verts[i].s = skyClamp(watervertices3d[i].s * 0.1f + g_SkyCloudOffset, -32768.f, 32767.f);
+				verts[i].t = skyClamp((watervertices3d[i].t  - g_SkyCloudOffset) * 0.1f + g_SkyCloudOffset, -32768.f, 32767.f);
 				verts[i].colour = i * 4;
 				cols[i].r = watervertices3d[i].r;
 				cols[i].g = watervertices3d[i].g;
@@ -1332,8 +1332,8 @@ Gfx *skyRender(Gfx *gdl)
 			gdl = skyRenderTri(gdl, &skyvertices2d[0], &skyvertices2d[1], &skyvertices2d[2], 130.0f, true);
 		}
 #else
-		Vtx *verts = gfxAllocateVertices(5);
-		Col *cols = gfxAllocateColours(5);
+		Vtx *verts = gfxAllocateVertices(numvertices);
+		Col *cols = gfxAllocateColours(numvertices);
 		Mtxf *mtx = gfxAllocateMatrix();
 		mtx4MultMtx4(camGetWorldToScreenMtxf(), &g_SkyMtx, mtx);
 		mtxF2L(mtx, mtx);

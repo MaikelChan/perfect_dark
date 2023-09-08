@@ -1034,6 +1034,13 @@ void preprocessMpConfigs(u8 *data, u32 size)
 		// TODO: are these required or are they always 0?
 		PD_SWAP_VAL(cfg->setup.fileguid.deviceserial);
 		PD_SWAP_VAL(cfg->setup.fileguid.fileid);
+		// convert MPWEAPON_ to take classic weapons into account
+		for (s32 j = 0; j < ARRAYCOUNT(cfg->setup.weapons); ++j) {
+			// old MPWEAPON_SHIELD (0x24/0x25) and above are affected
+			if (cfg->setup.weapons[j] >= MPWEAPON_PP9I) {
+				cfg->setup.weapons[j] += (MPWEAPON_SHIELD - MPWEAPON_PP9I);
+			}
+		}
 	}
 }
 

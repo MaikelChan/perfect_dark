@@ -7,7 +7,7 @@ import re
 import sys
 
 def main():
-    fd = open(sys.argv[1], 'r')
+    fd = open(sys.argv[1], 'r', encoding='UTF-8')
     data = fd.read()
     fd.close()
 

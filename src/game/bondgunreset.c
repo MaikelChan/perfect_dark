@@ -239,9 +239,9 @@ void bgunReset(void)
 
 	g_Vars.currentplayer->gunammooff = 0;
 	g_Vars.currentplayer->gunsightoff = GUNSIGHTREASON_NOTAIMING;
-	g_Vars.currentplayer->gunzoomfovs[0] = 15;
-	g_Vars.currentplayer->gunzoomfovs[1] = 60;
-	g_Vars.currentplayer->gunzoomfovs[2] = 30;
+	g_Vars.currentplayer->gunzoomfovs[0] = ADJUST_ZOOM_FOV(15);
+	g_Vars.currentplayer->gunzoomfovs[1] = ADJUST_ZOOM_FOV(60);
+	g_Vars.currentplayer->gunzoomfovs[2] = ADJUST_ZOOM_FOV(30);
 
 	if (stageGetIndex(g_Vars.stagenum) == STAGEINDEX_AIRBASE) {
 		g_Weapons[WEAPON_EYESPY]->name = L_GUN_061; // "DrugSpy"

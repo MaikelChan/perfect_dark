@@ -537,14 +537,18 @@ extern s32 g_PlayerMouseAimMode;
 extern f32 g_PlayerMouseAimSpeedX;
 extern f32 g_PlayerMouseAimSpeedY;
 extern f32 g_ViShakeIntensityMult;
+extern s32 g_PlayerFovAffectsZoom;
+extern f32 g_PlayerFovZoomMultiplier;
 extern u32 g_TexFilter2D;
 
 #define TEX_FILTER_2D g_TexFilter2D
+#define ADJUST_ZOOM_FOV(x) ((x) * g_PlayerFovZoomMultiplier)
 
-#else
+#else // PLATFORM_N64
 
 #define TEX_FILTER_2D G_TF_BILERP
+#define ADJUST_ZOOM_FOV(x) (x)
 
-#endif
+#endif // PLATFORM_N64
 
 #endif
