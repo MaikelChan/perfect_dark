@@ -28,6 +28,13 @@
 
 static LPTOP_LEVEL_EXCEPTION_FILTER prevExFilter;
 
+static void *crashGetModuleBase(const void *addr)
+{
+	HMODULE h = NULL;
+	GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, addr, &h);
+	return (void *)h;
+}
+
 static void crashStackTrace(char *msg, PEXCEPTION_POINTERS exinfo)
 {
 	CONTEXT context = *exinfo->ContextRecord;
@@ -72,7 +79,9 @@ static void crashStackTrace(char *msg, PEXCEPTION_POINTERS exinfo)
 	if (SymGetLineFromAddr64(process, (uintptr_t)exinfo->ExceptionRecord->ExceptionAddress, &disp, &line)) {
 		CRASH_MSG(": %s:%lu+%lu", line.FileName, line.LineNumber, disp);
 	}
-	CRASH_MSG("\n\nBACKTRACE:\n");
+	CRASH_MSG("\nMODULE: %p\n", crashGetModuleBase(exinfo->ExceptionRecord->ExceptionAddress));
+	CRASH_MSG("MAIN MODULE: %p\n", crashGetModuleBase(crashInit));
+	CRASH_MSG("\nBACKTRACE:\n");
 
 	char symbuf[sizeof(SYMBOL_INFO) + CRASH_MAX_SYM * sizeof(TCHAR)];
 	PSYMBOL_INFO sym = (PSYMBOL_INFO)symbuf;
@@ -138,6 +147,7 @@ static long __stdcall crashHandler(PEXCEPTION_POINTERS exinfo)
 #include <execinfo.h>
 #include <unistd.h>
 #include <ctype.h>
+#include <dlfcn.h>
 #include <sys/fcntl.h>
 
 static struct sigaction prevSigAction;
@@ -187,6 +197,15 @@ static s32 crashIsDebuggerPresent(void)
 	return result;
 }
 
+static void *crashGetModuleBase(const void *addr)
+{
+	Dl_info info;
+	if (dladdr(addr, &info)) {
+		return info.dli_fbase;
+	}
+	return NULL;
+}
+
 static void crashStackTrace(char *msg, s32 sig, void *pc)
 {
 	u32 msglen = 0;
@@ -210,6 +229,8 @@ static void crashStackTrace(char *msg, s32 sig, void *pc)
 		CRASH_MSG("%p\n", frames[0]);
 	}
 
+	CRASH_MSG("MODULE: %p\n", crashGetModuleBase(frames[0]));
+	CRASH_MSG("MAIN MODULE: %p\n", crashGetModuleBase(crashInit));
 	CRASH_MSG("\nBACKTRACE:\n");
 
 	s32 i;

@@ -172,3 +172,8 @@ void videoResetTextureCache(void)
 {
 	gfx_texture_cache_clear();
 }
+
+void videoFreeCachedTexture(const void *texptr)
+{
+	gfx_texture_cache_delete(texptr);
+}

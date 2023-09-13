@@ -56,6 +56,12 @@ struct weaponfunc *gsetGetWeaponFunction(struct gset *gset)
 	struct weapon *weapon = g_Weapons[gset->weaponnum];
 
 	if (weapon) {
+#ifdef AVOID_UB
+		// SuperDragon grenades have FUNC_2, so this can happen
+		if (gset->weaponfunc > FUNC_SECONDARY) {
+			return NULL;
+		}
+#endif
 		return weapon->functions[gset->weaponfunc];
 	}
 

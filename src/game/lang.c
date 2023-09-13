@@ -10,6 +10,9 @@
 #include "data.h"
 #include "types.h"
 #include "platform.h"
+#ifndef PLATFORM_N64
+#include "video.h"
+#endif
 
 /**
  * Officially, the NTSC versions are American English only, while the PAL
@@ -293,6 +296,11 @@ struct jpncharpixels *langGetJpnCharPixels(s32 codepoint)
 				(romptr_t) REF_SEG _fontjpnSegmentRomStart + ((codepoint * TMUL) * 0xc + TMUL * (24 * 0xc)),
 				TMUL * 0x0c);
 
+#ifndef PLATFORM_N64
+		// indicate that this is a new texture
+		videoFreeCachedTexture(&g_JpnCharCachePixels[TMUL * freeindexsingle]);
+#endif
+
 		return &g_JpnCharCachePixels[TMUL * freeindexsingle];
 	}
 
@@ -313,6 +321,11 @@ struct jpncharpixels *langGetJpnCharPixels(s32 codepoint)
 
 		dmaExec(&g_JpnCharCachePixels[freeindexsingle * 8], (romptr_t) REF_SEG _fontjpnsingleSegmentRomStart + (codepoint >> SHIFTAMOUNT) * 0x60, 0x60);
 
+#ifndef PLATFORM_N64
+		// indicate that this is a new texture
+		videoFreeCachedTexture(&g_JpnCharCachePixels[freeindexsingle * 8]);
+#endif
+
 		return &g_JpnCharCachePixels[freeindexsingle * 8];
 	}
 
@@ -323,6 +336,11 @@ struct jpncharpixels *langGetJpnCharPixels(s32 codepoint)
 		g_JpnCacheCacheItems[freeindexmulti + 1].codepoint = codepoint >> 1;
 
 		dmaExec(&g_JpnCharCachePixels[freeindexmulti * 8], (romptr_t) REF_SEG _fontjpnmultiSegmentRomStart + ((codepoint & 0x1fff) >> SHIFTAMOUNT) * 0x80, 0x80);
+
+#ifndef PLATFORM_N64
+		// indicate that this is a new texture
+		videoFreeCachedTexture(&g_JpnCharCachePixels[freeindexmulti * 8]);
+#endif
 
 		return &g_JpnCharCachePixels[freeindexmulti * 8];
 	}

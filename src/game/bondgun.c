@@ -6320,9 +6320,15 @@ void bgunDisarm(struct prop *attackerprop)
 			for (i = 0; i < 2; i++) {
 				struct weaponfunc *func = gsetGetWeaponFunction(&player->hands[i].gset);
 
+#ifdef AVOID_UB
+				if (func && (func->type & 0xff) == INVENTORYFUNCTYPE_THROW
+						&& player->hands[i].state == HANDSTATE_ATTACK
+						&& player->hands[i].stateminor == HANDSTATEMINOR_ATTACK_THROW_0) {
+#else
 				if ((func->type & 0xff) == INVENTORYFUNCTYPE_THROW
 						&& player->hands[i].state == HANDSTATE_ATTACK
 						&& player->hands[i].stateminor == HANDSTATEMINOR_ATTACK_THROW_0) {
+#endif
 					drop = false;
 					bgunCreateThrownProjectile(i + 2, &player->hands[i].gset);
 				}

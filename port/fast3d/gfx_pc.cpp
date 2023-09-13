@@ -558,9 +558,16 @@ static bool gfx_texture_cache_lookup(int i, const TextureCacheKey& key) {
     return false;
 }
 
-static void gfx_texture_cache_delete(const uint8_t* orig_addr) {
+void gfx_texture_cache_delete(const uint8_t* orig_addr) {
     gfx_flush();
-    rdp.textures_changed[0] = rdp.textures_changed[1] = true;
+
+    for (int i = 0; i < 2; ++i) {
+        if (rendering_state.textures[i] && rendering_state.textures[i]->first.texture_addr == orig_addr) {
+            rdp.textures_changed[i] = true;
+            rendering_state.textures[i] = nullptr;
+        }
+    }
+
     while (gfx_texture_cache.map.bucket_count() > 0) {
         TextureCacheKey key = { orig_addr, { 0 }, 0, 0 }; // bucket index only depends on the address
         size_t bucket = gfx_texture_cache.map.bucket(key);

@@ -39,6 +39,7 @@ void gfx_end_frame(void);
 void gfx_set_target_fps(int);
 void gfx_set_maximum_frame_latency(int latency);
 void gfx_texture_cache_clear(void);
+void gfx_texture_cache_delete(const uint8_t *orig_addr);
 int gfx_create_framebuffer(uint32_t width, uint32_t height);
 void gfx_set_framebuffer(int fb, float noise_scale) ;
 void gfx_reset_framebuffer(void);

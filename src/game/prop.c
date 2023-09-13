@@ -1191,7 +1191,11 @@ void handInflictMeleeDamage(s32 handnum, struct gset *gset, bool arg2)
 				struct model *model;
 				struct weaponfunc *func = gsetGetWeaponFunction(gset);
 
+#ifdef AVOID_UB
+				if (func && (func->type & 0xff) == INVENTORYFUNCTYPE_MELEE) {
+#else
 				if ((func->type & 0xff) == INVENTORYFUNCTYPE_MELEE) {
+#endif
 					struct weaponfunc_melee *meleefunc = (struct weaponfunc_melee *)func;
 					rangelimit = meleefunc->range;
 				}
