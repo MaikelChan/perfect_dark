@@ -318,6 +318,11 @@ s32 texGetHeightAtLod(struct tex *tex, s32 lod)
 {
 	s32 i;
 	s32 height = tex->height;
+	s32 depth = tex->depth;
+
+    if (depth == G_IM_SIZ_32b) {
+        height <<= 1;
+    }
 
 	if (lod == 0) {
 		return height;
