@@ -70,7 +70,7 @@ u8 ciGetFiringRangeScore(s32 weaponindex)
 {
 	// Data at firingrangescores is a u8 array where each score uses 2 bits
 
-#if VERSION == VERSION_JPN_FINAL
+#if (VERSION == VERSION_JPN_FINAL) && defined(PLATFORM_N64)
 	if (weaponindex == frGetWeaponIndexByWeapon(WEAPON_COMBATKNIFE)) {
 		// The knife doesn't exist in the JPN version.
 		// Treat it as completed so unlockables still work.
@@ -205,7 +205,7 @@ bool func0f19cbcc(s32 weapon)
 
 bool frIsWeaponAvailable(s32 weapon)
 {
-#if VERSION == VERSION_JPN_FINAL
+#if (VERSION == VERSION_JPN_FINAL) && defined(PLATFORM_N64)
 	if (weapon == WEAPON_COMBATKNIFE) {
 		return false;
 	}

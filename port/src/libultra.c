@@ -13,9 +13,10 @@
 #include "fs.h"
 
 #define EEPROM_SIZE (EEP16K_MAXBLOCKS * 8)
-#define EEPROM_FNAME "./eeprom.bin"
-#define OS_COUNTER_RATE 46875000ULL
+#define EEPROM_FNAME "eeprom.bin"
+#define EEPROM_PATH "$S/" EEPROM_FNAME
 
+#define OS_COUNTER_RATE 46875000ULL
 #define OS_COUNTER_NUM (OS_COUNTER_RATE / 1000ULL)
 #define OS_COUNTER_DEN (1000000ULL / 1000ULL)
 
@@ -26,6 +27,7 @@ s32 osResetType = 0;              /* 0 = cold reset */
 s32 osViClock = VI_NTSC_CLOCK;
 
 static u8 eeprom[EEPROM_SIZE];
+static char eepromPath[FS_MAXPATH + 1];
 static s32 eepromLoaded = 0;
 
 /* Time */
@@ -251,6 +253,21 @@ s32 __osMotorAccess(OSPfs *pfs, s32 cmd)
 
 /* Eeprom */
 
+static inline void osEepromSetPath(void)
+{
+	const char *extPath = sysArgGetString("--eeprom-file");
+	if (extPath && extPath[0]) {
+		if (extPath[0] == '$' || fsPathIsAbsolute(extPath) || fsPathIsCwdRelative(extPath)) {
+			strncpy(eepromPath, extPath, FS_MAXPATH);
+		} else {
+			// just a filename, look for it in the save dir
+			snprintf(eepromPath, FS_MAXPATH, "$S/%s", extPath);
+		}
+	} else {
+		strncpy(eepromPath, EEPROM_PATH, FS_MAXPATH);
+	}
+}
+
 static inline void osEeepromLoad(const char *fname)
 {
 	if (!eepromLoaded) {
@@ -260,7 +277,7 @@ static inline void osEeepromLoad(const char *fname)
 			fread(eeprom, 1, EEPROM_SIZE, fp);
 			fsFileClose(fp);
 		} else {
-			sysLogPrintf(LOG_NOTE, "could not read EEPROM from `%s`: %s", fname, strerror(errno));
+			sysLogPrintf(LOG_NOTE, "could not read EEPROM from `%s`: %s", fsFullPath(fname), strerror(errno));
 		}
 	}
 }
@@ -272,7 +289,7 @@ static inline void osEeepromSave(const char *fname)
 		fwrite(eeprom, 1, EEPROM_SIZE, fp);
 		fsFileClose(fp);
 	} else {
-		sysLogPrintf(LOG_ERROR, "could not save EEPROM to `%s`: %s", fname, strerror(errno));
+		sysLogPrintf(LOG_ERROR, "could not save EEPROM to `%s`: %s", fsFullPath(fname), strerror(errno));
 	}
 }
 
@@ -283,7 +300,11 @@ s32 osEepromProbe(OSMesgQueue *mq)
 
 s32 osEepromLongRead(OSMesgQueue *mq, u8 address, u8 *buffer, int nbytes)
 {
-	osEeepromLoad(EEPROM_FNAME);
+	if (!eepromPath[0]) {
+		osEepromSetPath();
+	}
+
+	osEeepromLoad(eepromPath);
 
 	memcpy(buffer, eeprom + address * 8, nbytes);
 
@@ -292,11 +313,15 @@ s32 osEepromLongRead(OSMesgQueue *mq, u8 address, u8 *buffer, int nbytes)
 
 s32 osEepromLongWrite(OSMesgQueue *mq, u8 address, u8 *buffer, int nbytes)
 {
-	osEeepromLoad(EEPROM_FNAME);
+	if (!eepromPath[0]) {
+		osEepromSetPath();
+	}
+
+	osEeepromLoad(eepromPath);
 
 	memcpy(eeprom + address * 8, buffer, nbytes);
 
-	osEeepromSave(EEPROM_FNAME);
+	osEeepromSave(eepromPath);
 
 	return 0;
 }

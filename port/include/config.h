@@ -2,7 +2,8 @@
 
 #include <PR/ultratypes.h>
 
-#define CONFIG_FNAME "./pd.ini"
+#define CONFIG_FNAME "pd.ini"
+#define CONFIG_PATH "$S/" CONFIG_FNAME
 
 void configInit(void);
 

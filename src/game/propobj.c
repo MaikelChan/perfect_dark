@@ -5170,7 +5170,10 @@ void hovUpdateGround(struct defaultobj *obj, struct hov *hov, struct coord *pos,
 	RoomNum testrooms[8];
 	struct coord testpos;
 
-	if (g_Vars.lvframe60 > hov->prevframe60) {
+#ifdef PLATFORM_N64
+	if (g_Vars.lvframe60 > hov->prevframe60)
+#endif
+	{
 		testpos.x = pos->x;
 		testpos.y = pos->y - 50;
 		testpos.z = pos->z;
@@ -5218,7 +5221,10 @@ void hovTick(struct defaultobj *obj, struct hov *hov)
 	f32 ymax;
 	f32 ymin;
 
-	if (g_Vars.lvframe60 > hov->prevframe60) {
+#ifdef PLATFORM_N64
+	if (g_Vars.lvframe60 > hov->prevframe60)
+#endif
+	{
 		prop = obj->prop;
 		bbox = objFindBboxRodata(obj);
 		type = &g_HovTypes[hov->type];
@@ -20972,6 +20978,7 @@ void alarmTick(void)
 
 		// These sounds are alarm sounds.
 		// They go for a fraction of a second and are repeated by this function.
+#ifdef PLATFORM_N64
 		switch (g_Vars.stagenum) {
 		case STAGE_CHICAGO:      sound = SFX_ALARM_CHICAGO; break;
 		case STAGE_G5BUILDING:   sound = SFX_ALARM_2; break;
@@ -20981,6 +20988,13 @@ void alarmTick(void)
 		case STAGE_INFILTRATION: sound = SFX_ALARM_INFILTRATION; break;
 		default:                 sound = SFX_ALARM_DEFAULT; break;
 		}
+#else
+		// allow user to override alarm
+		sound = g_Stages[g_StageIndex].alarm;
+		if (!sound) {
+			sound = SFX_ALARM_DEFAULT;
+		}
+#endif
 
 		if (!lvIsPaused()) {
 			if (g_AlarmAudioHandle) {

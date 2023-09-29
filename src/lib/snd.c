@@ -23,7 +23,9 @@
 #include "data.h"
 #include "types.h"
 #ifndef PLATFORM_N64
+#include "system.h"
 #include "preprocess.h"
+#include "mod.h"
 #endif
 
 #define MAX_SEQ_SIZE_4MB 1024 * 14
@@ -1637,22 +1639,55 @@ bool seqPlay(struct seqinstance *seq, s32 tracknum)
 		return false;
 	}
 
-	binlen = ALIGN16(g_SeqTable->entries[seq->tracknum].binlen) + 0x40;
+#ifndef PLATFORM_N64
+	// try to load external replacement, which can be either compressed or not
+	u32 extlen = 0;
+	u8 *extseq = modSequenceLoad(seq->tracknum, &extlen);
+	if (extseq) {
+		if (extlen > 2 && rzipIs1173(extseq)) {
+			// sequence is compressed; uncompress
+			binlen = ((u32)extseq[2] << 16) | ((u32)extseq[3] << 8) | (u32)extseq[4];
+			binlen = ALIGN16(binlen) + 0x40;
+			if (binlen >= g_SeqBufferSize) {
+				return false;
+			}
+			ziplen = ALIGN16(extlen);
+			binstart = seq->data;
+			zipstart = binstart + binlen - ziplen;
+			ziplen = rzipInflate(zipstart, binstart, scratch);
+		} else {
+			// sequence is uncompressed; just load as is
+			binlen = ALIGN16(extlen) + 0x40;
+			if (binlen >= g_SeqBufferSize) {
+				return false;
+			}
+			ziplen = extlen;
+			binstart = seq->data;
+			zipstart = NULL;
+			dmaExec(binstart, (romptr_t)extseq, extlen);
+		}
+		sysMemFree(extseq);
+	} else
+#endif
+	{
+		binlen = ALIGN16(g_SeqTable->entries[seq->tracknum].binlen) + 0x40;
 
-	if (binlen >= g_SeqBufferSize) {
-		return false;
+		if (binlen >= g_SeqBufferSize) {
+			return false;
+		}
+
+		ziplen = ALIGN16(g_SeqTable->entries[seq->tracknum].ziplen);
+#if VERSION < VERSION_NTSC_1_0
+		if (seq->data);
+#endif
+
+		binstart = seq->data;
+		zipstart = binstart + binlen - ziplen;
+	
+		dmaExec(zipstart, g_SeqTable->entries[seq->tracknum].romaddr, ziplen);
+		ziplen = rzipInflate(zipstart, binstart, scratch);
 	}
 
-	ziplen = ALIGN16(g_SeqTable->entries[seq->tracknum].ziplen);
-#if VERSION < VERSION_NTSC_1_0
-	if (seq->data);
-#endif
-	binstart = seq->data;
-	zipstart = binstart + binlen - ziplen;
-
-	dmaExec(zipstart, g_SeqTable->entries[seq->tracknum].romaddr, ziplen);
-
-	ziplen = rzipInflate(zipstart, binstart, scratch);
 #ifndef PLATFORM_N64
 	preprocessALCMidiHdr(binstart, ziplen);
 #endif

@@ -142,6 +142,11 @@ u32 var8007fbbc = 0x0000003c;
 u32 var8007fbc0 = 0x44444400;
 u32 var8007fbc4 = 0xffffff00;
 
+#ifndef PLATFORM_N64
+u32 g_HudAlignModeL = G_ASPECT_LEFT_EXT;
+u32 g_HudAlignModeR = G_ASPECT_RIGHT_EXT;
+#endif
+
 void textInit(void)
 {
 	// empty

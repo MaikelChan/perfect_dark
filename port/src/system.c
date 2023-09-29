@@ -7,13 +7,14 @@
 #include <sys/time.h>
 #include <SDL.h>
 #include <PR/ultratypes.h>
+#include "platform.h"
 #include "system.h"
 
-#define LOG_FNAME "./pd.log"
+#define LOG_FNAME "pd.log"
 #define USEC_IN_SEC 1000000ULL
 
 static u64 startTick = 0;
-static s32 logToFile = 0;
+static char logPath[2048];
 
 static s32 sysArgc;
 static const char **sysArgv;
@@ -25,10 +26,17 @@ void sysInit(s32 argc, const char **argv)
 	sysArgc = argc;
 	sysArgv = argv;
 
-	logToFile = sysArgCheck("--log");
-	if (logToFile) {
-		// clear log
-		FILE *f = fopen(LOG_FNAME, "wb");
+	if (sysArgCheck("--log")) {
+		// figure out where the log is and clear it
+		// try working dir first
+		snprintf(logPath, sizeof(logPath), "./%s", LOG_FNAME);
+		FILE *f = fopen(logPath, "wb");
+		if (!f) {
+			// try home dir
+			sysGetHomePath(logPath, sizeof(logPath) - 1);
+			strncat(logPath, "/" LOG_FNAME, sizeof(logPath) - 1);
+			f = fopen(logPath, "wb");
+		}
 		if (f) {
 			fclose(f);
 		}
@@ -98,8 +106,8 @@ void sysLogPrintf(s32 level, const char *fmt, ...)
 	vsnprintf(logmsg, sizeof(logmsg), fmt, ap);
 	va_end(ap);
 
-	if (logToFile) {
-		FILE *f = fopen(LOG_FNAME, "ab");
+	if (logPath[0]) {
+		FILE *f = fopen(logPath, "ab");
 		if (f) {
 			fprintf(f, "%s%s\n", prefix[level], logmsg);
 			fclose(f);
@@ -141,6 +149,41 @@ void sysGetExecutablePath(char *outPath, const u32 outLen)
 {
 	// try asking SDL
 	char *sdlPath = SDL_GetBasePath();
+
+	if (sdlPath && *sdlPath) {
+		// -1 to trim trailing slash
+		const u32 len = strlen(sdlPath) - 1;
+		if (len < outLen) {
+			memcpy(outPath, sdlPath, len);
+			outPath[len] = '\0';
+		}
+	} else if (sysArgc && sysArgv[0] && sysArgv[0][0]) {
+		// get exe path from argv[0]
+		strncpy(outPath, sysArgv[0], outLen - 1);
+		outPath[outLen - 1] = '\0';
+	} else if (outLen > 1) {
+		// give up, use working directory instead
+		outPath[0] = '.';
+		outPath[1] = '\0';
+	}
+
+#ifdef PLATFORM_WIN32
+	// replace all backslashes with forward slashes, windows supports both
+	for (u32 i = 0; i < outLen && outPath[i]; ++i) {
+		if (outPath[i] == '\\') {
+			outPath[i] = '/';
+		}
+	}
+#endif
+
+	SDL_free(sdlPath);
+}
+
+void sysGetHomePath(char *outPath, const u32 outLen)
+{
+	// try asking SDL
+	char *sdlPath = SDL_GetPrefPath("", "perfectdark");
+
 	if (sdlPath && *sdlPath) {
 		// -1 to trim trailing slash
 		const u32 len = strlen(sdlPath) - 1;
@@ -153,6 +196,16 @@ void sysGetExecutablePath(char *outPath, const u32 outLen)
 		outPath[0] = '.';
 		outPath[1] = '\0';
 	}
+
+#ifdef PLATFORM_WIN32
+	// replace all backslashes with forward slashes, windows supports both
+	for (u32 i = 0; i < outLen && outPath[i]; ++i) {
+		if (outPath[i] == '\\') {
+			outPath[i] = '/';
+		}
+	}
+#endif
+
 	SDL_free(sdlPath);
 }
 

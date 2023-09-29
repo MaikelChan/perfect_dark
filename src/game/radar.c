@@ -323,7 +323,7 @@ Gfx *radarRender(Gfx *gdl)
 			g_RadarY -= 6;
 		}
 #ifndef PLATFORM_N64
-		gSPExtraGeometryModeEXT(gdl++, G_ASPECT_MODE_EXT, G_ASPECT_RIGHT_EXT);
+		gSPExtraGeometryModeEXT(gdl++, G_ASPECT_MODE_EXT, g_HudAlignModeR);
 #endif
 	}
 

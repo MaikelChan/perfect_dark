@@ -204,6 +204,7 @@ static struct RenderingState {
     float depth_zfar;
     bool decal_mode;
     bool alpha_blend;
+    bool modulate;
     struct XYWidthHeight viewport, scissor;
     struct ShaderProgram* shader_program;
     TextureCacheNode* textures[SHADER_MAX_TEXTURES];
@@ -216,6 +217,7 @@ struct GfxDimensions gfx_current_dimensions;
 static struct GfxDimensions gfx_prev_dimensions;
 struct XYWidthHeight gfx_current_game_window_viewport;
 struct XYWidthHeight gfx_current_native_viewport;
+bool gfx_framebuffers_enabled = true;
 
 static bool game_renders_to_framebuffer;
 static int game_framebuffer;
@@ -1279,6 +1281,7 @@ static void gfx_sp_tri1(uint8_t vtx1_idx, uint8_t vtx2_idx, uint8_t vtx3_idx, bo
     bool invisible =
         (rdp.other_mode_l & (3 << 24)) == (G_BL_0 << 24) && (rdp.other_mode_l & (3 << 20)) == (G_BL_CLR_MEM << 20);
     bool use_grayscale = rdp.grayscale;
+    bool use_modulate = use_alpha && (rsp.extra_geometry_mode & G_MODULATE_EXT) != 0;
 
     if (texture_edge) {
         use_alpha = true;
@@ -1400,10 +1403,11 @@ static void gfx_sp_tri1(uint8_t vtx1_idx, uint8_t vtx2_idx, uint8_t vtx3_idx, bo
         gfx_rapi->load_shader(prg);
         rendering_state.shader_program = prg;
     }
-    if (use_alpha != rendering_state.alpha_blend) {
+    if (use_alpha != rendering_state.alpha_blend || use_modulate != rendering_state.modulate) {
         gfx_flush();
-        gfx_rapi->set_use_alpha(use_alpha);
+        gfx_rapi->set_use_alpha(use_alpha, use_modulate);
         rendering_state.alpha_blend = use_alpha;
+        rendering_state.modulate = use_modulate;
     }
     uint8_t num_inputs;
     bool used_textures[2];
@@ -2674,7 +2678,7 @@ extern "C" void gfx_start_frame(void) {
 
     bool different_size = gfx_current_dimensions.width != gfx_current_game_window_viewport.width ||
                           gfx_current_dimensions.height != gfx_current_game_window_viewport.height;
-    if (different_size || gfx_msaa_level > 1) {
+    if (gfx_framebuffers_enabled && (different_size || gfx_msaa_level > 1)) {
         game_renders_to_framebuffer = true;
         if (different_size) {
             gfx_rapi->update_framebuffer_parameters(game_framebuffer, gfx_current_dimensions.width,

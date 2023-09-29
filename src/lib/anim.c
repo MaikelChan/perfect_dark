@@ -12,6 +12,9 @@
 #include "lib/libc/ll.h"
 #include "data.h"
 #include "types.h"
+#ifndef PLATFORM_N64
+#include "mod.h"
+#endif
 
 #define ANIM_HEADER_CACHE_SIZE 40
 #define ANIM_FRAME_CACHE_SIZE  32
@@ -38,6 +41,10 @@ s32 g_AnimMaxBytesPerFrame = 176;
 s32 g_AnimMaxHeaderLength = 608;
 bool g_AnimHostEnabled = false;
 u8 *g_AnimHostSegment = NULL;
+
+#ifndef PLATFORM_N64
+u8 **g_AnimReplacements;
+#endif
 
 extern u8 EXT_SEG _animationsTableRomStart;
 extern u8 EXT_SEG _animationsTableRomEnd;
@@ -81,6 +88,10 @@ void animsInit(void)
 	g_AnimHeaderBytes     = mempAlloc(ALIGN64(ANIM_HEADER_CACHE_SIZE * sizeof(*g_AnimHeaderBytes)), MEMPOOL_PERMANENT);
 	g_AnimHeaderAnimNums  = mempAlloc(ALIGN64(ANIM_HEADER_CACHE_SIZE * sizeof(*g_AnimHeaderAnimNums)), MEMPOOL_PERMANENT);
 	g_AnimHeaderBirths    = mempAlloc(ALIGN64(ANIM_HEADER_CACHE_SIZE * sizeof(*g_AnimHeaderBirths)), MEMPOOL_PERMANENT);
+#ifndef PLATFORM_N64
+	g_AnimReplacements    = mempAlloc(ALIGN64(g_NumAnimations * sizeof(u8 *)), MEMPOOL_PERMANENT);
+	bzero(g_AnimReplacements, g_NumAnimations * sizeof(u8 *));
+#endif
 
 	animsInitTables();
 
@@ -305,6 +316,16 @@ u8 animLoadFrame(s16 animnum, s32 framenum)
 
 		if (g_Anims[animnum].bytesperframe) {
 			offset = g_Anims[animnum].bytesperframe * loadframenum + (g_Anims[animnum].data + g_Anims[animnum].headerlen);
+#ifndef PLATFORM_N64
+			if (g_Anims[animnum].data == 0xffffffff) {
+				// load external replacement (this will fatal error if there's no data)
+				if (!g_AnimReplacements[animnum]) {
+					g_AnimReplacements[animnum] = modAnimationLoadData(animnum);
+				}
+				offset = g_Anims[animnum].bytesperframe * loadframenum + g_Anims[animnum].headerlen;
+				g_AnimFrameBytes[slot] = g_AnimReplacements[animnum] + offset;
+			} else
+#endif
 			g_AnimFrameBytes[slot] = animDma(&g_AnimFrameByteSlots[slot * g_AnimMaxBytesPerFrame], offset, g_Anims[animnum].bytesperframe);
 		} else {
 			g_AnimFrameBytes[slot] = &g_AnimFrameByteSlots[slot * g_AnimMaxBytesPerFrame];
@@ -355,6 +376,15 @@ void animLoadHeader(s16 animnum)
 
 		tmp = g_Anims[animnum].headerlen;
 
+#ifndef PLATFORM_N64
+		if (g_Anims[animnum].data == 0xffffffff) {
+			// load external replacement (this will fatal error if there's no data)
+			if (!g_AnimReplacements[animnum]) {
+				g_AnimReplacements[animnum] = modAnimationLoadData(animnum);
+			}
+			g_AnimHeaderBytes[slot] = g_AnimReplacements[animnum];
+		} else
+#endif
 		g_AnimHeaderBytes[slot] = animDma(&g_AnimHeaderByteSlots[slot * g_AnimMaxHeaderLength], g_Anims[animnum].data, tmp);
 		g_AnimToHeaderSlot[animnum] = slot;
 		g_AnimHeaderAnimNums[slot] = animnum;

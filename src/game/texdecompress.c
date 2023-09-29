@@ -10,6 +10,9 @@
 #include "lib/rzip.h"
 #include "data.h"
 #include "types.h"
+#ifndef PLATFORM_N64
+#include "mod.h"
+#endif
 
 struct texture *g_Textures;
 u32 var800aabc4;
@@ -2256,12 +2259,19 @@ void texLoad(texnum_t *updateword, struct texpool *pool, bool unusedarg)
 				return;
 			}
 
-			// Copy the compressed texture to RAM
-			dmaExec(alignedcompbuffer,
-					(romptr_t) REF_SEG _texturesdataSegmentRomStart + (thisoffset & 0xfffffff8),
-					((u32) (nextoffset - thisoffset) + 0x1f) >> 4 << 4);
-
-			compptr = (u8 *) alignedcompbuffer + (thisoffset & 7);
+#ifndef PLATFORM_N64
+			// try to load external replacement if present
+			if (modTextureLoad(g_TexNumToLoad, alignedcompbuffer, 4096) > 0) {
+				compptr = alignedcompbuffer;
+			} else
+#endif
+			{
+				// Copy the compressed texture to RAM
+				dmaExec(alignedcompbuffer,
+						(romptr_t) REF_SEG _texturesdataSegmentRomStart + (thisoffset & 0xfffffff8),
+						((u32) (nextoffset - thisoffset) + 0x1f) >> 4 << 4);
+				compptr = (u8 *) alignedcompbuffer + (thisoffset & 7);
+			}
 			thisoffset = 0;
 			hasloddata = (*compptr & 0x80) >> 7;
 			iszlib = (*compptr & 0x40) >> 6;

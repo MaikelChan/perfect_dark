@@ -316,9 +316,16 @@ Gfx *bviewDrawStatic(Gfx *gdl, u32 arg1, s32 arg2)
 
 	gdl = bviewPrepareStaticI8(gdl, arg1, arg2);
 
+#ifdef PLATFORM_N64
 	for (y = viewtop; y < viewtop + viewheight; y++) {
 		gdl = bviewCopyPixels(gdl, fb2, random() % 240, 5, y, 1.0f, viewleft, viewwidth);
 	}
+#else
+	gDPSetCombineLERP(gdl++,
+			NOISE, 0, ENVIRONMENT, 0, 0, 0, 0, ENVIRONMENT,
+			NOISE, 0, ENVIRONMENT, 0, 0, 0, 0, ENVIRONMENT);
+	gDPFillRectangleEXT(gdl++, viewleft, viewtop, viewleft + viewwidth, viewtop + viewheight);
+#endif
 
 	if (fb2) {
 		// empty
@@ -356,6 +363,7 @@ Gfx *bviewDrawSlayerRocketInterlace(Gfx *gdl, u32 colour, u32 alpha)
 
 	gdl = bviewPrepareStaticRgba16(gdl, colour, alpha);
 
+#ifdef PLATFORM_N64
 	for (y = viewtop; y < viewtop + viewheight; y++) {
 		s32 offsety = y - offset;
 
@@ -371,6 +379,26 @@ Gfx *bviewDrawSlayerRocketInterlace(Gfx *gdl, u32 colour, u32 alpha)
 
 		angle += increment;
 	}
+#else
+	gDPSetCombineMode(gdl++, G_CC_PRIMITIVE, G_CC_PRIMITIVE);
+	gSPSetExtraGeometryModeEXT(gdl++, G_MODULATE_EXT);
+
+	for (y = viewtop; y < viewtop + viewheight; y++) {
+		s32 offsety = y - offset;
+
+		if (offsety % 8 == 0 || y == viewtop) {
+			if (offsety % 16 < 8) {
+				gDPSetPrimColor(gdl++, 0, 0, 0xff, 0xff, 0x00, 0xff);
+			} else {
+				gDPSetPrimColor(gdl++, 0, 0, 0xff, 0xff, 0xbf, 0xff);
+			}
+		}
+
+		gDPFillRectangle(gdl++, viewleft, y, viewleft + viewwidth, y + 1);
+	}
+
+	gSPClearExtraGeometryModeEXT(gdl++, G_MODULATE_EXT);
+#endif
 
 	return gdl;
 }
@@ -401,6 +429,7 @@ Gfx *bviewDrawFilmInterlace(Gfx *gdl, u32 colour, u32 alpha)
 
 	gdl = bviewPrepareStaticRgba16(gdl, colour, alpha);
 
+#ifdef PLATFORM_N64
 	for (y = viewtop; y < viewtop + viewheight; y++) {
 		s32 offsety = y - offset;
 		s32 tmpy = y;
@@ -419,6 +448,31 @@ Gfx *bviewDrawFilmInterlace(Gfx *gdl, u32 colour, u32 alpha)
 
 		gdl = bviewCopyPixels(gdl, fb, tmpy, 5, y, 1, viewleft, viewwidth);
 	}
+#else
+	gDPSetCombineMode(gdl++, G_CC_PRIMITIVE, G_CC_PRIMITIVE);
+	gSPSetExtraGeometryModeEXT(gdl++, G_MODULATE_EXT);
+
+	for (y = viewtop; y < viewtop + viewheight; y++) {
+		s32 offsety = y - offset;
+		s32 tmpy = y;
+
+		if (offsety % 6 == 0 || y == viewtop) {
+			if (offsety % 12 < 6) {
+				gDPSetPrimColor(gdl++, 0, 0, 0x7f, 0xff, 0xff, 0xff);
+			} else {
+				gDPSetPrimColor(gdl++, 0, 0, 0x00, 0xaf, 0xff, 0xff);
+			}
+		}
+
+		if (random() % 20 == 1) {
+			tmpy += random() % 200;
+		}
+
+		gDPFillRectangle(gdl++, viewleft, tmpy, viewleft + viewwidth, tmpy + 1);
+	}
+
+	gSPClearExtraGeometryModeEXT(gdl++, G_MODULATE_EXT);
+#endif
 
 	return gdl;
 }
@@ -1992,6 +2046,7 @@ Gfx *bviewDrawNvLens(Gfx *gdl)
 
 	var8007f878++;
 
+#ifdef PLATFORM_N64
 	for (y = viewtop; y < viewbottom; y++) {
 		u8 green;
 
@@ -2006,6 +2061,27 @@ Gfx *bviewDrawNvLens(Gfx *gdl)
 
 		gdl = bviewCopyPixels(gdl, fb, y, 5, y, 1, viewleft, viewwidth);
 	}
+#else
+	gDPSetCombineMode(gdl++, G_CC_PRIMITIVE, G_CC_PRIMITIVE);
+	gSPSetExtraGeometryModeEXT(gdl++, G_MODULATE_EXT);
+
+	for (y = viewtop; y < viewbottom; y++) {
+		u8 green;
+
+		if (((var8007f878 & 1) != (y & 1)) != 0) {
+			u8 tmp = random() % 12;
+			green = 0xff - tmp;
+		} else {
+			green = 0x94;
+		}
+
+		gDPSetPrimColorViaWord(gdl++, 0, 0, (green << 16) + 0xff);
+
+		gDPFillRectangle(gdl++, viewleft, y, viewleft + viewwidth, y + 1);
+	}
+
+	gSPClearExtraGeometryModeEXT(gdl++, G_MODULATE_EXT);
+#endif
 
 	return gdl;
 }
@@ -2155,6 +2231,11 @@ Gfx *bviewDrawIrLens(Gfx *gdl)
 
 	sqinnerradius = innerradius * innerradius;
 
+#ifndef PLATFORM_N64
+	gDPSetCombineMode(gdl++, G_CC_PRIMITIVE, G_CC_PRIMITIVE);
+	gSPSetExtraGeometryModeEXT(gdl++, G_MODULATE_EXT);
+#endif
+
 	for (i = scantop; i < scanbottom; i++) {
 #if VERSION >= VERSION_NTSC_1_0
 		if (i & 1) {
@@ -2176,7 +2257,11 @@ Gfx *bviewDrawIrLens(Gfx *gdl)
 			red = 255;
 		}
 
+#ifdef PLATFORM_N64
 		gDPSetEnvColorViaWord(gdl++, (red << 24) + 0xff);
+#else
+		gDPSetPrimColorViaWord(gdl++, 0, 0, (red << 24) + 0xff);
+#endif
 
 		a0 = viewcentrey - i;
 
@@ -2188,6 +2273,7 @@ Gfx *bviewDrawIrLens(Gfx *gdl)
 			s32 semicircleright = viewcentrex + semicirclewidth;
 			s32 rightsidewidth = viewwidth - semicircleright;
 
+#ifdef PLATFORM_N64
 			// Left and right of semicircle
 			gdl = bviewCopyPixels(gdl, fb, i, 5, i, 1.0f, viewleft, viewcentrex);
 			gdl = bviewCopyPixels(gdl, fb, i, 5, i, 1.0f, semicircleright, rightsidewidth);
@@ -2198,6 +2284,18 @@ Gfx *bviewDrawIrLens(Gfx *gdl)
 		} else {
 			gdl = bviewCopyPixels(gdl, fb, i, 5, i, 1.0f, viewleft, viewwidth);
 		}
+#else
+			// Left and right of semicircle
+			gDPFillRectangle(gdl++, viewleft, i, viewcentrex, i + 1);
+			gDPFillRectangle(gdl++, semicircleright, i, semicircleright + rightsidewidth, i + 1);
+
+			// The semicircle itself has a static colour
+			gDPSetPrimColorViaWord(gdl++, 0, 0, 0xee0000ff);
+			gDPFillRectangle(gdl++, viewcentrex, i, viewcentrex + semicirclewidth, i + 1);
+		} else {
+			gDPFillRectangle(gdl++, viewleft, i, viewleft + viewwidth, i + 1);
+		}
+#endif
 
 #if VERSION >= VERSION_NTSC_1_0
 		if (g_IrScanlines[g_Vars.currentplayernum][i] > fadeincrement) {
@@ -2209,6 +2307,10 @@ Gfx *bviewDrawIrLens(Gfx *gdl)
 		}
 #endif
 	}
+
+#ifndef PLATFORM_N64
+	gSPClearExtraGeometryModeEXT(gdl++, G_MODULATE_EXT);
+#endif
 
 #ifdef AVOID_UB
 	if (g_Menus[mpindex].curdialog == NULL) {

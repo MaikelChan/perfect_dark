@@ -12,6 +12,7 @@
 #include "game/texdecompress.h"
 #include "preprocess.h"
 #include "romdata.h"
+#include "mod.h"
 #include "system.h"
 
 static inline f32 swapF32(f32 x) { *(u32 *)&x = PD_BE32(*(u32 *)&x); return x; }
@@ -43,7 +44,7 @@ static inline u32 swapUnk(u32 x) { assert(0 && "unknown type"); return x; }
 static u8 swapmap[0x40000 >> 3];
 
 static inline u32 alreadySwapped(const intptr_t addr) {
-	const u32 mask = (1 << (addr & 3));
+	const u32 mask = (1 << (addr & 7));
 	const u32 old = swapmap[addr >> 3] & mask;
 	if (!old) {
 		swapmap[addr >> 3] |= mask;
@@ -439,8 +440,11 @@ static u8 *preprocessModelNode(struct modelnode *node, u8 *base, u32 ofs)
 	return (u8 *)UNSEGADDR(lowptr);
 }
 
-static inline void preprocessPadData(u8 *ptr)
+static inline void preprocessPadData(u8 *ptr, u32 size)
 {
+	// we'll try to avoid overwriting the next pad if possible in case the flags are wrong
+	u8 *end = ptr + size;
+
 	// for some insane reason pads are packed
 	// header is always 1 word, the rest of the fields depends on the flags
 	u32 *header = (u32 *) ptr;
@@ -450,14 +454,14 @@ static inline void preprocessPadData(u8 *ptr)
 
 	ptr += 4;
 
-	if (flags & PADFLAG_INTPOS) {
+	if ((flags & PADFLAG_INTPOS) || size <= 12) {
 		// position is 3x s16
 		s16 *sbuffer = (s16 *) ptr;
 		PD_SWAP_VAL(sbuffer[0]);
 		PD_SWAP_VAL(sbuffer[1]);
 		PD_SWAP_VAL(sbuffer[2]);
 		ptr += 8;
-	} else {
+	} else if (size > 12) {
 		// position is 3x f32
 		f32 *fbuffer = (f32 *) ptr;
 		PD_SWAP_VAL(fbuffer[0]);
@@ -466,7 +470,7 @@ static inline void preprocessPadData(u8 *ptr)
 		ptr += 12;
 	}
 
-	if (!(flags & (PADFLAG_UPALIGNTOX | PADFLAG_UPALIGNTOY | PADFLAG_UPALIGNTOZ))) {
+	if (!(flags & (PADFLAG_UPALIGNTOX | PADFLAG_UPALIGNTOY | PADFLAG_UPALIGNTOZ)) && (end >= ptr + 12)) {
 		// up vector, 3x f32
 		f32 *fbuffer = (f32 *) ptr;
 		PD_SWAP_VAL(fbuffer[0]);
@@ -475,7 +479,7 @@ static inline void preprocessPadData(u8 *ptr)
 		ptr += 12;
 	}
 
-	if (!(flags & (PADFLAG_LOOKALIGNTOX | PADFLAG_LOOKALIGNTOY | PADFLAG_LOOKALIGNTOZ))) {
+	if (!(flags & (PADFLAG_LOOKALIGNTOX | PADFLAG_LOOKALIGNTOY | PADFLAG_LOOKALIGNTOZ)) && (end >= ptr + 12)) {
 		// look vector, 3x f32
 		f32 *fbuffer = (f32 *) ptr;
 		PD_SWAP_VAL(fbuffer[0]);
@@ -484,7 +488,7 @@ static inline void preprocessPadData(u8 *ptr)
 		ptr += 12;
 	}
 
-	if (flags & PADFLAG_HASBBOXDATA) {
+	if ((flags & PADFLAG_HASBBOXDATA) && (end >= ptr + 24)) {
 		// bbox, 3x f32 mins + 3x f32 maxs
 		f32 *fbuffer = (f32 *) ptr;
 		PD_SWAP_VAL(fbuffer[0]);
@@ -1008,18 +1012,25 @@ void preprocessAnimations(u8 *data, u32 size)
 	// set the anim table pointers as well
 	extern u8 *_animationsTableRomStart;
 	extern u8 *_animationsTableRomEnd;
+
 	// the animation table is at the end of the segment
 	u32 *animtbl = (void *)(data + size - 0x38a0);
 	_animationsTableRomStart = (u8 *)animtbl;
 	_animationsTableRomEnd = data + size;
+
 	PD_SWAP_VAL(*animtbl);
 	const u32 count = *animtbl++;
+
 	struct animtableentry *anim = (struct animtableentry *)animtbl;
 	for (u32 i = 0; i < count; ++i, ++anim) {
 		PD_SWAP_VAL(anim->numframes);
 		PD_SWAP_VAL(anim->bytesperframe);
 		PD_SWAP_VAL(anim->headerlen);
 		PD_SWAP_VAL(anim->data);
+		// if an external replacement exists, replace the table entry and mark the offset
+		if (modAnimationLoadDescriptor(i, anim) > 0) {
+			anim->data = 0xffffffff;
+		}
 	}
 }
 
@@ -1104,9 +1115,13 @@ void preprocessTexturesList(u8 *data, u32 size)
 	const u32 count = size / sizeof(*tex);
 	for (u32 i = 0; i < count; ++i, ++tex) {
 		// TODO: it sure looks like none of the fields except soundsurfacetype, surfacetype and dataoffset are set
-		// just swap the last 3 bytes of the first word
+		// just swap the last 3 bytes of the first word...
 		const u32 dofs = (u32)tex->dataoffset << 8;
 		tex->dataoffset = PD_BE32(dofs);
+		// ...and the surface types in the first byte
+		const u8 tmp = tex->soundsurfacetype;
+		tex->soundsurfacetype = tex->surfacetype;
+		tex->surfacetype = tmp;
 	}
 }
 
@@ -1182,7 +1197,9 @@ void preprocessPadsFile(u8 *data, u32 size)
 	for (s32 i = 0; i < hdr->numpads; ++i) {
 		if (hdr->padoffsets[i]) {
 			PD_SWAP_VAL(hdr->padoffsets[i]);
-			preprocessPadData(PD_PTR_BASE(hdr->padoffsets[i], hdr));
+			const u32 size = (i + 1 < hdr->numpads && hdr->padoffsets[i + 1]) ?
+				(PD_BE16(hdr->padoffsets[i + 1]) - hdr->padoffsets[i]) : 0x40;
+			preprocessPadData(PD_PTR_BASE(hdr->padoffsets[i], hdr), size);
 		}
 	}
 

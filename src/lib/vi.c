@@ -915,7 +915,7 @@ Gfx *viSetFillColour(Gfx *gdl, s32 r, s32 g, s32 b)
 	if (g_ViIs16Bit) {
 		gDPSetFillColor(gdl++, (GPACK_RGBA5551(r, g, b, 1) << 16) | GPACK_RGBA5551(r, g, b, 1));
 	} else {
-		gDPSetFillColor(gdl++, r << 24 | g << 16 | b << 8 | 0xff);
+		(gdl++, r << 24 | g << 16 | b << 8 | 0xff);
 	}
 
 	return gdl;

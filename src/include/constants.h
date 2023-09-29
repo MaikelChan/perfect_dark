@@ -2958,34 +2958,34 @@
 #define MPWEAPON_DEVASTATOR       0x16
 #define MPWEAPON_ROCKETLAUNCHER   0x17
 #define MPWEAPON_SLAYER           0x18
-#define MPWEAPON_COMBATKNIFE      (VERSION == VERSION_JPN_FINAL ?    0 : 0x19)
-#define MPWEAPON_CROSSBOW         (VERSION == VERSION_JPN_FINAL ? 0x19 : 0x1a)
-#define MPWEAPON_TRANQUILIZER     (VERSION == VERSION_JPN_FINAL ? 0x1a : 0x1b)
-#define MPWEAPON_GRENADE          (VERSION == VERSION_JPN_FINAL ? 0x1b : 0x1c)
-#define MPWEAPON_NBOMB            (VERSION == VERSION_JPN_FINAL ? 0x1c : 0x1d)
-#define MPWEAPON_TIMEDMINE        (VERSION == VERSION_JPN_FINAL ? 0x1d : 0x1e)
-#define MPWEAPON_PROXIMITYMINE    (VERSION == VERSION_JPN_FINAL ? 0x1e : 0x1f)
-#define MPWEAPON_REMOTEMINE       (VERSION == VERSION_JPN_FINAL ? 0x1f : 0x20)
-#define MPWEAPON_LASER            (VERSION == VERSION_JPN_FINAL ? 0x20 : 0x21)
-#define MPWEAPON_XRAYSCANNER      (VERSION == VERSION_JPN_FINAL ? 0x21 : 0x22)
-#define MPWEAPON_CLOAKINGDEVICE   (VERSION == VERSION_JPN_FINAL ? 0x22 : 0x23)
-#define MPWEAPON_COMBATBOOST      (VERSION == VERSION_JPN_FINAL ? 0x23 : 0x24)
+#define MPWEAPON_COMBATKNIFE      (VERSION == VERSION_JPN_FINAL && defined(PLATFORM_N64) ?    0 : 0x19)
+#define MPWEAPON_CROSSBOW         (VERSION == VERSION_JPN_FINAL && defined(PLATFORM_N64) ? 0x19 : 0x1a)
+#define MPWEAPON_TRANQUILIZER     (VERSION == VERSION_JPN_FINAL && defined(PLATFORM_N64) ? 0x1a : 0x1b)
+#define MPWEAPON_GRENADE          (VERSION == VERSION_JPN_FINAL && defined(PLATFORM_N64) ? 0x1b : 0x1c)
+#define MPWEAPON_NBOMB            (VERSION == VERSION_JPN_FINAL && defined(PLATFORM_N64) ? 0x1c : 0x1d)
+#define MPWEAPON_TIMEDMINE        (VERSION == VERSION_JPN_FINAL && defined(PLATFORM_N64) ? 0x1d : 0x1e)
+#define MPWEAPON_PROXIMITYMINE    (VERSION == VERSION_JPN_FINAL && defined(PLATFORM_N64) ? 0x1e : 0x1f)
+#define MPWEAPON_REMOTEMINE       (VERSION == VERSION_JPN_FINAL && defined(PLATFORM_N64) ? 0x1f : 0x20)
+#define MPWEAPON_LASER            (VERSION == VERSION_JPN_FINAL && defined(PLATFORM_N64) ? 0x20 : 0x21)
+#define MPWEAPON_XRAYSCANNER      (VERSION == VERSION_JPN_FINAL && defined(PLATFORM_N64) ? 0x21 : 0x22)
+#define MPWEAPON_CLOAKINGDEVICE   (VERSION == VERSION_JPN_FINAL && defined(PLATFORM_N64) ? 0x22 : 0x23)
+#define MPWEAPON_COMBATBOOST      (VERSION == VERSION_JPN_FINAL && defined(PLATFORM_N64) ? 0x23 : 0x24)
 #ifdef PLATFORM_N64
 #define MPWEAPON_SHIELD           (VERSION == VERSION_JPN_FINAL ? 0x24 : 0x25)
 #define MPWEAPON_DISABLED         (VERSION == VERSION_JPN_FINAL ? 0x25 : 0x26)
 #define NUM_MPWEAPONS             (VERSION == VERSION_JPN_FINAL ? 0x26 : 0x27)
 #else // add all classic weapons to multiplayer
-#define MPWEAPON_PP9I             (VERSION == VERSION_JPN_FINAL ? 0x24 : 0x25)
-#define MPWEAPON_CC13             (VERSION == VERSION_JPN_FINAL ? 0x25 : 0x26)
-#define MPWEAPON_KL01313          (VERSION == VERSION_JPN_FINAL ? 0x26 : 0x27)
-#define MPWEAPON_KF7SPECIAL       (VERSION == VERSION_JPN_FINAL ? 0x27 : 0x28)
-#define MPWEAPON_ZZT              (VERSION == VERSION_JPN_FINAL ? 0x28 : 0x29)
-#define MPWEAPON_DMC              (VERSION == VERSION_JPN_FINAL ? 0x29 : 0x2a)
-#define MPWEAPON_AR53             (VERSION == VERSION_JPN_FINAL ? 0x2a : 0x2b)
-#define MPWEAPON_RCP45            (VERSION == VERSION_JPN_FINAL ? 0x2b : 0x2c)
-#define MPWEAPON_SHIELD           (VERSION == VERSION_JPN_FINAL ? 0x2c : 0x2d)
-#define MPWEAPON_DISABLED         (VERSION == VERSION_JPN_FINAL ? 0x2d : 0x2e)
-#define NUM_MPWEAPONS             (VERSION == VERSION_JPN_FINAL ? 0x2e : 0x2f)
+#define MPWEAPON_PP9I             0x25
+#define MPWEAPON_CC13             0x26
+#define MPWEAPON_KL01313          0x27
+#define MPWEAPON_KF7SPECIAL       0x28
+#define MPWEAPON_ZZT              0x29
+#define MPWEAPON_DMC              0x2a
+#define MPWEAPON_AR53             0x2b
+#define MPWEAPON_RCP45            0x2c
+#define MPWEAPON_SHIELD           0x2d
+#define MPWEAPON_DISABLED         0x2e
+#define NUM_MPWEAPONS             0x2f
 #endif
 
 #define MUSICEVENTTYPE_PLAY        1
@@ -3593,6 +3593,9 @@
 #define ROOMFLAG_LIGHTSOFF             0x2000
 #define ROOMFLAG_PLAYAMBIENTTRACK      0x4000
 #define ROOMFLAG_OUTDOORS              0x8000
+
+// flags for the extra_flags field
+#define ROOMFLAG_EX_WEATHERPROOF       0x0001
 
 #define RUMBLESTATE_1                 1
 #define RUMBLESTATE_ENABLED_STOPPED   2
@@ -4489,6 +4492,13 @@ enum weaponnum {
 
 #define WEATHERTYPE_RAIN 0
 #define WEATHERTYPE_SNOW 1
+
+#define WEATHERCFG_MAX_SKIPROOMS 128
+#define WEATHERCFG_MAX_STAGES 16
+
+#define WEATHERFLAG_INCLUDE       0x0001 // rooms listed in skiprooms are the only ones that have weather
+#define WEATHERFLAG_CUTSCENE_ONLY 0x0002 // weather only in cutscenes
+#define WEATHERFLAG_FORCE_WINDDIR 0x0004 // force constant wind direction
 
 // Reasons for playing X music
 #define XREASON_0       0

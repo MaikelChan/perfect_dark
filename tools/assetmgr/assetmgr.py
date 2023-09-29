@@ -1,4 +1,6 @@
 import os
+import sys
+import tempfile
 import subprocess
 
 def align4(value):
@@ -43,7 +45,20 @@ def write_enums(typename, names, filename, terminator, start=0):
 
     fd.close()
 
+def write_data(data):
+    idx = sys.argv.index('--raw-out')
+    filename = sys.argv[idx + 1]
+    print('writing binary to', filename)
+    fd = open(filename, 'wb')
+    fd.write(data)
+    fd.close()
+
 def write_object(data, filename):
+    if '--raw-out' in sys.argv:
+        # write the raw data into a user-specified file instead
+        write_data(data)
+        return
+
     filename = 'build/%s/assets/%s' % (os.environ['ROMID'], filename)
     mkpath(filename)
     fd = open(filename, 'wb')
@@ -107,13 +122,24 @@ def write_object(data, filename):
     fd.close()
 
 def zip(data):
-    filename = '/tmp/pd-assetmgr-%d' % os.getpid()
+    if 'win32' in sys.platform or 'cygwin' in sys.platform:
+        filename = os.path.join(tempfile.gettempdir(), 'pd-assetmgr-%d' % os.getpid())
+    else:
+        filename = '/tmp/pd-assetmgr-%d' % os.getpid()
 
     fd = open(filename, 'wb')
     fd.write(data)
     fd.close()
 
-    stream = subprocess.check_output(['tools/gzip', '-c', '--no-name', '--best', filename])[10:-8]
+    if sys.platform.startswith('linux'):
+        # on Linux use supplied gzip 1.2.4
+        gzip_args = ['tools/gzip', '-c', '--no-name', '--best', filename]
+    else:
+        # on other platforms use system gzip
+        # NOTE: this might result in a non-matching file, but we don't really care
+        gzip_args = ['gzip', '-f', '-c', '--no-name', '--best', filename]
+
+    stream = subprocess.check_output(gzip_args)[10:-8]
     os.remove(filename)
 
     return b'\x11\x73' + len(data).to_bytes(3, 'big') + stream
@@ -129,3 +155,7 @@ def writefile(filename, contents):
     fd = open(filename, 'wb')
     fd.write(contents)
     fd.close()
+
+if 'ROMID' not in os.environ:
+    # default to ntsc-final
+    os.environ['ROMID'] = 'ntsc-final'

@@ -69,30 +69,18 @@ static void gfx_sdl_init(const char* game_name, const char* gfx_api_name, bool s
         sysFatalError("Could not init SDL:\n%s", SDL_GetError());
     }
 
-    SDL_EventState(SDL_DROPFILE, SDL_ENABLE);
-
-    bool use_opengl = true;
-
-    if (use_opengl) {
-        SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
-        SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-    }
-
+    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+    SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
+    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_COMPATIBILITY);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
+    if (sysArgCheck("--debug-gl")) {
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
+    }
 
     char title[512];
-    int len = sprintf(title, "%s (%s)", game_name, gfx_api_name);
-
-    Uint32 flags = SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI;
-
-    if (use_opengl) {
-        flags = flags | SDL_WINDOW_OPENGL;
-    } else {
-        flags = flags | SDL_WINDOW_METAL;
-    }
+    snprintf(title, sizeof(title), "%s (%s)", game_name, gfx_api_name);
 
     int display_in_use = SDL_GetWindowDisplayIndex(wnd);
     if (display_in_use < 0) { // Fallback to default if out of bounds
@@ -100,19 +88,18 @@ static void gfx_sdl_init(const char* game_name, const char* gfx_api_name, bool s
         posY = 100;
     }
 
+    const Uint32 flags = SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_OPENGL;
     wnd = SDL_CreateWindow(title, posX, posY, window_width, window_height, flags);
     if (!wnd) {
         sysFatalError("Could not open SDL window:\n%s", SDL_GetError());
     }
 
-    if (use_opengl) {
-        ctx = SDL_GL_CreateContext(wnd);
-        if (!ctx) {
-            sysFatalError("Could not create GL2.1 context:\n%s", SDL_GetError());
-        }
-        SDL_GL_MakeCurrent(wnd, ctx);
-        SDL_GL_SetSwapInterval(1);
+    ctx = SDL_GL_CreateContext(wnd);
+    if (!ctx) {
+        sysFatalError("Could not create GL2.1 context:\n%s", SDL_GetError());
     }
+    SDL_GL_MakeCurrent(wnd, ctx);
+    SDL_GL_SetSwapInterval(1);
 
     qpc_freq = SDL_GetPerformanceFrequency();
 

@@ -1185,9 +1185,6 @@ Gfx *lvRender(Gfx *gdl)
 				}
 
 				gdl = viRenderViewportEdges(gdl);
-#ifndef PLATFORM_N64
-				gdl = playerSetVisionMode(gdl);
-#endif
 				gdl = skyRender(gdl);
 				bgTick();
 				lightsTick();

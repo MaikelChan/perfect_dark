@@ -3602,6 +3602,9 @@ void playerTick(bool arg0)
 						mdy *= 48.f;
 						mdx = (mdx < -128.f) ? -128.f : (mdx > 127.f) ? 127.f : mdx;
 						mdy = (mdy < -128.f) ? -128.f : (mdy > 127.f) ? 127.f : mdy;
+						if (g_Vars.currentplayerstats && !optionsGetForwardPitch(g_Vars.currentplayerstats->mpindex)) {
+							mdy = -mdy;
+						}
 						sp178 += mdy * LVUPDATE60FREAL() * 0.00025f;
 						sp174 -= mdx * LVUPDATE60FREAL() * 0.00025f;
 					}
@@ -4513,28 +4516,6 @@ Gfx *playerRenderShield(Gfx *gdl)
 
 	return gdl;
 }
-
-#ifndef PLATFORM_N64
-Gfx *playerSetVisionMode(Gfx *gdl)
-{
-	u32 grayscale = G_OFF;
-
-	if (!g_InCutscene && g_Vars.currentplayer && !g_Vars.currentplayer->isdead &&
-			(!g_Vars.currentplayer->eyespy || (g_Vars.currentplayer->eyespy && !g_Vars.currentplayer->eyespy->active))) {
-		if ((g_Vars.currentplayer->devicesactive & ~g_Vars.currentplayer->devicesinhibit) & DEVICE_NIGHTVISION) {
-				grayscale = G_ON;
-				gDPSetGrayscaleColorEXT(gdl++, 0x00, 0xFF, 0x00, 0xFF);
-		} else if ((g_Vars.currentplayer->devicesactive & ~g_Vars.currentplayer->devicesinhibit) & DEVICE_IRSCANNER) {
-				grayscale = G_ON;
-				gDPSetGrayscaleColorEXT(gdl++, 0xFF, 0x00, 0x00, 0xFF);
-		}
-	}
-
-	gDPGrayscaleEXT(gdl++, grayscale);
-
-	return gdl;
-}
-#endif
 
 Gfx *playerRenderHud(Gfx *gdl)
 {

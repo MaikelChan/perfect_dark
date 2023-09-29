@@ -54,6 +54,7 @@
 #include "data.h"
 #include "types.h"
 #ifndef PLATFORM_N64
+#include "game/stagetable.h"
 #include "video.h"
 #endif
 
@@ -3628,6 +3629,7 @@ u32 bgunCalculateGunMemCapacity(void)
 	}
 
 	if (PLAYERCOUNT() == 1) {
+#ifdef PLATFORM_N64
 		switch (g_Vars.stagenum) {
 		case STAGE_CHICAGO:
 		case STAGE_AIRBASE:
@@ -3636,6 +3638,9 @@ u32 bgunCalculateGunMemCapacity(void)
 		case STAGE_ATTACKSHIP:
 			 return g_BgunGunMemBaseSizeDefault + 25 * 1024;
 		}
+#else
+		return g_BgunGunMemBaseSizeDefault + stageGetCurrent()->extragunmem;
+#endif
 	}
 
 	return g_BgunGunMemBaseSizeDefault;
@@ -5441,7 +5446,7 @@ void bgunTickSwitch2(void)
 				ctrl->switchtoweaponnum = WEAPON_UNARMED;
 			}
 
-#if VERSION == VERSION_JPN_FINAL
+#if (VERSION == VERSION_JPN_FINAL) && defined(PLATFORM_N64)
 			if (ctrl->switchtoweaponnum == WEAPON_COMBATKNIFE) {
 				ctrl->switchtoweaponnum = WEAPON_UNARMED;
 			}
@@ -5757,14 +5762,20 @@ bool bgunHasAmmoForWeapon(s32 weaponnum)
 
 u8 g_AutoSwitchWeaponsPrimary[] = {
 	WEAPON_RCP120,
+	WEAPON_RCP45,
 	WEAPON_SUPERDRAGON, // primary function
 	WEAPON_K7AVENGER,
 	WEAPON_AR34,
+	WEAPON_AR53,
+	WEAPON_KF7SPECIAL,
 	WEAPON_CALLISTO,
 	WEAPON_LAPTOPGUN,
 	WEAPON_DRAGON,
 	WEAPON_CMP150,
 	WEAPON_CYCLONE,
+	WEAPON_ZZT,
+	WEAPON_DMC,
+	WEAPON_KL01313,
 	WEAPON_FARSIGHT,
 	WEAPON_SHOTGUN,
 	WEAPON_REAPER,
@@ -5776,6 +5787,8 @@ u8 g_AutoSwitchWeaponsPrimary[] = {
 	WEAPON_FALCON2_SCOPE,
 	WEAPON_FALCON2,
 	WEAPON_FALCON2_SILENCER,
+	WEAPON_PP9I,
+	WEAPON_CC13,
 	WEAPON_SNIPERRIFLE,
 	WEAPON_CROSSBOW,
 	WEAPON_TRANQUILIZER,
@@ -12733,7 +12746,7 @@ Gfx *bgunDrawHud(Gfx *gdl)
 
 #ifndef PLATFORM_N64
 	if (playercount < 2) {
-		gSPExtraGeometryModeEXT(gdl++, G_ASPECT_MODE_EXT, G_ASPECT_RIGHT_EXT);
+		gSPExtraGeometryModeEXT(gdl++, G_ASPECT_MODE_EXT, g_HudAlignModeR);
 	}
 #endif
 
@@ -12987,7 +13000,7 @@ Gfx *bgunDrawHud(Gfx *gdl)
 
 #ifndef PLATFORM_N64
 		if (playercount < 2) {
-			gSPExtraGeometryModeEXT(gdl++, G_ASPECT_MODE_EXT, G_ASPECT_LEFT_EXT);
+			gSPExtraGeometryModeEXT(gdl++, G_ASPECT_MODE_EXT, g_HudAlignModeL);
 		}
 #endif
 
@@ -13027,7 +13040,7 @@ Gfx *bgunDrawHud(Gfx *gdl)
 
 #ifndef PLATFORM_N64
 		if (playercount < 2) {
-			gSPExtraGeometryModeEXT(gdl++, G_ASPECT_MODE_EXT, G_ASPECT_RIGHT_EXT);
+			gSPExtraGeometryModeEXT(gdl++, G_ASPECT_MODE_EXT, g_HudAlignModeR);
 		}
 #endif
 

@@ -191,7 +191,7 @@ Gfx *hudmsgRenderMissionTimer(Gfx *gdl, u32 alpha)
 
 #ifndef PLATFORM_N64
 	if (PLAYERCOUNT() < 2) {
-		gSPExtraGeometryModeEXT(gdl++, G_ASPECT_MODE_EXT, G_ASPECT_LEFT_EXT);
+		gSPExtraGeometryModeEXT(gdl++, G_ASPECT_MODE_EXT, g_HudAlignModeL);
 	}
 #endif
 
@@ -1456,9 +1456,9 @@ Gfx *hudmsgsRender(Gfx *gdl)
 #ifndef PLATFORM_N64
 		if (playercount < 2 && msg->state >= HUDMSGSTATE_FADINGIN) {
 			if (msg->alignh == HUDMSGALIGN_SCREENLEFT || msg->alignh == HUDMSGALIGN_LEFT) {
-				gSPExtraGeometryModeEXT(gdl++, G_ASPECT_MODE_EXT, G_ASPECT_LEFT_EXT);
+				gSPExtraGeometryModeEXT(gdl++, G_ASPECT_MODE_EXT, g_HudAlignModeL);
 			} else if (msg->alignh == HUDMSGALIGN_RIGHT) {
-				gSPExtraGeometryModeEXT(gdl++, G_ASPECT_MODE_EXT, G_ASPECT_RIGHT_EXT);
+				gSPExtraGeometryModeEXT(gdl++, G_ASPECT_MODE_EXT, g_HudAlignModeR);
 			} else {
 				gSPExtraGeometryModeEXT(gdl++, G_ASPECT_MODE_EXT, G_ASPECT_CENTER_EXT);
 			}

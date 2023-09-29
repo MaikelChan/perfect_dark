@@ -286,7 +286,7 @@ s32 invAddOneIfCantHaveSlayer(s32 index)
 		index++;
 	}
 
-#if VERSION >= VERSION_JPN_FINAL
+#if (VERSION >= VERSION_JPN_FINAL) && defined(PLATFORM_N64)
 	if (index >= 26) {
 		index++;
 	}
@@ -310,7 +310,7 @@ bool invCanHaveAllGunsWeapon(s32 weaponnum)
 {
 	bool canhave = true;
 
-#if VERSION == VERSION_JPN_FINAL
+#if (VERSION == VERSION_JPN_FINAL) && defined(PLATFORM_N64)
 	if (weaponnum == WEAPON_COMBATKNIFE) {
 		canhave = false;
 	}

@@ -531,15 +531,21 @@ extern struct menudialogdef g_HangarListMenuDialog;
 
 #ifndef PLATFORM_N64
 
+extern struct weathercfg g_WeatherConfig[WEATHERCFG_MAX_STAGES];
+extern const struct weathercfg g_DefaultWeatherConfig;
+extern const struct weathercfg *g_CurWeatherConfig;
+
 extern f32 g_PlayerCrosshairSway;
 extern f32 g_PlayerDefaultFovY;
 extern s32 g_PlayerMouseAimMode;
 extern f32 g_PlayerMouseAimSpeedX;
 extern f32 g_PlayerMouseAimSpeedY;
-extern f32 g_ViShakeIntensityMult;
 extern s32 g_PlayerFovAffectsZoom;
 extern f32 g_PlayerFovZoomMultiplier;
+extern f32 g_ViShakeIntensityMult;
 extern u32 g_TexFilter2D;
+extern u32 g_HudAlignModeL;
+extern u32 g_HudAlignModeR;
 
 #define TEX_FILTER_2D g_TexFilter2D
 #define ADJUST_ZOOM_FOV(x) ((x) * g_PlayerFovZoomMultiplier)

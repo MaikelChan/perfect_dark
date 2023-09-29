@@ -202,6 +202,7 @@
 #define G_ASPECT_CENTER_EXT  (G_ASPECT_LEFT_EXT | G_ASPECT_RIGHT_EXT)
 #define G_ASPECT_MODE_EXT    G_ASPECT_CENTER_EXT
 #define G_NO_CLIPPING_EXT    0x00000040
+#define G_MODULATE_EXT       0x00000080 // this should really go into OTHERMODE_H, but for some reason I can't get it to work
 
 /* Extended command macros */
 

@@ -24,6 +24,179 @@
 
 struct weatherdata *g_WeatherData = NULL;
 
+#ifndef PLATFORM_N64
+
+struct weathercfg g_WeatherConfig[WEATHERCFG_MAX_STAGES] = {
+	{
+		STAGE_G5BUILDING,
+		WEATHERFLAG_CUTSCENE_ONLY,
+		20.f,
+		-800.f, 800.f,
+		0.f,
+	},
+	{
+		STAGE_CHICAGO,
+		0,
+		20.f,
+		-800.f, 800.f,
+		0.f,
+		{
+			ROOM_PETE_0062,
+			ROOM_PETE_0061,
+			ROOM_PETE_000F,
+			ROOM_PETE_0052,
+			ROOM_PETE_0045,
+			ROOM_PETE_0044,
+			ROOM_PETE_0043,
+			ROOM_PETE_003D,
+			ROOM_PETE_000E,
+			ROOM_PETE_000D,
+			ROOM_PETE_000C,
+			ROOM_PETE_000B,
+			ROOM_PETE_000A,
+			ROOM_PETE_0009,
+			ROOM_PETE_0008,
+			ROOM_PETE_0007,
+			ROOM_PETE_0006,
+			ROOM_PETE_0005,
+			ROOM_PETE_0004,
+			ROOM_PETE_0037,
+			ROOM_PETE_005B,
+			ROOM_PETE_005F,
+			ROOM_PETE_0060,
+			ROOM_PETE_005D,
+			ROOM_PETE_001D,
+			ROOM_PETE_001F,
+			ROOM_PETE_0027,
+			ROOM_PETE_0050,
+			ROOM_PETE_002C,
+			ROOM_PETE_002F,
+			ROOM_PETE_0030,
+			ROOM_PETE_0011,
+			ROOM_PETE_0024,
+			ROOM_PETE_0033,
+			ROOM_PETE_0034,
+			ROOM_PETE_0035,
+			ROOM_PETE_0036,
+			ROOM_PETE_003C,
+			ROOM_PETE_0046,
+			ROOM_PETE_0047,
+			ROOM_PETE_0049,
+			ROOM_PETE_0055,
+			ROOM_PETE_0056,
+			ROOM_PETE_005E,
+			ROOM_PETE_0063,
+			ROOM_PETE_0069,
+			ROOM_PETE_0003,
+			ROOM_PETE_0016,
+			ROOM_PETE_004F,
+			ROOM_PETE_004B,
+			ROOM_PETE_003F,
+			ROOM_PETE_0013,
+			ROOM_PETE_0019,
+			0
+		}
+	},
+	{
+		STAGE_AIRBASE,
+		WEATHERFLAG_INCLUDE | WEATHERFLAG_FORCE_WINDDIR,
+		5.f,
+		-800.f, 800.f,
+		-2000.f,
+		{
+			ROOM_CAVE_0088,
+			ROOM_CAVE_0091,
+			ROOM_CAVE_0087,
+			ROOM_CAVE_0090,
+			ROOM_CAVE_0086,
+			ROOM_CAVE_0080,
+			ROOM_CAVE_0083,
+			ROOM_CAVE_0084,
+			ROOM_CAVE_0085,
+			ROOM_CAVE_007F,
+			ROOM_CAVE_007E,
+			ROOM_CAVE_0082,
+			ROOM_CAVE_008F,
+			ROOM_CAVE_008E,
+			ROOM_CAVE_007B,
+			ROOM_CAVE_007C,
+			ROOM_CAVE_007D,
+			ROOM_CAVE_0081,
+			ROOM_CAVE_006F,
+			0
+		},
+		1.5707963705063f,
+		0.f,
+		-5.f
+	},
+	{
+		STAGE_CRASHSITE,
+		0,
+		10.f,
+		-500.f, 500.f,
+		0.f,
+		{
+			ROOM_AZT_001F,
+			ROOM_AZT_0020,
+			ROOM_AZT_0021,
+			ROOM_AZT_0022,
+			ROOM_AZT_0023,
+			ROOM_AZT_0024,
+			ROOM_AZT_0051,
+			ROOM_AZT_0052,
+			ROOM_AZT_0053,
+			ROOM_AZT_0054,
+			ROOM_AZT_0055,
+			ROOM_AZT_0056,
+			ROOM_AZT_0057,
+			ROOM_AZT_0058,
+			ROOM_AZT_0059,
+			ROOM_AZT_005A,
+			ROOM_AZT_005B,
+			ROOM_AZT_005C,
+			ROOM_AZT_005D,
+			ROOM_AZT_005E,
+			ROOM_AZT_005F,
+			ROOM_AZT_0060,
+			ROOM_AZT_0061,
+			ROOM_AZT_0062,
+			ROOM_AZT_0063,
+			ROOM_AZT_0064,
+			ROOM_AZT_002D,
+			ROOM_AZT_0040,
+			ROOM_AZT_0041,
+			ROOM_AZT_0042,
+			ROOM_AZT_0043,
+			ROOM_AZT_0044,
+			ROOM_AZT_0045,
+			ROOM_AZT_0046,
+			ROOM_AZT_0047,
+			ROOM_AZT_0048,
+			ROOM_AZT_0049,
+			ROOM_AZT_004A,
+			ROOM_AZT_004B,
+			ROOM_AZT_004C,
+			ROOM_AZT_004D,
+			ROOM_AZT_004E,
+			ROOM_AZT_004F,
+			ROOM_AZT_0050,
+			0
+		}
+	},
+};
+
+const struct weathercfg g_DefaultWeatherConfig = {
+	0,
+	0,
+	20.f,
+	-800.f, 800.f,
+	0.f
+};
+
+const struct weathercfg *g_CurWeatherConfig = &g_DefaultWeatherConfig;
+
+#endif
+
 Gfx *weatherRender(Gfx *gdl)
 {
 	struct weatherdata *weather;
@@ -32,6 +205,7 @@ Gfx *weatherRender(Gfx *gdl)
 		return gdl;
 	}
 
+#ifdef PLATFORM_N64
 	if (g_StageIndex == STAGEINDEX_AIRBASE && g_Vars.currentplayer->cam_pos.z < -2000.0f) {
 		return gdl;
 	}
@@ -39,6 +213,15 @@ Gfx *weatherRender(Gfx *gdl)
 	if (g_StageIndex == STAGEINDEX_G5BUILDING && g_Vars.tickmode != TICKMODE_CUTSCENE) {
 		return gdl;
 	}
+#else
+	if (g_CurWeatherConfig->zmax && g_Vars.currentplayer->cam_pos.z < g_CurWeatherConfig->zmax) {
+		return gdl;
+	}
+
+	if ((g_CurWeatherConfig->flags & WEATHERFLAG_CUTSCENE_ONLY) && g_Vars.tickmode != TICKMODE_CUTSCENE) {
+		return gdl;
+	}
+#endif
 
 	weather = g_WeatherData;
 
@@ -89,11 +272,15 @@ struct weatherparticledata *weatherAllocateParticles(void)
 
 	weatherSetBoundaries(data, 0, -800, 800);
 
+#ifdef PLATFORM_N64
 	if ((u32)g_StageIndex == STAGEINDEX_CRASHSITE) {
 		weatherSetBoundaries(data, 1, -500, 500);
 	} else {
 		weatherSetBoundaries(data, 1, -800, 800);
 	}
+#else
+	weatherSetBoundaries(data, 1, g_CurWeatherConfig->ymin, g_CurWeatherConfig->ymax);
+#endif
 
 	weatherSetBoundaries(data, 2, -800, 800);
 
@@ -340,12 +527,22 @@ void weatherTickRain(struct weatherdata *weather)
 		}
 	}
 
+#ifdef PLATFORM_N64
 	if (g_StageIndex == STAGEINDEX_AIRBASE) {
 		// Force weather direction - but Air Base doesn't use rain...
 		weather->windanglerad = 1.5707963705063f;
 		weather->windspeedz = -weather->windspeed;
 		weather->windspeedx = 0;
-	} else if (weather->unk10 > 0) {
+	}
+#else
+	if (g_CurWeatherConfig->flags & WEATHERFLAG_FORCE_WINDDIR) {
+		// force weather direction if requested
+		weather->windanglerad = g_CurWeatherConfig->windanglerad;
+		weather->windspeedz = g_CurWeatherConfig->windspeedz;
+		weather->windspeedx = g_CurWeatherConfig->windspeedx;
+	}
+#endif
+	else if (weather->unk10 > 0) {
 		s32 lvupdate = g_Vars.lvupdate60;
 
 		if (weather->unk10 < lvupdate) {
@@ -437,11 +634,21 @@ void weatherTickSnow(struct weatherdata *weather)
 	mainOverrideVariable("snowspeed", &g_SnowSpeed);
 	mainOverrideVariable("snowspeedxtra", &g_SnowSpeedExtra);
 
+#ifdef PLATFORM_N64
 	if (g_StageIndex == STAGEINDEX_AIRBASE) {
 		weather->windanglerad = 1.5707963705063f;
 		weather->windspeedz = -weather->windspeed;
 		weather->windspeedx = 0;
-	} else if (weather->unk10 > 0) {
+	}
+#else
+	if (g_CurWeatherConfig->flags & WEATHERFLAG_FORCE_WINDDIR) {
+		// force weather direction if requested
+		weather->windanglerad = g_CurWeatherConfig->windanglerad;
+		weather->windspeedz = g_CurWeatherConfig->windspeedz;
+		weather->windspeedx = g_CurWeatherConfig->windspeedx;
+	}
+#endif
+	else if (weather->unk10 > 0) {
 		s32 lvupdate = g_Vars.lvupdate60;
 
 		if (weather->unk10 < lvupdate) {
@@ -618,6 +825,7 @@ void weatherConfigureSnow(u32 intensity)
 
 bool weatherIsRoomWeatherProof(s32 room)
 {
+#ifdef PLATFORM_N64
 	if (g_StageIndex == STAGEINDEX_CHICAGO) {
 		// Rooms listed do not have weather
 		if (room == ROOM_PETE_0062
@@ -757,6 +965,15 @@ bool weatherIsRoomWeatherProof(s32 room)
 
 		return false;
 	}
+#else
+	if (room >= 0 && room < g_Vars.roomcount) {
+		// check room's extra_flags
+		if (g_Rooms[room].extra_flags & ROOMFLAG_EX_WEATHERPROOF) {
+			// this room has no weather
+			return true;
+		}
+	}
+#endif
 
 	return false;
 }

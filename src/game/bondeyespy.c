@@ -741,13 +741,13 @@ void eyespyProcessInput(bool allowbuttons)
 	} else if (controlmode <= CONTROLMODE_14) {
 		aimpressed = c1buttons & (R_TRIG);
 		shootpressed = c1buttons & Z_TRIG;
-		#ifdef PLATFORM_N64
+#ifdef PLATFORM_N64
 		exitpressed = (c1buttons | c2buttons) & A_BUTTON;
 		activatepressed = (c1buttons | c2buttons) & B_BUTTON;
-		#else
+#else
 		exitpressed = (c1buttons | c2buttons) & (BUTTON_WPNBACK | BUTTON_RADIAL);
 		activatepressed = (c1buttons | c2buttons) & (BUTTON_CANCEL_USE | BUTTON_ACCEPT_USE);
-		#endif
+#endif
 	} else {
 		if (controlmode >= CONTROLMODE_23) {
 			aimpressed = c1buttons & Z_TRIG;
@@ -913,6 +913,9 @@ void eyespyProcessInput(bool allowbuttons)
 			if (mdx || mdy) {
 				mdx *= g_Vars.lvupdate60freal;
 				mdy *= g_Vars.lvupdate60freal;
+				if (g_Vars.currentplayerstats && !optionsGetForwardPitch(g_Vars.currentplayerstats->mpindex)) {
+					mdy = -mdy;
+				}
 				g_Vars.currentplayer->eyespy->theta += mdx * 1.5f;
 				// hold aim to move up and down, release to look up and down
 				if (aimpressed) {

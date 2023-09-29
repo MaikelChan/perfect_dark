@@ -81,7 +81,7 @@ struct mpweapon g_MpWeapons[NUM_MPWEAPONS] = {
 	/*0x16*/ { WEAPON_DEVASTATOR,       AMMOTYPE_DEVASTATOR,  16,  0,                   0,  1, MPFEATURE_WEAPON_DEVASTATOR,      MODEL_CHRDEVASTATOR,    256 },
 	/*0x17*/ { WEAPON_ROCKETLAUNCHER,   AMMOTYPE_ROCKET,      3,   0,                   0,  1, 0,                                MODEL_CHRDYROCKET,      256 },
 	/*0x18*/ { WEAPON_SLAYER,           AMMOTYPE_ROCKET,      3,   0,                   0,  1, MPFEATURE_WEAPON_SLAYER,          MODEL_CHRSKROCKET,      256 },
-#if VERSION != VERSION_JPN_FINAL
+#if !((VERSION == VERSION_JPN_FINAL) && defined(PLATFORM_N64))
 	/*0x19*/ { WEAPON_COMBATKNIFE,      AMMOTYPE_KNIFE,       5,   0,                   0,  1, 0,                                MODEL_CHRKNIFE,         256 },
 #endif
 	/*0x1a*/ { WEAPON_CROSSBOW,         AMMOTYPE_CROSSBOW,    10,  0,                   0,  1, MPFEATURE_WEAPON_CROSSBOW,        MODEL_CHRCROSSBOW,      256 },
@@ -384,7 +384,12 @@ void mpPlayerSetDefaults(s32 playernum, bool autonames)
 
 	g_PlayerConfigsArray[playernum].controlmode = CONTROLMODE_12;
 
-	g_PlayerConfigsArray[playernum].options = OPTION_LOOKAHEAD
+	g_PlayerConfigsArray[playernum].options =
+#ifdef PLATFORM_N64
+		  OPTION_LOOKAHEAD
+#else
+		  OPTION_FORWARDPITCH
+#endif
 		| OPTION_SIGHTONSCREEN
 		| OPTION_AUTOAIM
 		| OPTION_AMMOONSCREEN

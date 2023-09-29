@@ -1686,6 +1686,9 @@ void bgBuildTables(s32 stagenum)
 		g_Rooms[i].unk4d = 0;
 		g_Rooms[i].lightop = 0;
 		g_Rooms[i].unk4e_04 = 0;
+#ifndef PLATFORM_N64
+		g_Rooms[i].extra_flags = 0;
+#endif
 	}
 
 	bgSetStageTranslationThing(g_Stages[g_StageIndex].unk14);
@@ -3865,7 +3868,11 @@ bool bgTestHitOnObj(struct coord *arg0, struct coord *arg1, struct coord *arg2, 
 #endif
 										texturenum = -1;
 									} else {
+#ifdef PLATFORM_N64
 										s32 tmp = PHYS_TO_K0(UNSEGADDR(imggdl->words.w1) - 8);
+#else
+										uintptr_t tmp = PHYS_TO_K0(UNSEGADDR(imggdl->words.w1) - 8);
+#endif
 										texturenum = *(s16 *) tmp;
 									}
 
@@ -4366,11 +4373,19 @@ bool bgTestHitInVtxBatch(struct coord *arg0, struct coord *arg1, struct coord *a
 #endif
 												texturenum = -1;
 											} else {
+#ifdef PLATFORM_N64
 												s32 tmp = UNSEGADDR(tmpgdl->words.w1) - 8;
+#else
+												uintptr_t tmp = UNSEGADDR(tmpgdl->words.w1) - 8;
+#endif
 												texturenum = *(s16 *) PHYS_TO_K0(tmp);
 											}
 
+#ifdef AVOID_UB
+											if (batch->type == VTXBATCHTYPE_XLU && texturenum >= 0 && g_Textures[texturenum].surfacetype == SURFACETYPE_DEFAULT) {
+#else
 											if (batch->type == VTXBATCHTYPE_XLU && g_Textures[texturenum].surfacetype == SURFACETYPE_DEFAULT) {
+#endif
 												hit = false;
 											}
 

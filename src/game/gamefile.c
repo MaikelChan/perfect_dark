@@ -168,7 +168,11 @@ void gamefileLoadDefaults(struct gamefile *file)
 	optionsSetControlMode(player2, CONTROLMODE_11);
 	pakClearAllBitflags(file->flags);
 
+#ifdef PLATFORM_N64
 	pakSetBitflag(GAMEFILEFLAG_P1_FORWARDPITCH, file->flags, false);
+#else
+	pakSetBitflag(GAMEFILEFLAG_P1_FORWARDPITCH, file->flags, true);
+#endif
 	pakSetBitflag(GAMEFILEFLAG_P1_AUTOAIM, file->flags, true);
 	pakSetBitflag(GAMEFILEFLAG_P1_AIMCONTROL, file->flags, false);
 	pakSetBitflag(GAMEFILEFLAG_P1_SIGHTONSCREEN, file->flags, true);
@@ -186,11 +190,19 @@ void gamefileLoadDefaults(struct gamefile *file)
 	pakSetBitflag(GAMEFILEFLAG_P1_SHOWMISSIONTIME, file->flags, false);
 	pakSetBitflag(GAMEFILEFLAG_P1_PAINTBALL, file->flags, false);
 
+#ifdef PLATFORM_N64
 	pakSetBitflag(GAMEFILEFLAG_P2_FORWARDPITCH, file->flags, false);
+#else
+	pakSetBitflag(GAMEFILEFLAG_P2_FORWARDPITCH, file->flags, true);
+#endif
 	pakSetBitflag(GAMEFILEFLAG_P2_AUTOAIM, file->flags, true);
 	pakSetBitflag(GAMEFILEFLAG_P2_AIMCONTROL, file->flags, false);
 	pakSetBitflag(GAMEFILEFLAG_P2_SIGHTONSCREEN, file->flags, true);
+#ifdef PLATFORM_N64
 	pakSetBitflag(GAMEFILEFLAG_P2_LOOKAHEAD, file->flags, true);
+#else
+	pakSetBitflag(GAMEFILEFLAG_P2_LOOKAHEAD, file->flags, false);
+#endif
 	pakSetBitflag(GAMEFILEFLAG_P2_AMMOONSCREEN, file->flags, true);
 	pakSetBitflag(GAMEFILEFLAG_P2_HEADROLL, file->flags, true);
 	pakSetBitflag(GAMEFILEFLAG_P2_SHOWGUNFUNCTION, file->flags, true);

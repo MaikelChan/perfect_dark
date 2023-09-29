@@ -1271,7 +1271,9 @@ Gfx *amRender(Gfx *gdl)
 #endif
 
 #ifndef PLATFORM_N64
-	gSPSetExtraGeometryModeEXT(gdl++, G_ASPECT_CENTER_EXT);
+	if (PLAYERCOUNT() == 1) {
+		gSPSetExtraGeometryModeEXT(gdl++, G_ASPECT_CENTER_EXT);
+	}
 #endif
 
 	g_AmIndex = g_Vars.currentplayernum;

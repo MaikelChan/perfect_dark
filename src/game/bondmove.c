@@ -706,6 +706,9 @@ void bmoveProcessInput(bool allowc1x, bool allowc1y, bool allowc1buttons, bool i
 		inputMouseGetScaledDelta(&movedata.freelookdx, &movedata.freelookdy);
 		allowmcross = (g_PlayerMouseAimMode == MOUSEAIM_CLASSIC) &&
 			(movedata.freelookdx || movedata.freelookdy || g_Vars.currentplayer->swivelpos[0] || g_Vars.currentplayer->swivelpos[1]);
+		if (movedata.invertpitch) {
+			movedata.freelookdy = -movedata.freelookdy;
+		}
 	}
 #endif
 
@@ -1193,7 +1196,7 @@ void bmoveProcessInput(bool allowc1x, bool allowc1y, bool allowc1buttons, bool i
 						movedata.cannaturalturn = !g_Vars.currentplayer->insightaimmode;
 
 #ifndef PLATFORM_N64
-						if (g_PlayerMouseAimMode == MOUSEAIM_LOCKED) {
+						if (g_PlayerMouseAimMode == MOUSEAIM_LOCKED || bgunGetWeaponNum(HAND_RIGHT) == WEAPON_HORIZONSCANNER) {
 							movedata.cannaturalpitch = movedata.cannaturalpitch || (movedata.freelookdy != 0.0f);
 							movedata.cannaturalturn = movedata.cannaturalturn  || (movedata.freelookdx != 0.0f);
 						}
@@ -2026,14 +2029,15 @@ void bmoveProcessInput(bool allowc1x, bool allowc1y, bool allowc1buttons, bool i
 			x = g_Vars.currentplayer->speedtheta * 0.3f + g_Vars.currentplayer->gunextraaimx;
 			y = -g_Vars.currentplayer->speedverta * 0.1f + g_Vars.currentplayer->gunextraaimy;
 #else
-			f32 scale;
+			f32 xscale, yscale;
 			if (movedata.freelookdx || movedata.freelookdy) {
-				scale = g_PlayerCrosshairSway * 240.f / (f32)videoGetHeight();
+				xscale = g_PlayerCrosshairSway * 0.20f;
+				yscale = g_PlayerCrosshairSway * 0.30f;
 			} else {
-				scale = g_PlayerCrosshairSway;
+				xscale = yscale = g_PlayerCrosshairSway;
 			}
-			x = g_Vars.currentplayer->speedtheta * 0.3f * scale + g_Vars.currentplayer->gunextraaimx;
-			y = -g_Vars.currentplayer->speedverta * 0.1f * scale + g_Vars.currentplayer->gunextraaimy;
+			x = g_Vars.currentplayer->speedtheta * 0.3f * xscale + g_Vars.currentplayer->gunextraaimx;
+			y = -g_Vars.currentplayer->speedverta * 0.1f * yscale + g_Vars.currentplayer->gunextraaimy;
 #endif
 
 			bgunSwivelWithDamp(x, y, PAL ? 0.955f : 0.963f);

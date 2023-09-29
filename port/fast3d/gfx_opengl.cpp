@@ -14,12 +14,6 @@
 #endif
 #include <PR/gbi.h>
 
-#ifdef __MINGW32__
-#define FOR_WINDOWS 1
-#else
-#define FOR_WINDOWS 0
-#endif
-
 #include "glad/glad.h"
 
 #include "gfx_cc.h"
@@ -63,8 +57,7 @@ static size_t current_framebuffer;
 static float current_noise_scale;
 static FilteringMode current_filter_mode = FILTER_LINEAR;
 
-GLuint pixel_depth_rb, pixel_depth_fb;
-size_t pixel_depth_rb_size;
+static GLenum gl_mirror_clamp = GL_MIRROR_CLAMP_TO_EDGE;
 
 static int gfx_opengl_get_max_texture_size() {
     GLint max_texture_size;
@@ -715,10 +708,6 @@ static void gfx_opengl_upload_texture(const uint8_t* rgba32_buf, uint32_t width,
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, rgba32_buf);
 }
 
-#ifdef __SWITCH__
-#define GL_MIRROR_CLAMP_TO_EDGE 0x8743
-#endif
-
 static uint32_t gfx_cm_to_opengl(uint32_t val) {
     switch (val) {
         case G_TX_NOMIRROR | G_TX_CLAMP:
@@ -726,7 +715,7 @@ static uint32_t gfx_cm_to_opengl(uint32_t val) {
         case G_TX_MIRROR | G_TX_WRAP:
             return GL_MIRRORED_REPEAT;
         case G_TX_MIRROR | G_TX_CLAMP:
-            return GL_MIRRORED_REPEAT /*GL_MIRROR_CLAMP_TO_EDGE*/; // GL4 only
+            return gl_mirror_clamp;
         case G_TX_NOMIRROR | G_TX_WRAP:
             return GL_REPEAT;
     }
@@ -775,11 +764,16 @@ static void gfx_opengl_set_scissor(int x, int y, int width, int height) {
     glScissor(x, y, width, height);
 }
 
-static void gfx_opengl_set_use_alpha(bool use_alpha) {
+static void gfx_opengl_set_use_alpha(bool use_alpha, bool modulate) {
     if (use_alpha) {
         glEnable(GL_BLEND);
     } else {
         glDisable(GL_BLEND);
+    }
+    if (modulate) {
+        glBlendFunc(GL_DST_COLOR, GL_ZERO);
+    } else {
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     }
 }
 
@@ -798,19 +792,143 @@ typedef void (APIENTRY *DEBUGPROC)(GLenum source,
     const void *userParam);
 
 static void APIENTRY gl_debug(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *msg, const void *p) {
-    if (severity > 0x826B) {
-        sysLogPrintf(LOG_WARNING, "GL: %s", msg);
+    sysLogPrintf(LOG_WARNING, "GL: (%05x) %s", id, msg);
+}
+
+static void gfx_opengl_enable_debug(void) {
+    if (GLAD_GL_KHR_debug) {
+        glEnable(GL_DEBUG_OUTPUT);
+    }
+    if (glDebugMessageControl != NULL) {
+        // enable everything except some specific spam messages
+        const GLuint disable[] = {
+            0x20061, /* "Framebuffer detailed info" */
+            0x20071  /* "Buffer detailed info" */
+        };
+        glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, NULL, GL_TRUE);
+        glDebugMessageControl(GL_DEBUG_SOURCE_API, GL_DEBUG_TYPE_OTHER, GL_DONT_CARE, 2, disable, GL_FALSE);
+    }
+    if (glDebugMessageCallback != NULL) {
+        glDebugMessageCallback(gl_debug, NULL);
     }
 }
 
-static void gfx_opengl_init(void) {
-    if (!gladLoadGLLoader(SDL_GL_GetProcAddress)) {
-        sysFatalError("Could not load OpenGL. Ensure your GPU supports at least OpenGL 2.1.");
+static bool gfx_opengl_supports_framebuffers(void) {
+    if (GLVersion.major > 2) {
+        // GL3.0+ supports everything we need, but we'll still check it for sanity
+        return (glad_glFramebufferRenderbuffer && glad_glBlitFramebuffer && glad_glRenderbufferStorageMultisample);
+    }
+    if (GLAD_GL_ARB_framebuffer_object) {
+        // some implementations might be missing these
+        return (glad_glBlitFramebuffer && glad_glRenderbufferStorageMultisample);
+    }
+    if (GLAD_GL_EXT_framebuffer_object && GLAD_GL_EXT_framebuffer_blit && GLAD_GL_EXT_framebuffer_multisample) {
+        // because of the way glad works we'll have to copy the pointers over
+        glad_glGenFramebuffers = glad_glGenFramebuffersEXT;
+        glad_glGenRenderbuffers = glad_glGenRenderbuffersEXT;
+        glad_glDeleteFramebuffers = glad_glDeleteFramebuffersEXT;
+        glad_glDeleteRenderbuffers = glad_glDeleteRenderbuffersEXT;
+        glad_glBindFramebuffer = glad_glBindFramebufferEXT;
+        glad_glBindRenderbuffer = glad_glBindRenderbufferEXT;
+        glad_glFramebufferRenderbuffer = glad_glFramebufferRenderbufferEXT;
+        glad_glFramebufferTexture2D = glad_glFramebufferTexture2DEXT;
+        glad_glRenderbufferStorage = glad_glRenderbufferStorageEXT;
+        glad_glRenderbufferStorageMultisample = glad_glRenderbufferStorageMultisampleEXT;
+        glad_glBlitFramebuffer = glad_glBlitFramebufferEXT;
+        // sanity check
+        return (glad_glFramebufferRenderbuffer && glad_glBlitFramebuffer && glad_glRenderbufferStorageMultisample);
+    }
+    // nothing
+    return false;
+}
+
+static bool gfx_opengl_supports_shaders(void) {
+    if (GLVersion.major > 2) {
+        // should support GLSL130+
+        return true;
     }
 
-    void APIENTRY (*pglDebugMessageCallback)(DEBUGPROC, const void *) = (void  APIENTRY (*)(DEBUGPROC, const void *))SDL_GL_GetProcAddress("glDebugMessageCallback");
-    if (pglDebugMessageCallback) {
-        pglDebugMessageCallback(gl_debug, NULL);
+    // check supported GLSL version
+    const char *ver = (const char *)glGetString(GL_SHADING_LANGUAGE_VERSION);
+    if (ver) {
+        int maj = 0, min = 0;
+        sscanf(ver, "%d.%d", &maj, &min);
+        if (maj > 1 || (maj == 1 && min > 20)) {
+            // above 120, should be fine
+            return true;
+        }
+    }
+
+    // check for extension that adds textureSize
+    return GLAD_GL_EXT_gpu_shader4;
+}
+
+static void gfx_opengl_log_info(void) {
+    const char *version = (const char *)glGetString(GL_VERSION);
+    const char *vendor = (const char *)glGetString(GL_VENDOR);
+    const char *renderer = (const char *)glGetString(GL_RENDERER);
+    const char *glsl_version = (const char *)glGetString(GL_SHADING_LANGUAGE_VERSION);
+    sysLogPrintf(LOG_NOTE, "GL: version: %s", version ? version : "unknown");
+    sysLogPrintf(LOG_NOTE, "GL: vendor: %s", vendor ? vendor : "unknown");
+    sysLogPrintf(LOG_NOTE, "GL: renderer: %s", renderer ? renderer : "unknown");
+    sysLogPrintf(LOG_NOTE, "GL: GLSL version: %s", glsl_version ? glsl_version : "unknown");
+    sysLogPrintf(LOG_NOTE, "GL: ARB_framebuffer_object: %s", gfx_opengl_supports_framebuffers() ? "yes" : "no");
+    sysLogPrintf(LOG_NOTE, "GL: ARB_depth_clamp: %s", GLAD_GL_ARB_depth_clamp ? "yes" : "no");
+    sysLogPrintf(LOG_NOTE, "GL: ARB_texture_mirror_clamp_to_edge: %s", GLAD_GL_ARB_texture_mirror_clamp_to_edge ? "yes" : "no");
+}
+
+static void *gl_load_proc(const char *name) {
+    void *ret = SDL_GL_GetProcAddress(name);
+    if (ret) {
+        return ret;
+    }
+
+    // try with postfixes
+    static const char *post[] = { "ARB", "EXT" };
+    char tmp[256] = { 0 };
+    for (size_t i = 0; i < sizeof(post) / sizeof(*post); ++i) {
+        snprintf(tmp, sizeof(tmp), "%s%s", name, post[i]);
+        ret = SDL_GL_GetProcAddress(tmp);
+        if (ret) {
+            return ret;
+        }
+    }
+
+    sysLogPrintf(LOG_ERROR, "GL: could not find function: %s", name);
+
+    return NULL;
+}
+
+static void gfx_opengl_init(void) {
+    if (!gladLoadGLLoader(gl_load_proc) || glGetString == NULL || glEnable == NULL) {
+        sysFatalError("Could not load OpenGL.\nReported SDL error: %s", SDL_GetError());
+    }
+
+    if (sysArgCheck("--debug-gl")) {
+        gfx_opengl_enable_debug();
+        // dump version info as early as possible
+        gfx_opengl_log_info();
+    }
+
+    if (GLVersion.major < 2 || (GLVersion.major == 2 && GLVersion.minor < 1)) {
+        const char *ver = (const char *)glGetString(GL_VERSION);
+        sysFatalError("Could not load OpenGL 2.1.\nReported version: %d.%d (%s)",
+            GLVersion.major, GLVersion.minor, ver ? ver : "unknown");
+    }
+
+    if (!gfx_opengl_supports_shaders()) {
+        sysLogPrintf(LOG_WARNING, "GL: GLSL 1.30 unsupported");
+        // maybe replace this with sysFatalError, though the GLSL compiler will cause that later anyway
+    }
+
+    if (!gfx_opengl_supports_framebuffers()) {
+        sysLogPrintf(LOG_WARNING, "GL: GL_ARB_framebuffer_object unsupported, framebuffer effects disabled");
+        gfx_framebuffers_enabled = false;
+    }
+
+    if ((GLVersion.major < 4 || GLVersion.minor < 4) && !GLAD_GL_ARB_texture_mirror_clamp_to_edge) {
+        // GL_MIRROR_CLAMP_TO_EDGE unsupported
+        gl_mirror_clamp = GL_MIRRORED_REPEAT;
     }
 
     glGenBuffers(1, &opengl_vbo);
@@ -828,18 +946,6 @@ static void gfx_opengl_init(void) {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     framebuffers.resize(1); // for the default screen buffer
-
-    glGenRenderbuffers(1, &pixel_depth_rb);
-    glBindRenderbuffer(GL_RENDERBUFFER, pixel_depth_rb);
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, 1, 1);
-    glBindRenderbuffer(GL_RENDERBUFFER, 0);
-
-    glGenFramebuffers(1, &pixel_depth_fb);
-    glBindFramebuffer(GL_FRAMEBUFFER, pixel_depth_fb);
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, pixel_depth_rb);
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-    pixel_depth_rb_size = 1;
 }
 
 static void gfx_opengl_on_resize(void) {
@@ -857,6 +963,9 @@ static void gfx_opengl_finish_render(void) {
 }
 
 static int gfx_opengl_create_framebuffer() {
+    size_t i = framebuffers.size();
+    framebuffers.resize(i + 1);
+
     GLuint clrbuf;
     glGenTextures(1, &clrbuf);
     glBindTexture(GL_TEXTURE_2D, clrbuf);
@@ -864,26 +973,26 @@ static int gfx_opengl_create_framebuffer() {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glBindTexture(GL_TEXTURE_2D, 0);
+    framebuffers[i].clrbuf = clrbuf;
+
+    if (!gfx_framebuffers_enabled) {
+        return i;
+    }
 
     GLuint clrbuf_msaa;
     glGenRenderbuffers(1, &clrbuf_msaa);
+    framebuffers[i].clrbuf_msaa = clrbuf_msaa;
 
     GLuint rbo;
     glGenRenderbuffers(1, &rbo);
     glBindRenderbuffer(GL_RENDERBUFFER, rbo);
     glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, 1, 1);
     glBindRenderbuffer(GL_RENDERBUFFER, 0);
+    framebuffers[i].rbo = rbo;
 
     GLuint fbo;
     glGenFramebuffers(1, &fbo);
-
-    size_t i = framebuffers.size();
-    framebuffers.resize(i + 1);
-
     framebuffers[i].fbo = fbo;
-    framebuffers[i].clrbuf = clrbuf;
-    framebuffers[i].clrbuf_msaa = clrbuf_msaa;
-    framebuffers[i].rbo = rbo;
 
     return i;
 }
@@ -896,39 +1005,43 @@ static void gfx_opengl_update_framebuffer_parameters(int fb_id, uint32_t width, 
     width = max(width, 1U);
     height = max(height, 1U);
 
-    glBindFramebuffer(GL_FRAMEBUFFER, fb.fbo);
+    if (gfx_framebuffers_enabled) {
+        glBindFramebuffer(GL_FRAMEBUFFER, fb.fbo);
 
-    if (fb_id != 0) {
-        if (fb.width != width || fb.height != height || fb.msaa_level != msaa_level) {
-            if (msaa_level <= 1) {
-                glBindTexture(GL_TEXTURE_2D, fb.clrbuf);
-                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
-                glBindTexture(GL_TEXTURE_2D, 0);
-                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fb.clrbuf, 0);
-            } else {
-                glBindRenderbuffer(GL_RENDERBUFFER, fb.clrbuf_msaa);
-                glRenderbufferStorageMultisample(GL_RENDERBUFFER, msaa_level, GL_RGB8, width, height);
+        if (fb_id != 0) {
+            if (fb.width != width || fb.height != height || fb.msaa_level != msaa_level) {
+                if (msaa_level <= 1) {
+                    glBindTexture(GL_TEXTURE_2D, fb.clrbuf);
+                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+                    glBindTexture(GL_TEXTURE_2D, 0);
+                    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fb.clrbuf, 0);
+                } else {
+                    glBindRenderbuffer(GL_RENDERBUFFER, fb.clrbuf_msaa);
+                    glRenderbufferStorageMultisample(GL_RENDERBUFFER, msaa_level, GL_RGB8, width, height);
+                    glBindRenderbuffer(GL_RENDERBUFFER, 0);
+                    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, fb.clrbuf_msaa);
+                }
+            }
+
+            if (has_depth_buffer &&
+                (fb.width != width || fb.height != height || fb.msaa_level != msaa_level || !fb.has_depth_buffer)) {
+                glBindRenderbuffer(GL_RENDERBUFFER, fb.rbo);
+                if (msaa_level <= 1) {
+                    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, width, height);
+                } else {
+                    glRenderbufferStorageMultisample(GL_RENDERBUFFER, msaa_level, GL_DEPTH24_STENCIL8, width, height);
+                }
                 glBindRenderbuffer(GL_RENDERBUFFER, 0);
-                glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, fb.clrbuf_msaa);
+            }
+
+            if (!fb.has_depth_buffer && has_depth_buffer) {
+                glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, fb.rbo);
+            } else if (fb.has_depth_buffer && !has_depth_buffer) {
+                glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, 0);
             }
         }
-
-        if (has_depth_buffer &&
-            (fb.width != width || fb.height != height || fb.msaa_level != msaa_level || !fb.has_depth_buffer)) {
-            glBindRenderbuffer(GL_RENDERBUFFER, fb.rbo);
-            if (msaa_level <= 1) {
-                glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, width, height);
-            } else {
-                glRenderbufferStorageMultisample(GL_RENDERBUFFER, msaa_level, GL_DEPTH24_STENCIL8, width, height);
-            }
-            glBindRenderbuffer(GL_RENDERBUFFER, 0);
-        }
-
-        if (!fb.has_depth_buffer && has_depth_buffer) {
-            glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, fb.rbo);
-        } else if (fb.has_depth_buffer && !has_depth_buffer) {
-            glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, 0);
-        }
+    } else {
+        has_depth_buffer = false;
     }
 
     fb.width = width;
@@ -939,7 +1052,7 @@ static void gfx_opengl_update_framebuffer_parameters(int fb_id, uint32_t width, 
 }
 
 bool gfx_opengl_start_draw_to_framebuffer(int fb_id, float noise_scale) {
-    if (fb_id < (int)framebuffers.size()) {
+    if (gfx_framebuffers_enabled && fb_id < (int)framebuffers.size()) {
         Framebuffer& fb = framebuffers[fb_id];
         if (noise_scale != 0.0f) {
             current_noise_scale = 1.0f / noise_scale;
@@ -962,6 +1075,10 @@ void gfx_opengl_clear_framebuffer() {
 }
 
 void gfx_opengl_resolve_msaa_color_buffer(int fb_id_target, int fb_id_source) {
+    if (!gfx_framebuffers_enabled) {
+        return;
+    }
+
     Framebuffer& fb_dst = framebuffers[fb_id_target];
     Framebuffer& fb_src = framebuffers[fb_id_source];
     glDisable(GL_SCISSOR_TEST);
@@ -984,7 +1101,7 @@ void gfx_opengl_select_texture_fb(int fb_id) {
 }
 
 void gfx_opengl_copy_framebuffer(int fb_dst, int fb_src, int left, int top) {
-    if (fb_dst >= (int)framebuffers.size() || fb_src >= (int)framebuffers.size()) {
+    if (!gfx_framebuffers_enabled || fb_dst >= (int)framebuffers.size() || fb_src >= (int)framebuffers.size()) {
         return;
     }
 

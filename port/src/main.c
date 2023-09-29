@@ -14,6 +14,7 @@
 #include "fs.h"
 #include "romdata.h"
 #include "config.h"
+#include "mod.h"
 #include "system.h"
 
 u32 g_OsMemSize = 0;
@@ -59,7 +60,7 @@ static void cleanup(void)
 {
 	sysLogPrintf(LOG_NOTE, "shutdown");
 	inputSaveConfig();
-	configSave(CONFIG_FNAME);
+	configSave(CONFIG_PATH);
 	crashShutdown();
 	// TODO: actually shut down all subsystems
 }
@@ -72,9 +73,14 @@ static void gameLoadConfig(void)
 	g_PlayerMouseAimMode = configGetIntClamped("Game.MouseAimMode", g_PlayerMouseAimMode, 0, 1);
 	g_PlayerMouseAimSpeedX = configGetFloatClamped("Game.MouseAimSpeedX", g_PlayerMouseAimSpeedX, 0.f, 10.f);
 	g_PlayerMouseAimSpeedY = configGetFloatClamped("Game.MouseAimSpeedY", g_PlayerMouseAimSpeedY, 0.f, 10.f);
-	g_ViShakeIntensityMult = configGetFloatClamped("Game.ScreenShakeIntensity", 1.f, 0.f, 100.f);
 	g_PlayerFovAffectsZoom = configGetIntClamped("Game.FovAffectsZoom", g_PlayerFovAffectsZoom, 0, 1);
 	g_PlayerFovZoomMultiplier = g_PlayerFovAffectsZoom ? g_PlayerDefaultFovY / 60.0f : 1.0f;
+	g_ViShakeIntensityMult = configGetFloatClamped("Game.ScreenShakeIntensity", 1.f, 0.f, 100.f);
+	const s32 center = configGetIntClamped("Game.CenterHUD", 0, 0, 1);
+	if (center) {
+		g_HudAlignModeL = G_ASPECT_CENTER_EXT;
+		g_HudAlignModeR = G_ASPECT_CENTER_EXT;
+	}
 }
 
 int main(int argc, const char **argv)
@@ -89,6 +95,10 @@ int main(int argc, const char **argv)
 	romdataInit();
 
 	gameLoadConfig();
+
+	if (fsGetModDir()) {
+		modConfigLoad(MOD_CONFIG_FNAME);
+	}
 
 	atexit(cleanup);
 

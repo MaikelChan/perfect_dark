@@ -6,6 +6,7 @@
 #include "fs.h"
 #include "config.h"
 #include "system.h"
+#include "utils.h"
 
 #define CONFIG_MAX_STR 512
 #define CONFIG_MAX_SECNAME 128
@@ -216,6 +217,7 @@ s32 configLoad(const char *fname)
 
 	char curSec[CONFIG_MAX_SECNAME + 1] = { 0 };
 	char keyBuf[CONFIG_MAX_SECNAME * 2 + 2] = { 0 }; // SECTION + . + KEY + \0
+	char token[UTIL_MAX_TOKEN + 1] = { 0 };
 	char lineBuf[2048] = { 0 };
 	char *line = lineBuf;
 	s32 lineLen = 0;
@@ -223,77 +225,36 @@ s32 configLoad(const char *fname)
 	while (fgets(lineBuf, sizeof(lineBuf), f)) {
 		line = lineBuf;
 
-		// left-trim whitespace
-		while (*line && isspace(*line)) {
-			++line;
-		}
+		line = strParseToken(line, token, NULL);
 
-		lineLen = strlen(line);
-		if (!lineLen) {
-			continue;
-		}
-
-		// right-trim whitespace and \n
-		for (s32 i = lineLen - 1; i >= 0 && isspace(line[i]); --i, --lineLen);
-		line[lineLen] = '\0';
-
-		if (line[0] == ';' || line[0] == '#') {
-			// comment; skip the rest of the line
-			continue;
-		} else if (line[0] == '[') {
-			// section; skip [ and find matching ]
-			++line;
-			char *end = line;
-			while (*end && *end != ']') {
-				++end;
-			}
-			// found anything?
-			if (*end != ']') {
-				// didn't find shit
+		if (token[0] == '[' && token[1] == '\0') {
+			// section; get name
+			line = strParseToken(line, token, NULL);
+			if (!token[0]) {
+				sysLogPrintf(LOG_ERROR, "configLoad: malformed section line: %s", lineBuf);
 				continue;
 			}
-			// eat ] and whitespace on the right
-			while (end > line && isspace(end[-1])) {
-				--end;
+			strncpy(curSec, token, CONFIG_MAX_SECNAME);
+			// eat ]
+			line = strParseToken(line, token, NULL);
+			if (token[0] != ']' || token[1] != '\0') {
+				sysLogPrintf(LOG_ERROR, "configLoad: malformed section line: %s", lineBuf);
 			}
-			*end = '\0';
-			// empty []?
-			if (end == line) {
+		} else if (token[0]) {
+			// probably a key=value pair; append key name to section name
+			snprintf(keyBuf, sizeof(keyBuf) - 1, "%s.%s", curSec, token);
+			// eat =
+			line = strParseToken(line, token, NULL);
+			if (token[0] != '=' || token[1] != '\0') {
+				sysLogPrintf(LOG_ERROR, "configLoad: malformed keyvalue line: %s", lineBuf);
 				continue;
 			}
-			// eat whitespace on the left
-			while (line < end && isspace(*line)) {
-				++line;
+			// the rest of the line is the value
+			line = strTrim(line);
+			if (line[0] == '"') {
+				line = strUnquote(line);
 			}
-			// copy out the section name
-			const s32 len = end - line;
-			if (len > CONFIG_MAX_SECNAME) {
-				continue; // too long
-			}
-			memcpy(curSec, line, len);
-			curSec[len] = '\0';
-		} else {
-			// probably a key=value pair
-			char *eq = strchr(line, '=');
-			if (!eq) {
-				continue; // garbage
-			}
-			char *value = eq + 1;
-			if (!*value) {
-				continue; // just a =
-			}
-			// trim right whitespace on the key
-			--eq;
-			while (eq > line && isspace(*eq)) {
-				--eq;
-			}
-			if (eq == line) {
-				continue; // = with nothing on the left
-			}
-			eq[1] = '\0';
-			// assemble full key name and read the value
-			snprintf(keyBuf, sizeof(keyBuf) - 1, "%s.%s", curSec, line);
-			configSetFromString(keyBuf, value);
+			configSetFromString(keyBuf, line);
 		}
 	}
 
@@ -304,7 +265,7 @@ s32 configLoad(const char *fname)
 
 void configInit(void)
 {
-	if (fsFileSize(CONFIG_FNAME) > 0) {
-		configLoad(CONFIG_FNAME);
+	if (fsFileSize(CONFIG_PATH) > 0) {
+		configLoad(CONFIG_PATH);
 	}
 }
