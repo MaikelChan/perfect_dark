@@ -15,8 +15,10 @@
             "defines": [
                 "_LANGUAGE_C",
                 "AVOID_UB",
+                "MATCHING=0",
                 "PAL=0",
                 "PIRACYCHECKS=0",
+                "ROM_SIZE=32",
                 "VERSION=2",
                 "VERSION_HASH=\"\"",
                 "VERSION_ROMID=\"ntsc-final\"",
