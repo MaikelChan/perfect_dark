@@ -20,6 +20,10 @@
 #include "data.h"
 #include "types.h"
 #include "gbiex.h"
+#ifndef PLATFORM_N64
+#include "game/player.h"
+#include "video.h"
+#endif
 
 #ifdef AVOID_UB
 char var800a41c0[26];
@@ -281,6 +285,12 @@ Gfx *bviewDrawMotionBlur(Gfx *gdl, u32 colour, u32 alpha)
 
 	var8007f844 = 0;
 
+#ifndef PLATFORM_N64
+	if (!videoFramebuffersSupported()) {
+		return gdl;
+	}
+#endif
+
 	mainOverrideVariable("sfxxx", &sfxxx);
 	fxxx = sfxxx / 1000.0f;
 	mainOverrideVariable("sfyyy", &sfyyy);
@@ -291,10 +301,19 @@ Gfx *bviewDrawMotionBlur(Gfx *gdl, u32 colour, u32 alpha)
 	somefloat = (viewheight - viewheight / fyyy) * 0.5f;
 	gdl = bviewPrepareStaticRgba16(gdl, colour, newalpha);
 
+#ifdef PLATFORM_N64
 	for (i = viewtop; i < viewtop + viewheight; i++) {
 		gdl = bviewCopyPixels(gdl, fb, viewtop + (s32)somefloat, 5, i, fxxx, viewleft, viewwidth);
 		somefloat += 1.0f / fyyy;
 	}
+#else
+	gDPSetFramebufferTextureEXT(gdl++, 0, 0, 0, g_PrevFrameFb);
+	gSPImageRectangleEXT(gdl++,
+		viewleft << 2, viewtop << 2, viewleft, viewtop,
+		(viewleft + viewwidth) << 2, (viewtop + viewheight) << 2, viewleft + viewwidth, viewtop + viewheight,
+		0, videoGetNativeWidth(), videoGetNativeHeight());
+		g_PrevFrameCapTimer = 0;
+#endif
 
 	return gdl;
 }
@@ -498,6 +517,12 @@ Gfx *bviewDrawZoomBlur(Gfx *gdl, u32 colour, s32 alpha, f32 arg3, f32 arg4)
 		return gdl;
 	}
 
+#ifndef PLATFORM_N64
+	if (!videoFramebuffersSupported()) {
+		return gdl;
+	}
+#endif
+
 	strcpy(var800a41c0, "stretchBlurGfx");
 
 	gDPPipeSync(gdl++);
@@ -506,10 +531,27 @@ Gfx *bviewDrawZoomBlur(Gfx *gdl, u32 colour, s32 alpha, f32 arg3, f32 arg4)
 
 	gdl = bviewPrepareStaticRgba16(gdl, colour, alpha);
 
+#ifdef PLATFORM_N64
 	for (i = viewtop; i < viewtop + viewheight; i++) {
 		gdl = bviewCopyPixels(gdl, fb, (s32)somefloat + viewtop, 5, i, arg3, viewleft, viewwidth);
 		somefloat += 1.0f / arg4;
 	}
+#else
+	const f32 xcenter = viewleft + viewwidth * 0.5f;
+	const f32 ycenter = viewtop + viewheight * 0.5f;
+	const f32 halfw = viewwidth * 0.5f * arg3;
+	const f32 halfh = viewheight * 0.5f * arg4;
+	const s32 left = xcenter - halfw;
+	const s32 top = ycenter - halfh;
+	const s32 right = xcenter + halfw;
+	const s32 bottom = ycenter + halfh;
+	gDPSetFramebufferTextureEXT(gdl++, 0, 0, 0, g_PrevFrameFb);
+	gSPImageRectangleEXT(gdl++,
+		left << 2, top << 2, viewleft, viewtop,
+		right << 2, bottom << 2, viewleft + viewwidth, viewtop + viewheight,
+		0, videoGetNativeWidth(), videoGetNativeHeight());
+	g_PrevFrameCapTimer = 0;
+#endif
 
 	return gdl;
 }
@@ -533,6 +575,30 @@ f32 bview0f142d74(s32 arg0, f32 arg1, f32 arg2, f32 arg3)
 
 	return result;
 }
+
+#ifndef PLATFORM_N64
+
+static inline Gfx *bviewDrawFisheyeLine(Gfx *gdl, s32 viewleft, s32 viewwidth, s32 y, f32 scale)
+{
+	if (!videoFramebuffersSupported()) {
+		return gdl;
+	}
+
+	const f32 orighalfw = viewwidth * 0.5f;
+	const f32 xcenter = viewleft + orighalfw;
+	const f32 halfw = orighalfw * scale;
+	const s32 left = xcenter - halfw;
+	const s32 right = xcenter + halfw;
+
+	gSPImageRectangleEXT(gdl++,
+		left << 2, y << 2, viewleft, y,
+		right << 2, (y + 1) << 2, viewleft + viewwidth, y + 1,
+		0, videoGetNativeWidth(), videoGetNativeHeight());
+
+	return gdl;
+}
+
+#endif
 
 /**
  * Draw the fisheye curved effect when using an eyespy.
@@ -648,6 +714,13 @@ Gfx *bviewDrawFisheye(Gfx *gdl, u32 colour, u32 alpha, s32 shuttertime60, s8 sta
 
 	gdl = bviewPrepareStaticRgba16(gdl, colour, alpha);
 
+#ifndef PLATFORM_N64
+	// make a copy of the current back buffer contents that we will be using as a texture
+	gDPFlushEXT(gdl++);
+	gDPCopyFramebufferEXT(gdl++, g_PrevFrameFb, 0, 0, 0, G_ON);
+	gDPSetFramebufferTextureEXT(gdl++, 0, 0, 0, g_PrevFrameFb);
+#endif
+
 	if (starting) {
 		for (i = viewtop; i < viewtop + viewheight; i++) {
 			if (i % 2) {
@@ -655,7 +728,11 @@ Gfx *bviewDrawFisheye(Gfx *gdl, u32 colour, u32 alpha, s32 shuttertime60, s8 sta
 					gDPSetEnvColorViaWord(gdl++, (colour & 0xffffff00) | (spec & 0xff));
 
 					tmp = bview0f142d74(s2, f26, halfheight, sqhalfheight) * startupfrac;
+#ifdef PLATFORM_N64
 					gdl = bviewCopyPixels(gdl, fb, i, 5, i, tmp, viewleft, viewwidth);
+#else
+					gdl = bviewDrawFisheyeLine(gdl, viewleft, viewwidth, i, tmp);
+#endif
 				}
 			}
 
@@ -681,13 +758,21 @@ Gfx *bviewDrawFisheye(Gfx *gdl, u32 colour, u32 alpha, s32 shuttertime60, s8 sta
 			}
 
 			tmp = bview0f142d74(s2, f26, halfheight, sqhalfheight) * f22;
+#ifdef PLATFORM_N64
 			gdl = bviewCopyPixels(gdl, fb, i, 5, i, tmp, viewleft, viewwidth);
+#else
+			gdl = bviewDrawFisheyeLine(gdl, viewleft, viewwidth, i, tmp);
+#endif
 
 			if (hit == EYESPYHIT_DAMAGE) {
 				gDPSetEnvColorViaWord(gdl++, 0xddaaaa99);
 
 				tmp = bview0f142d74(s2, f26, halfheight, sqhalfheight) * 1.03f;
+#ifdef PLATFORM_N64
 				gdl = bviewCopyPixels(gdl, fb, i, 5, i, tmp, viewleft, viewwidth);
+#else
+				gdl = bviewDrawFisheyeLine(gdl, viewleft, viewwidth, i, tmp);
+#endif
 			}
 
 			s2 += s3;
@@ -1284,8 +1369,8 @@ Gfx *bviewDrawEyespyMetrics(Gfx *gdl)
 
 	{
 		s8 contpadnum = optionsGetContpadNum1(g_Vars.currentplayerstats->mpindex);
-		u16 buttonsdown = joyGetButtons(contpadnum, 0xffff); \
-		u16 buttonsthisframe = joyGetButtonsPressedThisFrame(contpadnum, 0xffff);
+		u32 buttonsdown = joyGetButtons(contpadnum, 0xffffffff); \
+		u32 buttonsthisframe = joyGetButtonsPressedThisFrame(contpadnum, 0xffffffff);
 		s8 cstickx = joyGetStickX(contpadnum); \
 		s8 csticky = joyGetStickY(contpadnum);
 		s32 xpos;
@@ -2571,6 +2656,16 @@ Gfx *bviewDrawHorizonScanner(Gfx *gdl)
 		vsplit = 14;
 	}
 
+#ifndef PLATFORM_N64
+	if (!videoFramebuffersSupported()) {
+		return gdl;
+	}
+	// make a copy of what we have drawn so far and use it as a texture
+	gDPFlushEXT(gdl++);
+	gDPCopyFramebufferEXT(gdl++, g_PrevFrameFb, 0, 0, 0, G_ON);
+	gDPSetFramebufferTextureEXT(gdl++, 0, 0, 0, g_PrevFrameFb);
+#endif
+
 	// Iterate horizontal lines down the lens with a bit extra on top and bottom
 	for (liney = lenstop - 9; liney < lenstop + lensheight + vsplit + 9; liney++) {
 		if (liney < lenstop + lensheight && liney >= lenstop) {
@@ -2618,7 +2713,18 @@ Gfx *bviewDrawHorizonScanner(Gfx *gdl)
 
 		gDPSetColor(gdl++, G_SETENVCOLOR, colour);
 
+#ifdef PLATFORM_N64
 		gdl = bviewCopyPixels(gdl, fb, liney, 5, liney, RANDOMFRAC() * range + 1, viewleft, viewwidth);
+#else
+		const f32 xscale = RANDOMFRAC() * range + 1;
+		const f32 halfwidth = viewwidth / 2.f;
+		const s32 left = viewleft + halfwidth * (1.f - xscale);
+		const s32 right = viewleft + halfwidth * (1.f + xscale);
+		gSPImageRectangleEXT(gdl++,
+			left << 2, liney << 2, viewleft, liney,
+			right << 2, (liney + 1) << 2, viewleft + viewwidth, liney + 1,
+			0, videoGetNativeWidth(), videoGetNativeHeight());
+#endif
 	}
 
 	return gdl;

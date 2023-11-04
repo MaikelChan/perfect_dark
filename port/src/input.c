@@ -8,9 +8,11 @@
 #include "input.h"
 #include "video.h"
 #include "config.h"
+#include "utils.h"
 #include "system.h"
 
-#define MAX_BINDS 4
+#define MAX_BIND_STR 256
+
 #define TRIG_THRESHOLD (30 * 256)
 #define DEFAULT_DEADZONE 4096
 #define DEFAULT_DEADZONE_RY 6144
@@ -19,14 +21,45 @@
 #define WHEEL_DN_MASK SDL_BUTTON(VK_MOUSE_WHEEL_DN - VK_MOUSE_BEGIN + 1)
 
 static SDL_GameController *pads[INPUT_MAX_CONTROLLERS];
-static s32 rumbleSupported[INPUT_MAX_CONTROLLERS];
 
-static u32 binds[MAXCONTROLLERS][CK_TOTAL_COUNT][MAX_BINDS]; // [i][CK_][b] = [VK_]
+#define CONTROLLERCFG_DEFAULT { \
+	.rumbleOn = 0, \
+	.rumbleScale = 0.5f, \
+	.axisMap = { \
+		{ SDL_CONTROLLER_AXIS_LEFTX,  SDL_CONTROLLER_AXIS_LEFTY  }, \
+		{ SDL_CONTROLLER_AXIS_RIGHTX, SDL_CONTROLLER_AXIS_RIGHTY }, \
+	}, \
+	.sens = { 1.f, 1.f, 1.f, 1.f }, \
+	.deadzone = { DEFAULT_DEADZONE, DEFAULT_DEADZONE, DEFAULT_DEADZONE, DEFAULT_DEADZONE_RY }, \
+	.stickCButtons = 0, \
+	.swapSticks = 1 \
+}
 
+static struct controllercfg {
+	s32 rumbleOn;
+	f32 rumbleScale;
+	u32 axisMap[2][2];
+	f32 sens[4];
+	s32 deadzone[4];
+	s32 stickCButtons;
+	s32 swapSticks;
+} padsCfg[INPUT_MAX_CONTROLLERS] = {
+	CONTROLLERCFG_DEFAULT,
+	CONTROLLERCFG_DEFAULT,
+	CONTROLLERCFG_DEFAULT,
+	CONTROLLERCFG_DEFAULT
+};
+
+static u32 binds[MAXCONTROLLERS][CK_TOTAL_COUNT][INPUT_MAX_BINDS];
+static char bindStrs[MAXCONTROLLERS][CK_TOTAL_COUNT][MAX_BIND_STR];
+
+static s32 fakeControllers = 0;
+static s32 firstController = 0;
 static s32 connectedMask = 0;
 
 static s32 mouseEnabled = 1;
 static s32 mouseLocked = 0;
+static s32 mouseDefaultLocked = 0;
 static s32 mouseX, mouseY;
 static s32 mouseDX, mouseDY;
 static u32 mouseButtons;
@@ -35,26 +68,7 @@ static s32 mouseWheel = 0;
 static f32 mouseSensX = 1.5f;
 static f32 mouseSensY = 1.5f;
 
-static f32 rumbleScale = 0.333f;
-
-// NOTE: by default this gets inverted for 1.2
-static u32 axisMap[2][2] = {
-	{ SDL_CONTROLLER_AXIS_LEFTX,  SDL_CONTROLLER_AXIS_LEFTY  },
-	{ SDL_CONTROLLER_AXIS_RIGHTX, SDL_CONTROLLER_AXIS_RIGHTY },
-};
-
-static f32 stickSens[4] = {
-	// index == SDL_CONTROLLER_AXIS_*
-	1.f, 1.f, 1.f, 1.f
-};
-
-static s32 deadzone[4] = {
-	// index == SDL_CONTROLLER_AXIS_*
-	DEFAULT_DEADZONE, DEFAULT_DEADZONE,
-	DEFAULT_DEADZONE, DEFAULT_DEADZONE_RY,
-};
-
-static s32 stickCButtons = 1;
+static s32 lastKey = 0;
 
 static const char *ckNames[CK_TOTAL_COUNT] = {
 	"R_CBUTTONS",
@@ -77,6 +91,18 @@ static const char *ckNames[CK_TOTAL_COUNT] = {
 	"STICK_XPOS",
 	"STICK_YNEG",
 	"STICK_YPOS",
+	"CK_0010",
+	"CK_0020",
+	"CK_0040",
+	"CK_0080",
+	"CK_0100",
+	"CK_0200",
+	"CK_0400",
+	"CK_0800",
+	"CK_1000",
+	"CK_2000",
+	"CK_4000",
+	"CK_8000"
 };
 
 static const char *vkPunctNames[] = {
@@ -153,6 +179,8 @@ void inputSetDefaultKeyBinds(void)
 		{ CK_STICK_XPOS,    SDL_SCANCODE_RIGHT,  0                   },
 		{ CK_STICK_YNEG,    SDL_SCANCODE_DOWN,   0                   },
 		{ CK_STICK_YPOS,    SDL_SCANCODE_UP,     0                   },
+		{ CK_4000,          SDL_SCANCODE_LSHIFT, 0                   },
+		{ CK_2000,          SDL_SCANCODE_LCTRL,  0                   }
 	};
 
 	static const u32 joybinds[][2] = {
@@ -169,7 +197,10 @@ void inputSetDefaultKeyBinds(void)
 		{ CK_C_U,    SDL_CONTROLLER_BUTTON_DPAD_UP       },
 		{ CK_C_R,    SDL_CONTROLLER_BUTTON_DPAD_RIGHT    },
 		{ CK_C_L,    SDL_CONTROLLER_BUTTON_DPAD_LEFT     },
+		{ CK_8000,   SDL_CONTROLLER_BUTTON_LEFTSTICK     },
 	};
+
+	memset(binds, 0, sizeof(binds));
 
 	for (u32 i = 0; i < sizeof(kbbinds) / sizeof(kbbinds[0]); ++i) {
 		for (s32 j = 1; j < 3; ++j) {
@@ -190,15 +221,15 @@ static inline void inputInitController(const s32 cidx)
 {
 #if SDL_VERSION_ATLEAST(2, 0, 18)
 	// SDL_GameControllerHasRumble() appeared in 2.0.18 even though SDL_GameControllerRumble() is in 2.0.9
-	rumbleSupported[cidx] = SDL_GameControllerHasRumble(pads[cidx]);
+	padsCfg[cidx].rumbleOn = SDL_GameControllerHasRumble(pads[cidx]);
 #else
 	// assume that all joysticks with haptic feedback support will support rumble
-	rumbleSupported[cidx] = SDL_JoystickIsHaptic(SDL_GameControllerGetJoystick(pads[cidx]));
-	if (!rumbleSupported[cidx]) {
+	padsCfg[cidx].rumbleOn = SDL_JoystickIsHaptic(SDL_GameControllerGetJoystick(pads[cidx]));
+	if (!padsCfg[cidx].rumbleOn) {
 		// at least on Windows some controllers will report no haptics, but rumble will still function
 		// just assume it's supported if the controller is of known type
 		const SDL_GameControllerType ctype = SDL_GameControllerGetType(pads[cidx]);
-		rumbleSupported[cidx] = ctype && (ctype != SDL_CONTROLLER_TYPE_VIRTUAL);
+		padsCfg[cidx].rumbleOn = ctype && (ctype != SDL_CONTROLLER_TYPE_VIRTUAL);
 	}
 #endif
 
@@ -212,17 +243,29 @@ static inline void inputCloseController(const s32 cidx)
 {
 	SDL_GameControllerClose(pads[cidx]);
 	pads[cidx] = NULL;
-	rumbleSupported[cidx] = 0;
+	padsCfg[cidx].rumbleOn = 0;
 	if (cidx) {
 		connectedMask &= ~(1 << cidx);
 	}
+}
+
+
+static inline s32 inputControllerGetIndex(SDL_GameController *ctrl) {
+	if (ctrl) {
+		for (s32 i = 0; i < INPUT_MAX_CONTROLLERS; ++i) {
+			if (pads[i] == ctrl) {
+				return i;
+			}
+		}
+	}
+	return -1;
 }
 
 static int inputEventFilter(void *data, SDL_Event *event)
 {
 	switch (event->type) {
 		case SDL_CONTROLLERDEVICEADDED:
-			for (s32 i = 0; i < INPUT_MAX_CONTROLLERS; ++i) {
+			for (s32 i = firstController; i < INPUT_MAX_CONTROLLERS; ++i) {
 				if (!pads[i]) {
 					pads[i] = SDL_GameControllerOpen(event->cdevice.which);
 					if (pads[i]) {
@@ -235,19 +278,54 @@ static int inputEventFilter(void *data, SDL_Event *event)
 
 		case SDL_CONTROLLERDEVICEREMOVED: {
 			SDL_GameController *ctrl = SDL_GameControllerFromInstanceID(event->cdevice.which);
-			if (ctrl) {
-				for (s32 i = 0; i < INPUT_MAX_CONTROLLERS; ++i) {
-					if (pads[i] == ctrl) {
-						inputCloseController(i);
-						break;
-					}
-				}
+			const s32 idx = inputControllerGetIndex(ctrl);
+			if (idx >= 0) {
+				inputCloseController(idx);
 			}
 			break;
 		}
 
 		case SDL_MOUSEWHEEL:
 			mouseWheel = event->wheel.y;
+			if (!lastKey && mouseWheel) {
+				lastKey = (mouseWheel < 0) + VK_MOUSE_WHEEL_UP;
+			}
+			break;
+
+		case SDL_MOUSEBUTTONDOWN:
+			if (!lastKey) {
+				lastKey = VK_MOUSE_BEGIN - 1 + event->button.button;
+			}
+			break;
+
+		case SDL_KEYDOWN:
+			if (!lastKey) {
+				lastKey = VK_KEYBOARD_BEGIN + event->key.keysym.scancode;
+			}
+			break;
+
+		case SDL_CONTROLLERBUTTONDOWN:
+			if (!lastKey) {
+				lastKey = VK_JOY1_BEGIN + event->cbutton.button;
+				SDL_GameController *ctrl = SDL_GameControllerFromInstanceID(event->cdevice.which);
+				const s32 idx = inputControllerGetIndex(ctrl);
+				if (idx >= 0) {
+					lastKey += idx * INPUT_MAX_CONTROLLER_BUTTONS;
+				}
+			}
+			break;
+
+		case SDL_CONTROLLERAXISMOTION:
+			if (!lastKey) {
+				if (event->caxis.axis >= SDL_CONTROLLER_AXIS_TRIGGERLEFT && event->caxis.value > TRIG_THRESHOLD) {
+					lastKey = VK_JOY1_LTRIG + (event->caxis.axis - SDL_CONTROLLER_AXIS_TRIGGERLEFT);
+					SDL_GameController *ctrl = SDL_GameControllerFromInstanceID(event->cdevice.which);
+					const s32 idx = inputControllerGetIndex(ctrl);
+					if (idx >= 0) {
+						lastKey += idx * INPUT_MAX_CONTROLLER_BUTTONS;
+					}
+				}
+			}
 			break;
 
 		default:
@@ -321,34 +399,36 @@ static inline void inputInitKeyNames(void)
 	}
 }
 
-static inline void inputSaveBinds(void)
+void inputSaveBinds(void)
 {
-	char bindstr[256];
-	char keyname[256];
-	char secname[] = "Input.Player1.Binds";
-
-	bindstr[sizeof(bindstr) - 1] = '\0';
+	char *bindstr;
 
 	for (s32 i = 0; i < MAXCONTROLLERS; ++i) {
-		secname[12] = '1' + i;
 		for (u32 ck = 0; ck < CK_TOTAL_COUNT; ++ck) {
-			snprintf(keyname, sizeof(keyname), "%s.%s", secname, inputGetContKeyName(ck));
+			bindstr = bindStrs[i][ck];
 			bindstr[0] = '\0';
-			for (s32 b = 0; b < MAX_BINDS; ++b) {
+			for (s32 b = 0; b < INPUT_MAX_BINDS; ++b) {
 				if (binds[i][ck][b]) {
 					if (b) {
-						strncat(bindstr, ", ", sizeof(bindstr) - 1);
+						strncat(bindstr, ", ", MAX_BIND_STR - 1);
 					}
-					strncat(bindstr, inputGetKeyName(binds[i][ck][b]), sizeof(bindstr) - 1);
+					strncat(bindstr, inputGetKeyName(binds[i][ck][b]), MAX_BIND_STR - 1);
 				}
 			}
-			configSetString(keyname, bindstr[0] ? bindstr : "NONE");
+			if (!bindstr[0]) {
+				strcpy(bindstr, "NONE");
+			}
 		}
 	}
 }
 
 static inline void inputParseBindString(const s32 ctrl, const u32 ck, char *bindstr)
 {
+	if (!bindstr[0]) {
+		// empty string, keep defaults
+		return;
+	}
+
 	// unbind all first
 	memset(binds[ctrl][ck], 0, sizeof(binds[ctrl][ck]));
 
@@ -371,27 +451,11 @@ static inline void inputParseBindString(const s32 ctrl, const u32 ck, char *bind
 
 static inline void inputLoadBinds(void)
 {
-	char secname[] = "Input.Player1.Binds";
-	char keyname[256];
-	char bindstr[256];
-
 	for (s32 i = 0; i < MAXCONTROLLERS; ++i) {
-		secname[12] = '1' + i;
 		for (u32 ck = 0; ck < CK_TOTAL_COUNT; ++ck) {
-			snprintf(keyname, sizeof(keyname), "%s.%s", secname, inputGetContKeyName(ck));
-			const char *cfgstr = configGetString(keyname, "");
-			if (cfgstr[0]) {
-				strncpy(bindstr, cfgstr, sizeof(bindstr) - 1);
-				bindstr[sizeof(bindstr) - 1] = '\0';
-				inputParseBindString(i, ck, bindstr);
-			}
+			inputParseBindString(i, ck, bindStrs[i][ck]);
 		}
 	}
-}
-
-void inputSaveConfig(void)
-{
-	inputSaveBinds();
 }
 
 s32 inputInit(void)
@@ -406,11 +470,9 @@ s32 inputInit(void)
 
 	connectedMask = 1; // always report first controller as connected
 
-	// if this is set to 1, keyboard will count as a separate controller on its own,
+	// if firstController is set to 1, keyboard will count as a separate controller on its own,
 	// so the first connected gamepad will go to player 2 instead of player 1
-	const s32 cstart = configGetInt("Input.FirstGamepadNum", 0);
-
-	for (s32 jidx = 0, cidx = cstart; jidx < numJoys && cidx < INPUT_MAX_CONTROLLERS; ++jidx) {
+	for (s32 jidx = 0, cidx = firstController; jidx < numJoys && cidx < INPUT_MAX_CONTROLLERS; ++jidx) {
 		if (SDL_IsGameController(jidx)) {
 			pads[cidx] = SDL_GameControllerOpen(jidx);
 			if (pads[cidx]) {
@@ -427,33 +489,15 @@ s32 inputInit(void)
 
 	inputSetDefaultKeyBinds();
 
-	mouseEnabled = configGetInt("Input.MouseEnabled", 1);
-	mouseSensX = configGetFloat("Input.MouseSpeedX", 1.5f);
-	mouseSensY = configGetFloat("Input.MouseSpeedY", 1.5f);
+	inputLockMouse(mouseDefaultLocked);
 
-	rumbleScale = configGetFloat("Input.RumbleScale", 0.333f);
-
-	deadzone[0] = configGetInt("Input.LStickDeadzoneX", DEFAULT_DEADZONE);
-	deadzone[1] = configGetInt("Input.LStickDeadzoneY", DEFAULT_DEADZONE);
-	deadzone[2] = configGetInt("Input.RStickDeadzoneX", DEFAULT_DEADZONE);
-	deadzone[3] = configGetInt("Input.RStickDeadzoneY", DEFAULT_DEADZONE_RY);
-
-	stickSens[0] = configGetFloat("Input.LStickScaleX", 1.f);
-	stickSens[1] = configGetFloat("Input.LStickScaleY", 1.f);
-	stickSens[2] = configGetFloat("Input.RStickScaleX", 1.f);
-	stickSens[3] = configGetFloat("Input.RStickScaleY", 1.f);
-
-	stickCButtons = configGetInt("Input.StickCButtons", 1);
-
-	if (configGetInt("Input.SwapSticks", 1)) {
-		// invert axis map
-		axisMap[0][0] = SDL_CONTROLLER_AXIS_RIGHTX;
-		axisMap[0][1] = SDL_CONTROLLER_AXIS_RIGHTY;
-		axisMap[1][0] = SDL_CONTROLLER_AXIS_LEFTX;
-		axisMap[1][1] = SDL_CONTROLLER_AXIS_LEFTY;
+	// update the axis maps
+	// NOTE: by default sticks get swapped for 1.2: "right stick" here means left stick on your controller
+	for (s32 i = 0; i < INPUT_MAX_CONTROLLERS; ++i) {
+		inputControllerSetSticksSwapped(i, padsCfg[i].swapSticks);
 	}
 
-	const s32 overrideMask = (1 << configGetInt("Input.FakeGamepads", 0)) - 1;
+	const s32 overrideMask = (1 << fakeControllers) - 1;
 	if (overrideMask) {
 		connectedMask = overrideMask;
 	}
@@ -465,7 +509,7 @@ s32 inputInit(void)
 
 static inline s32 inputBindPressed(const s32 idx, const u32 ck)
 {
-	for (s32 i = 0; i < MAX_BINDS; ++i) {
+	for (s32 i = 0; i < INPUT_MAX_BINDS; ++i) {
 		if (binds[idx][ck][i]) {
 			if (inputKeyPressed(binds[idx][ck][i])) {
 				return 1;
@@ -516,22 +560,17 @@ s32 inputReadController(s32 idx, OSContPad *npad)
 		return 0;
 	}
 
-	s32 leftX = SDL_GameControllerGetAxis(pads[idx], axisMap[0][0]);
-	s32 leftY = SDL_GameControllerGetAxis(pads[idx], axisMap[0][1]);
-	s32 rightX = SDL_GameControllerGetAxis(pads[idx], axisMap[1][0]);
-	s32 rightY = SDL_GameControllerGetAxis(pads[idx], axisMap[1][1]);
+	const struct controllercfg *cfg = &padsCfg[idx];
 
-	leftX = inputAxisScale(leftX, deadzone[axisMap[0][0]], stickSens[axisMap[0][0]]);
-	leftY = inputAxisScale(leftY, deadzone[axisMap[0][1]], stickSens[axisMap[0][1]]);
-	rightX = inputAxisScale(rightX, deadzone[axisMap[1][0]], stickSens[axisMap[1][0]]);
-	rightY = inputAxisScale(rightY, deadzone[axisMap[1][1]], stickSens[axisMap[1][1]]);
+	s32 leftX = SDL_GameControllerGetAxis(pads[idx], cfg->axisMap[0][0]);
+	s32 leftY = SDL_GameControllerGetAxis(pads[idx], cfg->axisMap[0][1]);
+	s32 rightX = SDL_GameControllerGetAxis(pads[idx], cfg->axisMap[1][0]);
+	s32 rightY = SDL_GameControllerGetAxis(pads[idx], cfg->axisMap[1][1]);
 
-	if (stickCButtons) {
-		if (rightX < -0x4000) npad->button |= L_CBUTTONS;
-		if (rightX > +0x4000) npad->button |= R_CBUTTONS;
-		if (rightY < -0x4000) npad->button |= U_CBUTTONS;
-		if (rightY > +0x4000) npad->button |= D_CBUTTONS;
-	}
+	leftX = inputAxisScale(leftX, cfg->deadzone[cfg->axisMap[0][0]], cfg->sens[cfg->axisMap[0][0]]);
+	leftY = inputAxisScale(leftY, cfg->deadzone[cfg->axisMap[0][1]], cfg->sens[cfg->axisMap[0][1]]);
+	rightX = inputAxisScale(rightX, cfg->deadzone[cfg->axisMap[1][0]], cfg->sens[cfg->axisMap[1][0]]);
+	rightY = inputAxisScale(rightY, cfg->deadzone[cfg->axisMap[1][1]], cfg->sens[cfg->axisMap[1][1]]);
 
 	if (!npad->stick_x && leftX) {
 		npad->stick_x = leftX / 0x100;
@@ -542,9 +581,24 @@ s32 inputReadController(s32 idx, OSContPad *npad)
 		npad->stick_y = (stickY == 128) ? 127 : stickY;
 	}
 
-	stickY = -rightY / 0x100;
-	npad->rstick_y = (stickY == 128) ? 127 : stickY;
-	npad->rstick_x = rightX / 0x100;
+	if (cfg->stickCButtons) {
+		// rstick emulates C buttons
+		if (rightX < -0x4000) npad->button |= L_CBUTTONS;
+		if (rightX > +0x4000) npad->button |= R_CBUTTONS;
+		if (rightY < -0x4000) npad->button |= U_CBUTTONS;
+		if (rightY > +0x4000) npad->button |= D_CBUTTONS;
+		npad->rstick_x = 0;
+		npad->rstick_y = 0;
+	} else {
+		// rstick is an analog input
+		if (rightX) {
+			npad->rstick_x = rightX / 0x100;
+		}
+		s32 rStickY = -rightY / 0x100;
+		if (rStickY) {
+			npad->rstick_y = (rStickY == 128) ? 127 : rStickY;
+		}
+	}
 
 	return 0;
 }
@@ -601,7 +655,7 @@ s32 inputRumbleSupported(s32 idx)
 	if (idx < 0 || idx >= INPUT_MAX_CONTROLLERS) {
 		return 0;
 	}
-	return rumbleSupported[idx];
+	return padsCfg[idx].rumbleOn;
 }
 
 void inputRumble(s32 idx, f32 strength, f32 time)
@@ -610,7 +664,8 @@ void inputRumble(s32 idx, f32 strength, f32 time)
 		return;
 	}
 
-	if (rumbleSupported[idx]) {
+	if (padsCfg[idx].rumbleOn) {
+		strength *= padsCfg[idx].rumbleScale;
 		if (strength <= 0.f) {
 			strength = 0.f;
 			time = 0.f;
@@ -622,30 +677,99 @@ void inputRumble(s32 idx, f32 strength, f32 time)
 	}
 }
 
+f32 inputRumbleGetStrength(s32 cidx)
+{
+	return padsCfg[cidx].rumbleScale;
+}
+
+void inputRumbleSetStrength(s32 cidx, f32 val)
+{
+	padsCfg[cidx].rumbleScale = val;
+}
+
 s32 inputControllerMask(void)
 {
 	return connectedMask;
 }
 
+s32 inputControllerGetSticksSwapped(s32 cidx)
+{
+	return padsCfg[cidx].swapSticks;
+}
+
+void inputControllerSetSticksSwapped(s32 cidx, s32 swapped)
+{
+	padsCfg[cidx].swapSticks = swapped;
+	if (swapped) {
+		padsCfg[cidx].axisMap[0][0] = SDL_CONTROLLER_AXIS_RIGHTX;
+		padsCfg[cidx].axisMap[0][1] = SDL_CONTROLLER_AXIS_RIGHTY;
+		padsCfg[cidx].axisMap[1][0] = SDL_CONTROLLER_AXIS_LEFTX;
+		padsCfg[cidx].axisMap[1][1] = SDL_CONTROLLER_AXIS_LEFTY;
+	} else {
+		padsCfg[cidx].axisMap[0][0] = SDL_CONTROLLER_AXIS_LEFTX;
+		padsCfg[cidx].axisMap[0][1] = SDL_CONTROLLER_AXIS_LEFTY;
+		padsCfg[cidx].axisMap[1][0] = SDL_CONTROLLER_AXIS_RIGHTX;
+		padsCfg[cidx].axisMap[1][1] = SDL_CONTROLLER_AXIS_RIGHTY;
+	}
+}
+
+s32 inputControllerGetDualAnalog(s32 cidx)
+{
+	return !padsCfg[cidx].stickCButtons;
+}
+
+void inputControllerSetDualAnalog(s32 cidx, s32 enable)
+{
+	padsCfg[cidx].stickCButtons = !enable;
+}
+
+f32 inputControllerGetAxisScale(s32 cidx, s32 stick, s32 axis)
+{
+	return padsCfg[cidx].sens[stick * 2 + axis];
+}
+
+void inputControllerSetAxisScale(s32 cidx, s32 stick, s32 axis, f32 value)
+{
+	padsCfg[cidx].sens[stick * 2 + axis] = value;
+}
+
+f32 inputControllerGetAxisDeadzone(s32 cidx, s32 stick, s32 axis)
+{
+	return (f32)padsCfg[cidx].deadzone[stick * 2 + axis] / 32767.f;
+}
+
+void inputControllerSetAxisDeadzone(s32 cidx, s32 stick, s32 axis, f32 value)
+{
+	padsCfg[cidx].deadzone[stick * 2 + axis] = value * 32767.f;
+}
+
 void inputKeyBind(s32 idx, u32 ck, s32 bind, u32 vk)
 {
-	if (idx < 0 || idx >= INPUT_MAX_CONTROLLERS || bind >= MAX_BINDS || ck >= CK_TOTAL_COUNT) {
+	if (idx < 0 || idx >= INPUT_MAX_CONTROLLERS || bind >= INPUT_MAX_BINDS || ck >= CK_TOTAL_COUNT) {
 		return;
 	}
 
 	if (bind < 0) {
-		for (s32 i = 0; i < MAX_BINDS; ++i) {
+		for (s32 i = 0; i < INPUT_MAX_BINDS; ++i) {
 			if (binds[idx][ck][i] == 0) {
 				bind = i;
 				break;
 			}
 		}
 		if (bind < 0) {
-			bind = MAX_BINDS - 1; // just overwrite last
+			bind = INPUT_MAX_BINDS - 1; // just overwrite last
 		}
 	}
 
 	binds[idx][ck][bind] = vk;
+}
+
+const u32 *inputKeyGetBinds(s32 idx, u32 ck)
+{
+	if (idx < 0 || idx >= INPUT_MAX_CONTROLLERS || ck >= CK_TOTAL_COUNT) {
+		return NULL;
+	}
+	return binds[idx][ck];
 }
 
 s32 inputKeyPressed(u32 vk)
@@ -672,7 +796,7 @@ s32 inputKeyPressed(u32 vk)
 	return 0;
 }
 
-static inline u16 inputContToContKey(const u16 cont)
+static inline u32 inputContToContKey(const u32 cont)
 {
 	if (cont == 0) {
 		return 0;
@@ -681,7 +805,7 @@ static inline u16 inputContToContKey(const u16 cont)
 	return 32 - __builtin_clz(cont - 1);
 }
 
-s32 inputButtonPressed(s32 idx, u16 contbtn)
+s32 inputButtonPressed(s32 idx, u32 contbtn)
 {
 	if (idx < 0 || idx >= INPUT_MAX_CONTROLLERS) {
 		return 0;
@@ -725,6 +849,58 @@ void inputMouseGetScaledDelta(f32 *dx, f32 *dy)
 	}
 	if (dx) *dx = mdx;
 	if (dy) *dy = mdy;
+}
+
+void inputMouseGetAbsScaledDelta(f32 *dx, f32 *dy)
+{
+	f32 mdx, mdy;
+	if (mouseLocked) {
+		mdx = fabsf(mouseSensX) * (f32)mouseDX / 100.0f;
+		mdy = fabsf(mouseSensY) * (f32)mouseDY / 100.0f;
+	} else {
+		mdx = 0.f;
+		mdy = 0.f;
+	}
+	if (dx) *dx = mdx;
+	if (dy) *dy = mdy;
+}
+
+void inputMouseGetSpeed(f32 *x, f32 *y)
+{
+	*x = mouseSensX;
+	*y = mouseSensY;
+}
+
+void inputMouseSetSpeed(f32 x, f32 y)
+{
+	mouseSensX = x;
+	mouseSensY = y;
+}
+
+s32 inputMouseIsEnabled(void)
+{
+	return mouseEnabled;
+}
+
+void inputMouseEnable(s32 enabled)
+{
+	mouseEnabled = !!enabled;
+	if (!mouseEnabled && mouseLocked) {
+		inputLockMouse(0);
+	}
+}
+
+s32 inputGetMouseDefaultLocked(void)
+{
+	return mouseDefaultLocked;
+}
+
+void inputSetMouseDefaultLocked(s32 defaultLocked)
+{
+	mouseDefaultLocked = !!defaultLocked;
+	if (mouseEnabled) {
+		inputLockMouse(mouseDefaultLocked);
+	}
 }
 
 const char *inputGetContKeyName(u32 ck)
@@ -789,4 +965,47 @@ s32 inputGetKeyByName(const char *name)
 	sysLogPrintf(LOG_WARNING, "unknown key name: `%s`", name);
 
 	return -1;
+}
+
+void inputClearLastKey(void)
+{
+	lastKey = 0;
+}
+
+s32 inputGetLastKey(void)
+{
+	return lastKey;
+}
+
+PD_CONSTRUCTOR static void inputConfigInit(void)
+{
+	configRegisterInt("Input.MouseEnabled", &mouseEnabled, 0, 1);
+	configRegisterInt("Input.MouseDefaultLocked", &mouseDefaultLocked, 0, 1);
+	configRegisterFloat("Input.MouseSpeedX", &mouseSensX, -10.f, 10.f);
+	configRegisterFloat("Input.MouseSpeedY", &mouseSensY, -10.f, 10.f);
+	configRegisterInt("Input.FakeGamepads", &fakeControllers, 0, 4);
+	configRegisterInt("Input.FirstGamepadNum", &firstController, 0, 3);
+
+	char secname[] = "Input.Player1.Binds";
+	char keyname[256] = { 0 };
+	for (s32 c = 0; c < MAXCONTROLLERS; ++c) {
+		secname[12] = '1' + c;
+		secname[13] = '\0';
+		configRegisterFloat(strFmt("%s.RumbleScale", secname), &padsCfg[c].rumbleScale, 0.f, 1.f);
+		configRegisterInt(strFmt("%s.LStickDeadzoneX", secname), &padsCfg[c].deadzone[0], 0, 32767);
+		configRegisterInt(strFmt("%s.LStickDeadzoneY", secname), &padsCfg[c].deadzone[1], 0, 32767);
+		configRegisterInt(strFmt("%s.RStickDeadzoneX", secname), &padsCfg[c].deadzone[2], 0, 32767);
+		configRegisterInt(strFmt("%s.RStickDeadzoneY", secname), &padsCfg[c].deadzone[3], 0, 32767);
+		configRegisterFloat(strFmt("%s.LStickScaleX", secname), &padsCfg[c].sens[0], -10.f, 10.f);
+		configRegisterFloat(strFmt("%s.LStickScaleY", secname), &padsCfg[c].sens[1], -10.f, 10.f);
+		configRegisterFloat(strFmt("%s.RStickScaleX", secname), &padsCfg[c].sens[2], -10.f, 10.f);
+		configRegisterFloat(strFmt("%s.RStickScaleY", secname), &padsCfg[c].sens[3], -10.f, 10.f);
+		configRegisterInt(strFmt("%s.StickCButtons", secname), &padsCfg[c].stickCButtons, 0, 1);
+		configRegisterInt(strFmt("%s.SwapSticks", secname), &padsCfg[c].swapSticks, 0, 1);
+		secname[13] = '.';
+		for (u32 ck = 0; ck < CK_TOTAL_COUNT; ++ck) {
+			snprintf(keyname, sizeof(keyname), "%s.%s", secname, inputGetContKeyName(ck));
+			configRegisterString(keyname, bindStrs[c][ck], MAX_BIND_STR);
+		}
+	}
 }

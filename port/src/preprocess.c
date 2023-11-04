@@ -1063,7 +1063,21 @@ void preprocessFont(u8 *data, u32 size)
 		PD_SWAP_VAL(fnt->kerning[i]);
 	}
 
-	for (s32 i = 0; i < ARRAYCOUNT(fnt->chars); ++i) {
+	s32 numchars = 94;
+
+#if PAL
+	// PAL has more characters in these fonts
+	extern u8 *_fonthandelgothicsmSegmentRomStart;
+	extern u8 *_fonthandelgothicxsSegmentRomStart;
+	extern u8 *_fonthandelgothicmdSegmentRomStart;
+	if (data == _fonthandelgothicsmSegmentRomStart
+			|| data == _fonthandelgothicxsSegmentRomStart
+			|| data == _fonthandelgothicmdSegmentRomStart) {
+		numchars = 135;
+	}
+#endif
+
+	for (s32 i = 0; i < numchars; ++i) {
 		PD_SWAP_VAL(fnt->chars[i].kerningindex);
 		PD_SWAP_PTR(fnt->chars[i].pixeldata);
 	}
@@ -1125,6 +1139,13 @@ void preprocessTexturesList(u8 *data, u32 size)
 	}
 }
 
+void preprocessTextureRGBA32Embedded(u32* dest, u32 size_bytes)
+{
+	for (uint32_t i = 0; i < size_bytes; i += 4, ++dest) {
+		*dest = PD_BE32(*dest);
+	}
+}
+
 void preprocessModel(u8 *base, u32 ofs)
 {
 	struct modeldef *mdl = (struct modeldef *)base;
@@ -1174,6 +1195,13 @@ void preprocessModel(u8 *base, u32 ofs)
 				// figure out the format and unswizzle
 				const s32 format = texConfigToFormat(&texconfigs[i]);
 				texSwizzleInternal(texdata, texconfigs[i].width, texconfigs[i].height, format, maxSize);
+
+				if (format == TEXFORMAT_RGBA32) {
+					// for some reason, RGBA32 embedded textures don't need to be byte-swapped,
+					// so we byte-swap them here, which will be undone when the renderer imports it
+					u32 size_bytes = texconfigs[i].width * texconfigs[i].height * 4;
+					preprocessTextureRGBA32Embedded((u32*)texdata, size_bytes);
+				}
 			}
 		}
 	}

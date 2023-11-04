@@ -45,8 +45,8 @@ struct joydata {
 	s32 curstart;
 	s32 nextlast;
 	s32 nextsecondlast;
-	u16 buttonspressed[NUM_PADS];
-	u16 buttonsreleased[NUM_PADS];
+	u32 buttonspressed[NUM_PADS];
+	u32 buttonsreleased[NUM_PADS];
 	s32 unk200;
 };
 
@@ -80,6 +80,8 @@ u32 var8005ee68 = 0;
 // when controller was disconnected or not ready.
 u32 g_JoyBadReadsStickX[NUM_PADS] = {0};
 u32 g_JoyBadReadsStickY[NUM_PADS] = {0};
+u32 g_JoyBadReadsRStickX[NUM_PADS] = {0};
+u32 g_JoyBadReadsRStickY[NUM_PADS] = {0};
 u32 g_JoyBadReadsButtons[NUM_PADS] = {0};
 u32 g_JoyBadReadsButtonsPressed[NUM_PADS] = {0};
 
@@ -438,8 +440,8 @@ void joyConsumeSamples(struct joydata *joydata)
 {
 	s8 i;
 	s32 samplenum;
-	u16 buttons1;
-	u16 buttons2;
+	u32 buttons1;
+	u32 buttons2;
 
 	joydata->curstart = joydata->curlast;
 	joydata->curlast = joydata->nextlast;
@@ -462,7 +464,12 @@ void joyConsumeSamples(struct joydata *joydata)
 							&& joydata->samples[samplenum].pads[i].stick_x < 15
 							&& joydata->samples[samplenum].pads[i].stick_x > -15
 							&& joydata->samples[samplenum].pads[i].stick_y < 15
-							&& joydata->samples[samplenum].pads[i].stick_y > -15) {
+							&& joydata->samples[samplenum].pads[i].stick_y > -15
+							&& joydata->samples[samplenum].pads[i].rstick_x < 15
+							&& joydata->samples[samplenum].pads[i].rstick_x > -15
+							&& joydata->samples[samplenum].pads[i].rstick_y < 15
+							&& joydata->samples[samplenum].pads[i].rstick_y > -15
+					) {
 						g_JoyDisableCooldown[i] = 0;
 					} else {
 						g_JoyDisableCooldown[i]--;
@@ -700,9 +707,11 @@ void joysHandleRetrace(void)
 				s32 i;
 
 				for (i = 0; i < NUM_PADS; i++) {
-					if (g_JoyBadReadsStickX[i] || g_JoyBadReadsStickY[i] || g_JoyBadReadsButtons[i] || g_JoyBadReadsButtonsPressed[i]) {
+					if (g_JoyBadReadsStickX[i] || g_JoyBadReadsStickY[i] || g_JoyBadReadsRStickX[i] || g_JoyBadReadsRStickY[i] || g_JoyBadReadsButtons[i] || g_JoyBadReadsButtonsPressed[i]) {
 						g_JoyBadReadsStickX[i] = 0;
 						g_JoyBadReadsStickY[i] = 0;
+						g_JoyBadReadsRStickX[i] = 0;
+						g_JoyBadReadsRStickY[i] = 0;
 						g_JoyBadReadsButtons[i] = 0;
 						g_JoyBadReadsButtonsPressed[i] = 0;
 					}
@@ -722,6 +731,32 @@ void joy00014810(bool value)
 s32 joyGetNumSamples(void)
 {
 	return (g_JoyDataPtr->curlast - g_JoyDataPtr->curstart + NUM_SAMPLES) % NUM_SAMPLES;
+}
+
+s32 joyGetRStickXOnSample(s32 samplenum, s8 contpadnum) {
+	if (g_JoyDataPtr->unk200 < 0 && (g_JoyConnectedControllers >> contpadnum & 1) == 0) {
+		g_JoyBadReadsRStickX[contpadnum]++;
+		return 0;
+	}
+
+	if (g_JoyDisableCooldown[contpadnum] > 0) {
+		return 0;
+	}
+
+	return g_JoyDataPtr->samples[(g_JoyDataPtr->curstart + samplenum + 1) % NUM_SAMPLES].pads[contpadnum].rstick_x;
+}
+
+s32 joyGetRStickYOnSample(s32 samplenum, s8 contpadnum) {
+	if (g_JoyDataPtr->unk200 < 0 && (g_JoyConnectedControllers >> contpadnum & 1) == 0) {
+		g_JoyBadReadsStickY[contpadnum]++;
+		return 0;
+	}
+
+	if (g_JoyDisableCooldown[contpadnum] > 0) {
+		return 0;
+	}
+
+	return g_JoyDataPtr->samples[(g_JoyDataPtr->curstart + samplenum + 1) % NUM_SAMPLES].pads[contpadnum].rstick_y;
 }
 
 s32 joyGetStickXOnSample(s32 samplenum, s8 contpadnum)
@@ -752,6 +787,20 @@ s32 joyGetStickYOnSample(s32 samplenum, s8 contpadnum)
 	return g_JoyDataPtr->samples[(g_JoyDataPtr->curstart + samplenum + 1) % NUM_SAMPLES].pads[contpadnum].stick_y;
 }
 
+s32 joyGetRStickYOnSampleIndex(s32 samplenum, s8 contpadnum)
+{
+	if (g_JoyDataPtr->unk200 < 0 && (g_JoyConnectedControllers >> contpadnum & 1) == 0) {
+		g_JoyBadReadsStickY[contpadnum]++;
+		return 0;
+	}
+
+	if (g_JoyDisableCooldown[contpadnum] > 0) {
+		return 0;
+	}
+
+	return g_JoyDataPtr->samples[(g_JoyDataPtr->curstart + samplenum) % NUM_SAMPLES].pads[contpadnum].rstick_y;
+}
+
 s32 joyGetStickYOnSampleIndex(s32 samplenum, s8 contpadnum)
 {
 	if (g_JoyDataPtr->unk200 < 0 && (g_JoyConnectedControllers >> contpadnum & 1) == 0) {
@@ -766,9 +815,9 @@ s32 joyGetStickYOnSampleIndex(s32 samplenum, s8 contpadnum)
 	return g_JoyDataPtr->samples[(g_JoyDataPtr->curstart + samplenum) % NUM_SAMPLES].pads[contpadnum].stick_y;
 }
 
-u16 joyGetButtonsOnSample(s32 samplenum, s8 contpadnum, u16 mask)
+u32 joyGetButtonsOnSample(s32 samplenum, s8 contpadnum, u32 mask)
 {
-	u16 button;
+	u32 button;
 
 	if (g_JoyDataPtr->unk200 < 0 && (g_JoyConnectedControllers >> contpadnum & 1) == 0) {
 		g_JoyBadReadsButtons[contpadnum]++;
@@ -784,10 +833,10 @@ u16 joyGetButtonsOnSample(s32 samplenum, s8 contpadnum, u16 mask)
 	return button & mask;
 }
 
-u16 joyGetButtonsPressedOnSample(s32 samplenum, s8 contpadnum, u16 mask)
+u32 joyGetButtonsPressedOnSample(s32 samplenum, s8 contpadnum, u32 mask)
 {
-	u16 button1;
-	u16 button2;
+	u32 button1;
+	u32 button2;
 
 	if (g_JoyDataPtr->unk200 < 0 && (g_JoyConnectedControllers >> contpadnum & 1) == 0) {
 		g_JoyBadReadsButtonsPressed[contpadnum]++;
@@ -811,12 +860,12 @@ u16 joyGetButtonsPressedOnSample(s32 samplenum, s8 contpadnum, u16 mask)
  * For example, if checksamples[5] is nonzero and a button was pressed on
  * samplenum 5 which matches the mask, count is incremented.
  */
-s32 joyCountButtonsOnSpecificSamples(u32 *checksamples, s8 contpadnum, u16 mask)
+s32 joyCountButtonsOnSpecificSamples(u32 *checksamples, s8 contpadnum, u32 mask)
 {
 	s32 count = 0;
 	s32 index = 0;
 	s32 i;
-	u16 button;
+	u32 button;
 
 	if (g_JoyDataPtr->unk200 < 0 && (g_JoyConnectedControllers >> contpadnum & 1) == 0) {
 		g_JoyBadReadsButtons[contpadnum]++;
@@ -863,6 +912,32 @@ s8 joyGetStickX(s8 contpadnum)
 	return g_JoyDataPtr->samples[g_JoyDataPtr->curlast].pads[contpadnum].stick_x;
 }
 
+s8 joyGetRStickX(s8 contpadnum) {
+	if (g_JoyDataPtr->unk200 < 0 && (g_JoyConnectedControllers >> contpadnum & 1) == 0) {
+		g_JoyBadReadsRStickX[contpadnum]++;
+		return 0;
+	}
+
+	if (g_JoyDisableCooldown[contpadnum] > 0) {
+		return 0;
+	}
+
+	return g_JoyDataPtr->samples[g_JoyDataPtr->curlast].pads[contpadnum].rstick_x;
+}
+
+s8 joyGetRStickY(s8 contpadnum) {
+	if (g_JoyDataPtr->unk200 < 0 && (g_JoyConnectedControllers >> contpadnum & 1) == 0) {
+		g_JoyBadReadsRStickY[contpadnum]++;
+		return 0;
+	}
+
+	if (g_JoyDisableCooldown[contpadnum] > 0) {
+		return 0;
+	}
+
+	return g_JoyDataPtr->samples[g_JoyDataPtr->curlast].pads[contpadnum].rstick_y;
+}
+
 s8 joyGetStickY(s8 contpadnum)
 {
 	if (g_JoyDataPtr->unk200 < 0 && (g_JoyConnectedControllers >> contpadnum & 1) == 0) {
@@ -877,7 +952,7 @@ s8 joyGetStickY(s8 contpadnum)
 	return g_JoyDataPtr->samples[g_JoyDataPtr->curlast].pads[contpadnum].stick_y;
 }
 
-u16 joyGetButtons(s8 contpadnum, u16 mask)
+u32 joyGetButtons(s8 contpadnum, u32 mask)
 {
 	if (g_JoyDataPtr->unk200 < 0 && (g_JoyConnectedControllers >> contpadnum & 1) == 0) {
 		g_JoyBadReadsButtons[contpadnum]++;
@@ -891,7 +966,7 @@ u16 joyGetButtons(s8 contpadnum, u16 mask)
 	return g_JoyDataPtr->samples[g_JoyDataPtr->curlast].pads[contpadnum].button & mask;
 }
 
-u16 joyGetButtonsPressedThisFrame(s8 contpadnum, u16 mask)
+u32 joyGetButtonsPressedThisFrame(s8 contpadnum, u32 mask)
 {
 	if (g_JoyDataPtr->unk200 < 0 && (g_JoyConnectedControllers >> contpadnum & 1) == 0) {
 		g_JoyBadReadsButtonsPressed[contpadnum]++;
@@ -906,7 +981,7 @@ u16 joyGetButtonsPressedThisFrame(s8 contpadnum, u16 mask)
 }
 
 #if VERSION < VERSION_NTSC_1_0
-u16 joyGetButtonsReleasedThisFrame(s8 contpadnum, u16 mask)
+u32 joyGetButtonsReleasedThisFrame(s8 contpadnum, u32 mask)
 {
 	if (g_JoyDataPtr->unk200 < 0 && (g_JoyConnectedControllers >> contpadnum & 1) == 0) {
 		g_JoyBadReadsButtonsPressed[contpadnum]++;

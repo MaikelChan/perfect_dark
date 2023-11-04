@@ -4,6 +4,7 @@
 #include <string.h>
 #include <PR/ultratypes.h>
 #include <PR/gbi.h>
+#include "platform.h"
 #include "config.h"
 #include "video.h"
 
@@ -16,38 +17,37 @@ static struct GfxRenderingAPI *renderingAPI;
 
 static bool initDone = false;
 
+static s32 vidWidth = 640;
+static s32 vidHeight = 480;
+static s32 vidFramebuffers = true;
+static s32 vidFullscreen = false;
+static s32 vidVsync = 1;
+static s32 vidMSAA = 1;
+static s32 vidFramerateLimit = 0;
+
+static s32 texFilter = FILTER_LINEAR;
+static s32 texFilter2D = true;
+
 static u32 dlcount = 0;
 static u32 frames = 0;
 static u32 framesPerSec = 0;
 static f64 startTime, endTime, fpsTime;
-static u32 texFilter2D = 1;
 
 s32 videoInit(void)
 {
 	wmAPI = &gfx_sdl;
 	renderingAPI = &gfx_opengl_api;
+
 	gfx_current_native_viewport.width = 320;
 	gfx_current_native_viewport.height = 240;
+	gfx_framebuffers_enabled = (bool)vidFramebuffers;
+	gfx_msaa_level = vidMSAA;
 
-	const s32 w = configGetInt("Video.DefaultWidth", 640);
-	const s32 h = configGetInt("Video.DefaultHeight", 480);
-	const bool fs = configGetInt("Video.DefaultFullscreen", false);
+	gfx_init(wmAPI, renderingAPI, "PD", vidFullscreen, vidWidth, vidHeight, 100, 100);
 
-	gfx_msaa_level = configGetInt("Video.MSAA", 0);
-	if (gfx_msaa_level < 1 || gfx_msaa_level > 16) {
-		gfx_msaa_level = 1;
-	}
-
-	gfx_init(wmAPI, renderingAPI, "PD", fs, w, h, 100, 100);
-
-	wmAPI->set_swap_interval(configGetInt("Video.VSync", 1));
-	wmAPI->set_target_fps(configGetInt("Video.FramerateLimit", 0)); // disabled because vsync is on
-
-	u32 filter = configGetInt("Video.TextureFilter", FILTER_LINEAR);
-	if (filter > FILTER_THREE_POINT) filter = FILTER_THREE_POINT;
-	renderingAPI->set_texture_filter((enum FilteringMode)filter);
-
-	texFilter2D = configGetIntClamped("Video.TextureFilter2D", 1, 0, 1);
+	wmAPI->set_swap_interval(vidVsync);
+	wmAPI->set_target_fps(vidFramerateLimit); // disabled because vsync is on
+	renderingAPI->set_texture_filter((enum FilteringMode)texFilter);
 
 	initDone = true;
 	return 0;
@@ -132,6 +132,11 @@ s32 videoGetHeight(void)
 	return gfx_current_dimensions.height;
 }
 
+s32 videoGetFullscreen(void)
+{
+	return vidFullscreen;
+}
+
 f32 videoGetAspect(void)
 {
 	return gfx_current_dimensions.aspect_ratio;
@@ -142,15 +147,40 @@ u32 videoGetTextureFilter2D(void)
 	return texFilter2D;
 }
 
+u32 videoGetTextureFilter(void)
+{
+	return texFilter;
+}
+
 void videoSetWindowOffset(s32 x, s32 y)
 {
 	gfx_current_game_window_viewport.x = x;
 	gfx_current_game_window_viewport.y = y;
 }
 
-s32 videoCreateFramebuffer(u32 w, u32 h)
+void videoSetFullscreen(s32 fs)
 {
-	return gfx_create_framebuffer(w, h);
+	if (fs != vidFullscreen) {
+		vidFullscreen = !!fs;
+		wmAPI->set_fullscreen(vidFullscreen);
+	}
+}
+
+void videoSetTextureFilter(u32 filter)
+{
+	if (filter > FILTER_THREE_POINT) filter = FILTER_THREE_POINT;
+	texFilter = filter;
+	renderingAPI->set_texture_filter((enum FilteringMode)filter);
+}
+
+void videoSetTextureFilter2D(u32 filter)
+{
+	texFilter2D = !!filter;
+}
+
+s32 videoCreateFramebuffer(u32 w, u32 h, s32 upscale, s32 autoresize)
+{
+	return gfx_create_framebuffer(w, h, upscale, autoresize);
 }
 
 void videoSetFramebuffer(s32 target)
@@ -163,9 +193,20 @@ void videoResetFramebuffer(void)
 	return gfx_reset_framebuffer();
 }
 
+s32 videoFramebuffersSupported(void)
+{
+	return gfx_framebuffers_enabled;
+}
+
+void videoResizeFramebuffer(s32 target, u32 w, u32 h, s32 upscale, s32 autoresize)
+{
+	gfx_resize_framebuffer(target, w, h, upscale, autoresize);
+}
+
 void videoCopyFramebuffer(s32 dst, s32 src, s32 left, s32 top)
 {
-	gfx_copy_framebuffer(dst, src, left, top);
+	// assume immediate copies always read the front buffer
+	gfx_copy_framebuffer(dst, src, left, top, false);
 }
 
 void videoResetTextureCache(void)
@@ -176,4 +217,17 @@ void videoResetTextureCache(void)
 void videoFreeCachedTexture(const void *texptr)
 {
 	gfx_texture_cache_delete(texptr);
+}
+
+PD_CONSTRUCTOR static void videoConfigInit(void)
+{
+	configRegisterInt("Video.DefaultFullscreen", &vidFullscreen, 0, 1);
+	configRegisterInt("Video.DefaultWidth", &vidWidth, 0, 32767);
+	configRegisterInt("Video.DefaultHeight", &vidHeight, 0, 32767);
+	configRegisterInt("Video.VSync", &vidVsync, -1, 10);
+	configRegisterInt("Video.FramebufferEffects", &vidFramebuffers, 0, 1);
+	configRegisterInt("Video.FramerateLimit", &vidFramerateLimit, 0, 10000);
+	configRegisterInt("Video.MSAA", &vidMSAA, 1, 16);
+	configRegisterInt("Video.TextureFilter", &texFilter, 0, 2);
+	configRegisterInt("Video.TextureFilter2D", &texFilter2D, 0, 1);
 }

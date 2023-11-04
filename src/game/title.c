@@ -370,6 +370,8 @@ Gfx *titleRenderLegal(Gfx *gdl)
 #if !defined(PLATFORM_N64) && defined(VERSION_HASH)
 				if (elem->textid == L_OPTIONS_084) {
 					elem->textptr = VERSION_HASH " (" VERSION_TARGET ")";
+				} else if (elem->textid == L_OPTIONS_083) {
+					elem->textptr = VERSION_ROMID;
 				}
 #endif
 				break;
@@ -456,6 +458,11 @@ Gfx *titleRenderLegal(Gfx *gdl)
 
 				gdl = text0f153628(gdl);
 			} else {
+#ifdef PLATFORM_N64
+#define ELEM_TEXT langGet(elem->textid)
+#else
+#define ELEM_TEXT (char *)(elem->textptr ? elem->textptr : langGet(elem->textid))
+#endif
 #if VERSION == VERSION_JPN_FINAL
 				u32 stack;
 				x = elem->x == -1 ? prevx : elem->x;
@@ -471,16 +478,16 @@ Gfx *titleRenderLegal(Gfx *gdl)
 						x += 24;
 					}
 
-					gdl = textRenderProjected(gdl, &x, &y, langGet(elem->textid), font1, font2, colour, viGetWidth(), viGetHeight(), 0, 0);
+					gdl = textRenderProjected(gdl, &x, &y, ELEM_TEXT, font1, font2, colour, viGetWidth(), viGetHeight(), 0, 0);
 
 					var8007fad0 = 1;
 					var80080108jf = 1;
 				} else {
-					gdl = textRenderProjected(gdl, &x, &y, langGet(elem->textid), font1, font2, (colour & 0xffffff00) | ((colour & 0xff) * 2 / 3), viGetWidth(), viGetHeight(), 0, 0);
+					gdl = textRenderProjected(gdl, &x, &y, ELEM_TEXT, font1, font2, (colour & 0xffffff00) | ((colour & 0xff) * 2 / 3), viGetWidth(), viGetHeight(), 0, 0);
 
 					x = elem->x == -1 ? prevx : elem->x;
 					y = elem->y;
-					gdl = textRenderProjected(gdl, &x, &y, langGet(elem->textid), font1, font2, colour, viGetWidth(), viGetHeight(), 0, 0);
+					gdl = textRenderProjected(gdl, &x, &y, ELEM_TEXT, font1, font2, colour, viGetWidth(), viGetHeight(), 0, 0);
 
 					prevx = x;
 				}
@@ -489,28 +496,23 @@ Gfx *titleRenderLegal(Gfx *gdl)
 				// Render a darker copy of the text one pixel above
 				x = elem->x == -1 ? prevx : elem->x;
 				y = elem->y - 1;
-				gdl = textRenderProjected(gdl, &x, &y, langGet(elem->textid), font1, font2, (colour & 0xffffff00) | ((colour & 0xff) * 2 / 3), viGetWidth(), viGetHeight(), 0, 0);
+				gdl = textRenderProjected(gdl, &x, &y, ELEM_TEXT, font1, font2, (colour & 0xffffff00) | ((colour & 0xff) * 2 / 3), viGetWidth(), viGetHeight(), 0, 0);
 
 				// Render the text properly
 				x = elem->x == -1 ? prevx : elem->x;
 				y = elem->y;
-				gdl = textRenderProjected(gdl, &x, &y, langGet(elem->textid), font1, font2, colour, viGetWidth(), viGetHeight(), 0, 0);
+				gdl = textRenderProjected(gdl, &x, &y, ELEM_TEXT, font1, font2, colour, viGetWidth(), viGetHeight(), 0, 0);
 
 				prevx = x;
 #elif VERSION >= VERSION_PAL_BETA
 				x = elem->x == -1 ? prevx : elem->x;
 				y = elem->y;
-				gdl = textRenderProjected(gdl, &x, &y, langGet(elem->textid), font1, font2, colour, viGetWidth(), viGetHeight(), 0, 0);
+				gdl = textRenderProjected(gdl, &x, &y, ELEM_TEXT, font1, font2, colour, viGetWidth(), viGetHeight(), 0, 0);
 				prevx = x;
 #else
 				x = elem->x;
 				y = elem->y;
-#ifdef PLATFORM_N64
-				gdl = textRenderProjected(gdl, &x, &y, langGet(elem->textid), font1, font2, colour, viGetWidth(), viGetHeight(), 0, 0);
-#else
-				const char *textptr = elem->textptr ? elem->textptr : langGet(elem->textid);
-				gdl = textRenderProjected(gdl, &x, &y, textptr, font1, font2, colour, viGetWidth(), viGetHeight(), 0, 0);
-#endif
+				gdl = textRenderProjected(gdl, &x, &y, ELEM_TEXT, font1, font2, colour, viGetWidth(), viGetHeight(), 0, 0);
 #endif
 			}
 		}
@@ -731,7 +733,7 @@ void titleTickPdLogo(void)
 		titleSetNextMode(TITLEMODE_SKIP);
 	}
 
-	if (joyGetButtonsPressedThisFrame(0, 0xffff)) {
+	if (joyGetButtonsPressedThisFrame(0, 0xffffffff)) {
 		g_TitleButtonPressed = g_TitleFastForward = true;
 
 		if (g_TitleTimer < TICKS(549)) {
@@ -1694,7 +1696,7 @@ void titleTickRarePresents(void)
 
 	if (g_TitleTimer > TICKS(300)) {
 		titleSetNextMode(TITLEMODE_PDLOGO);
-	} else if (joyGetButtonsPressedThisFrame(0, 0xffff)) {
+	} else if (joyGetButtonsPressedThisFrame(0, 0xffffffff)) {
 		titleSetNextMode(TITLEMODE_SKIP);
 	}
 }
@@ -1848,7 +1850,7 @@ void titleTickNintendoLogo(void)
 		g_TitleTimer += g_Vars.lvupdate60;
 	}
 
-	if (joyGetButtonsPressedThisFrame(0, 0xffff)) {
+	if (joyGetButtonsPressedThisFrame(0, 0xffffffff)) {
 		if (osResetType == RESETTYPE_WARM) {
 			g_TitleButtonPressed = true;
 			titleSetNextMode(TITLEMODE_PDLOGO);
@@ -2021,7 +2023,7 @@ void titleTickRareLogo(void)
 
 		g_TitleTimer += g_Vars.lvupdate60;
 
-		if (joyGetButtonsPressedThisFrame(0, 0xffff)) {
+		if (joyGetButtonsPressedThisFrame(0, 0xffffffff)) {
 			if (osResetType == RESETTYPE_WARM) {
 				g_TitleButtonPressed = true;
 				titleSetNextMode(TITLEMODE_PDLOGO);

@@ -19,12 +19,15 @@ static char logPath[2048];
 static s32 sysArgc;
 static const char **sysArgv;
 
-void sysInit(s32 argc, const char **argv)
+void sysInitArgs(s32 argc, const char **argv)
 {
-	startTick = sysGetMicroseconds();
-
 	sysArgc = argc;
 	sysArgv = argv;
+}
+
+void sysInit(void)
+{
+	startTick = sysGetMicroseconds();
 
 	if (sysArgCheck("--log")) {
 		// figure out where the log is and clear it

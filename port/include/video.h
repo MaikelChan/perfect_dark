@@ -19,14 +19,21 @@ s32 videoGetNativeHeight(void);
 s32 videoGetWidth(void);
 s32 videoGetHeight(void);
 f32 videoGetAspect(void);
+s32 videoGetFullscreen(void);
+u32 videoGetTextureFilter(void);
 u32 videoGetTextureFilter2D(void);
 
 void videoSetWindowOffset(s32 x, s32 y);
+void videoSetFullscreen(s32 fs);
+void videoSetTextureFilter(u32 filter);
+void videoSetTextureFilter2D(u32 filter);
 
-s32 videoCreateFramebuffer(u32 w, u32 h);
+s32 videoCreateFramebuffer(u32 w, u32 h, s32 upscale, s32 autoresize);
 void videoSetFramebuffer(s32 target);
 void videoResetFramebuffer(void);
 void videoCopyFramebuffer(s32 dst, s32 src, s32 left, s32 top);
+void videoResizeFramebuffer(s32 target, u32 w, u32 h, s32 upscale, s32 autoresize);
+s32 videoFramebuffersSupported(void);
 
 void videoResetTextureCache(void);
 void videoFreeCachedTexture(const void *texptr);

@@ -57,7 +57,7 @@ typedef struct {
 }OSContStatus;
 
 typedef struct {
-	u16     button;
+	u32     button;
 	s8      stick_x;		/* -80 <= stick_x <= 80 */
 	s8      stick_y;		/* -80 <= stick_y <= 80 */
 	u8	errnum;
@@ -122,23 +122,39 @@ typedef struct {
 #define CONT_EEPROM_BUSY	0x80
 
 /* Buttons */
+#define CONT_8000      0x80000000
+#define CONT_4000      0x40000000
+#define CONT_2000      0x20000000
+#define CONT_1000      0x10000000
+#define CONT_0800      0x08000000
+#define CONT_0400      0x04000000
+#define CONT_0200      0x02000000
+#define CONT_0100      0x01000000
+#define CONT_0080      0x00800000
+#define CONT_0040      0x00400000
+#define CONT_0020      0x00200000
+#define CONT_0010      0x00100000
+#define CONT_0008      0x00080000
+#define CONT_0004      0x00040000
+#define CONT_0002      0x00020000
+#define CONT_0001      0x00010000
 
-#define CONT_A      0x8000
-#define CONT_B      0x4000
-#define CONT_G	    0x2000
-#define CONT_START  0x1000
-#define CONT_UP     0x0800
-#define CONT_DOWN   0x0400
-#define CONT_LEFT   0x0200
-#define CONT_RIGHT  0x0100
-#define CONT_EXTRA1 0x0080
-#define CONT_EXTRA0 0x0040
-#define CONT_L      0x0020
-#define CONT_R      0x0010
-#define CONT_E      0x0008
-#define CONT_D      0x0004
-#define CONT_C      0x0002
-#define CONT_F      0x0001
+#define CONT_A         0x00008000
+#define CONT_B         0x00004000
+#define CONT_G	       0x00002000
+#define CONT_START     0x00001000
+#define CONT_UP        0x00000800
+#define CONT_DOWN      0x00000400
+#define CONT_LEFT      0x00000200
+#define CONT_RIGHT     0x00000100
+#define CONT_EXTRA1    0x00000080
+#define CONT_EXTRA0    0x00000040
+#define CONT_L         0x00000020
+#define CONT_R         0x00000010
+#define CONT_E         0x00000008
+#define CONT_D         0x00000004
+#define CONT_C         0x00000002
+#define CONT_F         0x00000001
 
 /* Nintendo's official button names */
 

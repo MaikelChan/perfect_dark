@@ -1028,11 +1028,11 @@ void mainTick(void)
 
 #ifdef DEBUG
 			if (g_MainIsDebugMenuOpen || joyGetButtons(0, U_CBUTTONS | D_CBUTTONS) == (U_CBUTTONS | D_CBUTTONS)) {
-				g_MainIsDebugMenuOpen = debugProcessInput(joyGetStickX(0), joyGetStickY(0), joyGetButtons(0, 0xffff), joyGetButtonsPressedThisFrame(0, 0xffff));
+				g_MainIsDebugMenuOpen = debugProcessInput(joyGetStickX(0), joyGetStickY(0), joyGetButtons(0, 0xffffffff), joyGetButtonsPressedThisFrame(0, 0xffffffff));
 			} else if (joyGetButtons(0, START_BUTTON) == 0) {
 				var80075d68 = var800786f4nb;
 			} else {
-				g_MainIsDebugMenuOpen = debugProcessInput(joyGetStickX(0), joyGetStickY(0), joyGetButtons(0, 0xffff), joyGetButtonsPressedThisFrame(0, 0xffff));
+				g_MainIsDebugMenuOpen = debugProcessInput(joyGetStickX(0), joyGetStickY(0), joyGetButtons(0, 0xffffffff), joyGetButtonsPressedThisFrame(0, 0xffffffff));
 			}
 #endif
 

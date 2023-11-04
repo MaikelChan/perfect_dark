@@ -538,7 +538,7 @@ void debug0f11944cnb(void) // not called
 }
 #endif
 
-bool debugProcessInput(s8 stickx, s8 sticky, u16 buttons, u16 buttonsthisframe)
+bool debugProcessInput(s8 stickx, s8 sticky, u32 buttons, u32 buttonsthisframe)
 {
 #ifdef DEBUG
 	s32 i;

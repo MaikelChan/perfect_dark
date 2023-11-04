@@ -242,6 +242,7 @@ static uintptr_t segmentPointers[16];
 struct FBInfo {
     uint32_t orig_width, orig_height;
     uint32_t applied_width, applied_height;
+    bool upscale, autoresize;
 };
 
 static bool fbActive = 0;
@@ -2152,10 +2153,10 @@ static void gfx_dp_texture_rectangle(int32_t ulx, int32_t uly, int32_t lrx, int3
     // lrx, lry, ulx, uly are U10.2
     // lrs, lrt are S10.5
 
-    int16_t width = !flip ? lrx - ulx : lry - uly;
-    int16_t height = !flip ? lry - uly : lrx - ulx;
-    float lrs = ((uls << 7) + dsdx * width) >> 7;
-    float lrt = ((ult << 7) + dtdy * height) >> 7;
+    const int16_t width = flip ? lry - uly : lrx - ulx;
+    const int16_t height = flip ? lrx - ulx : lry - uly;
+    const float lrs = ((uls << 7) + dsdx * width) >> 7;
+    const float lrt = ((ult << 7) + dtdy * height) >> 7;
 
     struct LoadedVertex* ul = &rsp.loaded_vertices[MAX_VERTICES + 0];
     struct LoadedVertex* ll = &rsp.loaded_vertices[MAX_VERTICES + 1];
@@ -2190,6 +2191,53 @@ static void gfx_dp_texture_rectangle(int32_t ulx, int32_t uly, int32_t lrx, int3
         rdp.textures_changed[1] = true;
     }
     rdp.first_tile_index = saved_tile;
+    rdp.combine_mode = saved_combine_mode;
+}
+
+static void gfx_dp_image_rectangle(int32_t tile, int32_t w, int32_t h,
+                                   int32_t ulx, int32_t uly, int16_t uls, int16_t ult,
+                                   int32_t lrx, int32_t lry, int16_t lrs, int16_t lrt) {
+    uint64_t saved_combine_mode = rdp.combine_mode;
+
+    struct LoadedVertex* ul = &rsp.loaded_vertices[MAX_VERTICES + 0];
+    struct LoadedVertex* ll = &rsp.loaded_vertices[MAX_VERTICES + 1];
+    struct LoadedVertex* lr = &rsp.loaded_vertices[MAX_VERTICES + 2];
+    struct LoadedVertex* ur = &rsp.loaded_vertices[MAX_VERTICES + 3];
+    ul->u = uls * 32;
+    ul->v = ult * 32;
+    lr->u = lrs * 32;
+    lr->v = lrt * 32;
+    ll->u = uls * 32;
+    ll->v = lrt * 32;
+    ur->u = lrs * 32;
+    ur->v = ult * 32;
+
+    // ensure we have the correct texture size
+    rdp.texture_tile[tile].line_size_bytes = w << rdp.texture_tile[tile].siz >> 1;
+    rdp.texture_tile[tile].width = w;
+    rdp.texture_tile[tile].height = h;
+    rdp.texture_tile[tile].cms = 0;
+    rdp.texture_tile[tile].cmt = 0;
+    rdp.texture_tile[tile].shifts = 0;
+    rdp.texture_tile[tile].shiftt = 0;
+    auto& loadtex = rdp.loaded_texture[rdp.texture_tile[tile].tmem];
+    loadtex.full_image_line_size_bytes = loadtex.line_size_bytes = rdp.texture_tile[tile].line_size_bytes;
+    loadtex.size_bytes = loadtex.orig_size_bytes = loadtex.full_size_bytes = loadtex.line_size_bytes * h;
+
+    uint8_t saved_tile = rdp.first_tile_index;
+    if (saved_tile != tile) {
+        rdp.textures_changed[0] = true;
+        rdp.textures_changed[1] = true;
+    }
+    rdp.first_tile_index = tile;
+
+    gfx_draw_rectangle(ulx, uly, lrx, lry);
+    if (saved_tile != tile) {
+        rdp.textures_changed[0] = true;
+        rdp.textures_changed[1] = true;
+    }
+    rdp.first_tile_index = saved_tile;
+
     rdp.combine_mode = saved_combine_mode;
 }
 
@@ -2529,9 +2577,11 @@ static void gfx_run_dl(Gfx* cmd) {
             case G_TEXRECT_WIDE_EXT: {
                 int32_t lrx, lry, tile, ulx, uly;
                 uint32_t uls, ult, dsdx, dtdy;
+                bool flip;
                 lrx = (int32_t)((C0(0, 24) << 8)) >> 8;
                 lry = (int32_t)((C1(0, 24) << 8)) >> 8;
                 tile = C1(24, 3);
+                flip = C1(27, 1);
                 ++cmd;
                 ulx = (int32_t)((C0(0, 24) << 8)) >> 8;
                 uly = (int32_t)((C1(0, 24) << 8)) >> 8;
@@ -2540,7 +2590,27 @@ static void gfx_run_dl(Gfx* cmd) {
                 ult = C0(0, 16);
                 dsdx = C1(16, 16);
                 dtdy = C1(0, 16);
-                gfx_dp_texture_rectangle(ulx, uly, lrx, lry, tile, uls, ult, dsdx, dtdy, opcode == G_TEXRECTFLIP);
+                gfx_dp_texture_rectangle(ulx, uly, lrx, lry, tile, uls, ult, dsdx, dtdy, flip);
+                break;
+            }
+            case G_IMAGERECT_EXT: {
+                int16_t tile, iw, ih;
+                int16_t x0, y0, s0, t0;
+                int16_t x1, y1, s1, t1;
+                tile = C0(0, 3);
+                iw = C1(16, 16);
+                ih = C1(0, 16);
+                ++cmd;
+                x0 = C0(16, 16);
+                y0 = C0(0, 16);
+                s0 = C1(16, 16);
+                t0 = C1(0, 16);
+                ++cmd;
+                x1 = C0(16, 16);
+                y1 = C0(0, 16);
+                s1 = C1(16, 16);
+                t1 = C1(0, 16);
+                gfx_dp_image_rectangle(tile, iw, ih, x0, y0, s0, t0, x1, y1, s1, t1);
                 break;
             }
             case G_SETSCISSOR:
@@ -2564,7 +2634,7 @@ static void gfx_run_dl(Gfx* cmd) {
                 }
                 break;
             case G_COPYFB_EXT:
-                gfx_copy_framebuffer(C0(12, 12), C0(0, 12), C1(16, 16), C1(0, 16));
+                gfx_copy_framebuffer(C0(11, 11), C0(0, 11), (int16_t)C1(16, 16), (int16_t)C1(0, 16), C0(22, 1));
                 break;
             case G_RDPSETOTHERMODE:
                 gfx_dp_set_other_mode(C0(0, 24), cmd->words.w1);
@@ -2581,6 +2651,9 @@ static void gfx_run_dl(Gfx* cmd) {
             case (uint8_t)G_RDPHALF_CONT:
                 // TODO: skyRender uses these to render some types of skies and skybox water
                 // by issuing low-level ucode commands G_TRI_FILL and G_TRI_SHADE_TXTR
+                break;
+            case G_RDPFLUSH_EXT:
+                gfx_flush();
                 break;
             case G_RDPPIPESYNC:
             case G_RDPFULLSYNC:
@@ -2617,6 +2690,11 @@ extern "C" void gfx_init(struct GfxWindowManagerAPI* wapi, struct GfxRenderingAP
     gfx_current_game_window_viewport.height = gfx_current_dimensions.height = height;
     game_framebuffer = gfx_rapi->create_framebuffer();
     game_framebuffer_msaa_resolved = gfx_rapi->create_framebuffer();
+
+    if (gfx_msaa_level > 1 && !gfx_framebuffers_enabled) {
+        sysLogPrintf(LOG_WARNING, "F3D: MSAA set to %d, but framebuffers are not available; disabling", gfx_msaa_level);
+        gfx_msaa_level = 1;
+    }
 
     for (int i = 0; i < 16; i++) {
         segmentPointers[i] = 0;
@@ -2665,12 +2743,22 @@ extern "C" void gfx_start_frame(void) {
 
     if (gfx_current_dimensions.height != gfx_prev_dimensions.height) {
         for (auto& fb : framebuffers) {
-            uint32_t width = fb.second.orig_width, height = fb.second.orig_height;
-            gfx_adjust_width_height_for_scale(width, height);
-            if (width != fb.second.applied_width || height != fb.second.applied_height) {
-                gfx_rapi->update_framebuffer_parameters(fb.first, width, height, 1, true, true, true, true);
-                fb.second.applied_width = width;
-                fb.second.applied_height = height;
+            uint32_t width, height, msaa;
+            if (fb.second.autoresize) {
+                if (fb.second.upscale) {
+                    width = fb.second.orig_width;
+                    height = fb.second.orig_height;
+                    gfx_adjust_width_height_for_scale(width, height);
+                } else {
+                    // assume this is a fullscreen fb
+                    width = gfx_current_dimensions.width;
+                    height = gfx_current_dimensions.height;
+                }
+                if (width != fb.second.applied_width || height != fb.second.applied_height) {
+                    gfx_rapi->update_framebuffer_parameters(fb.first, width, height, 1, true, true, true, true);
+                    fb.second.applied_width = width;
+                    fb.second.applied_height = height;
+                }
             }
         }
     }
@@ -2768,13 +2856,33 @@ extern "C" void gfx_set_target_fps(int fps) {
     gfx_wapi->set_target_fps(fps);
 }
 
-extern "C" int gfx_create_framebuffer(uint32_t width, uint32_t height) {
-    uint32_t orig_width = width, orig_height = height;
-    gfx_adjust_width_height_for_scale(width, height);
+extern "C" int gfx_create_framebuffer(uint32_t width, uint32_t height, int upscale, int autoresize) {
     int fb = gfx_rapi->create_framebuffer();
-    gfx_rapi->update_framebuffer_parameters(fb, width, height, 1, true, true, true, true);
-    framebuffers[fb] = { orig_width, orig_height, width, height };
+    gfx_resize_framebuffer(fb, width, height, upscale, autoresize);
     return fb;
+}
+
+extern "C" void gfx_resize_framebuffer(int fb, uint32_t width, uint32_t height, int upscale, int autoresize) {
+    uint32_t orig_width, orig_height;
+
+    if (width && height) {
+        // user-specified size
+        orig_width = width;
+        orig_height = height;
+        if (upscale) {
+            gfx_adjust_width_height_for_scale(width, height);
+        }
+        gfx_rapi->update_framebuffer_parameters(fb, width, height, 1, true, true, true, true);
+    } else {
+        // same size as main fb
+        orig_width = width = gfx_current_dimensions.width;
+        orig_height = height = gfx_current_dimensions.height;
+        upscale = false;
+        autoresize = true;
+        gfx_rapi->update_framebuffer_parameters(fb, width, height, 1, true, true, true, true);
+    }
+
+    framebuffers[fb] = { orig_width, orig_height, width, height, (bool)upscale, (bool)autoresize };
 }
 
 extern "C" void gfx_set_framebuffer(int fb, float noise_scale) {
@@ -2782,15 +2890,24 @@ extern "C" void gfx_set_framebuffer(int fb, float noise_scale) {
     gfx_rapi->clear_framebuffer();
 }
 
-extern "C" void gfx_copy_framebuffer(int fb_dst, int fb_src, int left, int top) {
-    if (fb_src == 0 && left > 0 && top > 0) {
-        // upscale the position
-        left = left * gfx_current_dimensions.width / gfx_current_native_viewport.width;
-        top = top * gfx_current_dimensions.height / gfx_current_native_viewport.height;
-        // flip Y
-        top = gfx_current_dimensions.height - top - 1;
+extern "C" void gfx_copy_framebuffer(int fb_dst, int fb_src, int left, int top, int use_back) {
+    const bool is_main_fb = (fb_src == 0);
+
+    if (is_main_fb) {
+        if (left > 0 && top > 0) {
+            // upscale the position
+            left = left * gfx_current_dimensions.width / gfx_current_native_viewport.width;
+            top = top * gfx_current_dimensions.height / gfx_current_native_viewport.height;
+            // flip Y
+            top = gfx_current_dimensions.height - top - 1;
+        }
+        if (use_back && gfx_msaa_level > 1) {
+            // read from the framebuffer we've been rendering to
+            fb_src = game_framebuffer;
+        }
     }
-    gfx_rapi->copy_framebuffer(fb_dst, fb_src, left, top);
+
+    gfx_rapi->copy_framebuffer(fb_dst, fb_src, left, top, is_main_fb, (bool)use_back);
 }
 
 extern "C" void gfx_reset_framebuffer(void) {

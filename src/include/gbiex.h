@@ -193,6 +193,8 @@
 #define G_EXTRAGEOMETRYMODE_EXT 0x3a
 #define G_SETINTENSITY_EXT      0x40
 #define G_COPYFB_EXT            0x41
+#define G_IMAGERECT_EXT         0x42
+#define G_RDPFLUSH_EXT          0x43
 
 /* G_EXTRAGEOMETRYMODE flags */
 
@@ -212,12 +214,13 @@
 #define gDPSetFramebufferTextureEXT(pkt, f, s, w, i) \
     gSetImage(pkt, G_SETTIMG_FB_EXT, f, s, w, i)
 
-#define gDPCopyFramebufferEXT(pkt, dst, src, uls, ult)         \
+#define gDPCopyFramebufferEXT(pkt, dst, src, uls, ult, back)   \
 {                                                              \
     Gfx *_g = (Gfx *)(pkt);                                    \
                                                                \
     _g->words.w0 = _SHIFTL(G_COPYFB_EXT, 24, 8)                \
-        | _SHIFTL(dst, 12, 12) | _SHIFTL(src, 0, 12);          \
+        | _SHIFTL(dst, 11, 11) | _SHIFTL(src, 0, 11) |         \
+          _SHIFTL(back, 22, 1);                                \
     _g->words.w1 = _SHIFTL(uls, 16, 16) | _SHIFTL(ult, 0, 16); \
 }
 
@@ -251,19 +254,31 @@
     _g1->words.w1 = _SHIFTL((uly), 2, 22);                                       \
 }
 
-#define gSPTextureRectangleWideEXT(pkt, xl, yl, xh, yh, tile, s, t, dsdx, dtdy) \
+#define gSPTextureRectangleWideEXT(pkt, xl, yl, xh, yh, tile, s, t, dsdx, dtdy, flip)         \
+{                                                                                             \
+    Gfx *_g0 = (Gfx*)(pkt), *_g1 = (Gfx*)(pkt), *_g2 = (Gfx*)(pkt);                           \
+                                                                                              \
+    _g0->words.w0 = _SHIFTL(G_TEXRECT_WIDE_EXT, 24, 8) | _SHIFTL((xh), 0, 24);                \
+    _g0->words.w1 = (_SHIFTL((yh), 0, 24) | _SHIFTL((tile), 24, 3) | _SHIFTL((flip), 27, 1)); \
+    _g1->words.w0 = _SHIFTL((xl), 0, 24);                                                     \
+    _g1->words.w1 = _SHIFTL((yl), 0, 24);                                                     \
+    _g2->words.w0 = (_SHIFTL(s, 16, 16) | _SHIFTL(t, 0, 16));                                 \
+    _g2->words.w1 = (_SHIFTL(dsdx, 16, 16) | _SHIFTL(dtdy, 0, 16));                           \
+}
+
+#define gSPImageRectangleEXT(pkt, x0, y0, s0, t0, x1, y1, s1, t1, tile, iw, ih) \
 {                                                                               \
     Gfx *_g0 = (Gfx*)(pkt), *_g1 = (Gfx*)(pkt), *_g2 = (Gfx*)(pkt);             \
                                                                                 \
-    _g0->words.w0 = _SHIFTL(G_TEXRECT_WIDE_EXT, 24, 8) | _SHIFTL((xh), 0, 24);  \
-    _g0->words.w1 = _SHIFTL((yh), 0, 24);                                       \
-    _g1->words.w0 = (_SHIFTL(tile, 24, 3) | _SHIFTL((xl), 0, 24));              \
-    _g1->words.w1 = _SHIFTL((yl), 0, 24);                                       \
-    _g2->words.w0 = (_SHIFTL(s, 16, 16) | _SHIFTL(t, 0, 16));                   \
-    _g2->words.w1 = (_SHIFTL(dsdx, 16, 16) | _SHIFTL(dtdy, 0, 16));             \
+    _g0->words.w0 = _SHIFTL(G_IMAGERECT_EXT, 24, 8) | _SHIFTL((tile), 0, 3);    \
+    _g0->words.w1 = _SHIFTL((iw), 16, 16) | _SHIFTL((ih), 0, 16);               \
+    _g1->words.w0 = _SHIFTL((x0), 16, 16) | _SHIFTL((y0), 0, 16);               \
+    _g1->words.w1 = _SHIFTL((s0), 16, 16) | _SHIFTL((t0), 0, 16);               \
+    _g2->words.w0 = _SHIFTL((x1), 16, 16) | _SHIFTL((y1), 0, 16);               \
+    _g2->words.w1 = _SHIFTL((s1), 16, 16) | _SHIFTL((t1), 0, 16);               \
 }
 
-#define gSPExtraGeometryModeEXT(pkt, c, s)                                                 \
+#define gSPExtraGeometryModeEXT(pkt, c, s)                                              \
 {                                                                                       \
     Gfx* _g = (Gfx*)(pkt);                                                              \
                                                                                         \
@@ -275,7 +290,10 @@
 #define gSPClearExtraGeometryModeEXT(pkt, word) gSPExtraGeometryModeEXT((pkt), word, 0)
 
 #define gDPFillRectangleEXT gDPFillRectangleWideEXT
-#define gSPTextureRectangleEXT gSPTextureRectangleWideEXT
+#define gSPTextureRectangleEXT(p, xl, yl, xh, yh, tile, s, t, ds, dt) gSPTextureRectangleWideEXT(p, xl, yl, xh, yh, tile, s, t, ds, dt, G_OFF)
+#define gSPTextureRectangleFlipEXT(p, xl, yl, xh, yh, tile, s, t, ds, dt) gSPTextureRectangleWideEXT(p, xl, yl, xh, yh, tile, s, t, ds, dt, G_ON)
+
+#define gDPFlushEXT(pkt) gDPNoParam(pkt, G_RDPFLUSH_EXT)
 
 #undef gDPFillRectangleScaled
 #define gDPFillRectangleScaled(pkt, x1, y1, x2, y2) gDPFillRectangleEXT(pkt, (x1) * g_ScaleX, y1, (x2) * g_ScaleX, y2)

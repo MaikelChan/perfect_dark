@@ -123,7 +123,7 @@ void menugfxCreateBlur(void)
 	g_ScaleX = 1;
 #else
 	if (g_MenuBlurFb == 0) {
-		g_MenuBlurFb = videoCreateFramebuffer(BLURIMG_WIDTH, BLURIMG_HEIGHT);
+		g_MenuBlurFb = videoCreateFramebuffer(BLURIMG_WIDTH, BLURIMG_HEIGHT, true, false);
 	}
 	// copy full viewport and downscale to 40x30
 	videoCopyFramebuffer(g_MenuBlurFb, 0, -1, -1);

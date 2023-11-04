@@ -39,6 +39,9 @@ u8 g_InventoryWeapon;
 struct menudialogdef g_2PMissionControlStyleMenuDialog;
 struct menudialogdef g_CiControlPlayer2MenuDialog;
 struct menudialogdef g_CinemaMenuDialog;
+#ifndef PLATFORM_N64
+extern struct menudialogdef g_ExtendedMenuDialog;
+#endif
 
 char *menuTextCurrentStageName(struct menuitem *item)
 {
@@ -3429,15 +3432,23 @@ struct menuitem g_ExitGameMenuItems[] = {
 	{
 		MENUITEMTYPE_LABEL,
 		0,
-		MENUITEMFLAG_00000002 | MENUITEMFLAG_LESSLEFTPADDING,
-		L_OPTIONS_110, // "Exit"
+		MENUITEMFLAG_SELECTABLE_CENTRE | MENUITEMFLAG_LESSHEIGHT | MENUITEMFLAG_LITERAL_TEXT,
+		(uintptr_t)"Are you sure you want to exit?\n",
+		0,
+		NULL,
+	},
+	{
+		MENUITEMTYPE_SEPARATOR,
+		0,
+		0,
+		0x00000082,
 		0,
 		NULL,
 	},
 	{
 		MENUITEMTYPE_SELECTABLE,
 		0,
-		0,
+		MENUITEMFLAG_SELECTABLE_CENTRE,
 		L_OPTIONS_190, // "Yes"
 		0,
 		menuhandlerExitGame,
@@ -3445,7 +3456,7 @@ struct menuitem g_ExitGameMenuItems[] = {
 	{
 		MENUITEMTYPE_SELECTABLE,
 		0,
-		MENUITEMFLAG_SELECTABLE_CLOSESDIALOG,
+		MENUITEMFLAG_SELECTABLE_CENTRE | MENUITEMFLAG_SELECTABLE_CLOSESDIALOG,
 		L_OPTIONS_191, // "No"
 		0,
 		NULL,
@@ -3497,6 +3508,16 @@ struct menuitem g_SoloMissionOptionsMenuItems[] = {
 		0,
 		(void *)&g_MissionDisplayOptionsMenuDialog,
 	},
+#ifndef PLATFORM_N64
+	{
+		MENUITEMTYPE_SELECTABLE,
+		0,
+		MENUITEMFLAG_SELECTABLE_OPENSDIALOG | MENUITEMFLAG_BIGFONT | MENUITEMFLAG_LITERAL_TEXT,
+		(uintptr_t)"Extended",
+		0,
+		(void *)&g_ExtendedMenuDialog,
+	},
+#endif
 	{ MENUITEMTYPE_END },
 };
 
@@ -3533,6 +3554,16 @@ struct menuitem g_2PMissionOptionsHMenuItems[] = {
 		0,
 		(void *)&g_MissionDisplayOptionsMenuDialog,
 	},
+#ifndef PLATFORM_N64
+	{
+		MENUITEMTYPE_SELECTABLE,
+		0,
+		MENUITEMFLAG_SELECTABLE_OPENSDIALOG | MENUITEMFLAG_LITERAL_TEXT,
+		(uintptr_t)"Extended",
+		0,
+		(void *)&g_ExtendedMenuDialog,
+	},
+#endif
 	{
 		MENUITEMTYPE_SEPARATOR,
 		0,
@@ -3589,6 +3620,16 @@ struct menuitem g_2PMissionOptionsVMenuItems[] = {
 		0,
 		(void *)&g_2PMissionDisplayOptionsVMenuDialog,
 	},
+#ifndef PLATFORM_N64
+	{
+		MENUITEMTYPE_SELECTABLE,
+		0,
+		MENUITEMFLAG_SELECTABLE_OPENSDIALOG | MENUITEMFLAG_LITERAL_TEXT,
+		(uintptr_t)"Extended",
+		0,
+		(void *)&g_ExtendedMenuDialog,
+	},
+#endif
 	{
 		MENUITEMTYPE_SEPARATOR,
 		0,
@@ -3657,6 +3698,16 @@ struct menuitem g_CiOptionsMenuItems[] = {
 		6,
 		(void *)&g_CinemaMenuDialog,
 	},
+#ifndef PLATFORM_N64
+	{
+		MENUITEMTYPE_SELECTABLE,
+		0,
+		MENUITEMFLAG_SELECTABLE_OPENSDIALOG | MENUITEMFLAG_BIGFONT | MENUITEMFLAG_LITERAL_TEXT,
+		(uintptr_t)"Extended",
+		7,
+		(void *)&g_ExtendedMenuDialog,
+	},
+#endif
 	{ MENUITEMTYPE_END },
 };
 
@@ -4886,8 +4937,8 @@ struct menuitem g_MainMenuMenuItems[] = {
 	{
 		MENUITEMTYPE_SELECTABLE,
 		0,
-		MENUITEMFLAG_SELECTABLE_OPENSDIALOG | MENUITEMFLAG_BIGFONT,
-		L_OPTIONS_110, // "Exit Game"
+		MENUITEMFLAG_SELECTABLE_OPENSDIALOG | MENUITEMFLAG_BIGFONT | MENUITEMFLAG_LITERAL_TEXT,
+		(uintptr_t)"Exit Game",
 		0x00000007,
 		(void *)&g_ExitGameMenuDialog,
 	},

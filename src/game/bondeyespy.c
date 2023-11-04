@@ -701,8 +701,8 @@ void eyespyProcessInput(bool allowbuttons)
 	s8 c2stickx;
 	s8 c1sticky = joyGetStickY(contpad1);
 	s8 c2sticky;
-	u16 c1buttons = allowbuttons ? joyGetButtons(contpad1, 0xffff) : 0;
-	u16 c2buttons;
+	u32 c1buttons = allowbuttons ? joyGetButtons(contpad1, 0xffffffff) : 0;
+	u32 c2buttons;
 	bool domovecentre = true;
 	s32 controlmode = optionsGetControlMode(g_Vars.currentplayerstats->mpindex);
 
@@ -726,10 +726,15 @@ void eyespyProcessInput(bool allowbuttons)
 		c2stickx = joyGetStickX(contpad2);
 		c2sticky = joyGetStickY(contpad2);
 
-		c2buttons = allowbuttons ? joyGetButtons(contpad2, 0xffff) : 0;
+		c2buttons = allowbuttons ? joyGetButtons(contpad2, 0xffffffff) : 0;
 	} else {
+#ifndef PLATFORM_N64
+		c2stickx = joyGetRStickX(contpad1);
+		c2sticky = joyGetRStickY(contpad1);
+#else
 		c2stickx = c1stickx;
 		c2sticky = c1sticky;
+#endif
 		c2buttons = c1buttons;
 	}
 
@@ -833,9 +838,15 @@ void eyespyProcessInput(bool allowbuttons)
 		} else {
 			ascendspeed = c1sticky * 0.25f;
 			forwardspeed = (c1buttons & (U_CBUTTONS) ? 24.0f : 0) - (c1buttons & (D_CBUTTONS) ? 24.0f : 0);
+#ifndef PLATFORM_N64
+			forwardspeed += c2sticky;
+#endif
 		}
 
 		sidespeed = (c1buttons & (R_CBUTTONS) ? 1 : 0) - (c1buttons & (L_CBUTTONS) ? 1 : 0);
+#ifndef PLATFORM_N64
+		if (!sidespeed) sidespeed = c2stickx * 0.0125f;
+#endif
 	} else if (controlmode == CONTROLMODE_21 || controlmode == CONTROLMODE_23) {
 		forwardspeed = c1sticky;
 
@@ -942,6 +953,12 @@ void eyespyProcessInput(bool allowbuttons)
 		g_Vars.currentplayer->eyespy->sintheta = sinf(g_Vars.currentplayer->eyespy->theta * 0.017453292384744f);
 
 		// Update verta
+#ifndef PLATFORM_N64
+		// respect the invert pitch setting
+		if (optionsGetForwardPitch(g_Vars.currentplayerstats->mpindex)) {
+			pitchspeed = -pitchspeed;
+		}
+#endif
 		g_Vars.currentplayer->eyespy->verta -= pitchspeed * 0.0625f * g_Vars.lvupdate60freal;
 
 		if (prevverta != g_Vars.currentplayer->eyespy->verta) {

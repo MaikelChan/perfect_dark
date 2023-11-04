@@ -1618,6 +1618,9 @@
 #define MENUDIALOGFLAG_0400              0x0400
 #define MENUDIALOGFLAG_DROPOUTONCLOSE    0x0800
 #define MENUDIALOGFLAG_1000              0x1000
+#ifndef PLATFORM_N64
+#define MENUDIALOGFLAG_LITERAL_TEXT      0x2000
+#endif
 
 #define MENUDIALOGSTATE_PREOPEN    0
 #define MENUDIALOGSTATE_OPENING    1
@@ -1658,6 +1661,8 @@
 #define MENUITEMFLAG_LABEL_CUSTOMCOLOUR      0x01000000
 #define MENUITEMFLAG_LESSHEIGHT              0x02000000
 #define MENUITEMFLAG_CAROUSEL_04000000       0x04000000
+#define MENUITEMFLAG_LITERAL_TEXT            0x08000000
+#define MENUITEMFLAG_SLIDER_WIDE             0x10000000
 
 #define MENUITEMTYPE_LABEL       0x01
 #define MENUITEMTYPE_LIST        0x02
@@ -4688,6 +4693,10 @@ enum weaponnum {
 #define BUTTON_WPNFORWARD     Y_BUTTON
 #define BUTTON_RADIAL         D_JPAD
 #define BUTTON_ALTMODE        L_TRIG
+
+#define BUTTON_CROUCH_CYCLE   CONT_8000             
+#define BUTTON_HALF_CROUCH    CONT_4000             
+#define BUTTON_FULL_CROUCH    CONT_2000             
 
 #define MOUSEAIM_CLASSIC 0 // crosshair moves around the screen in aim mode
 #define MOUSEAIM_LOCKED 1  // crosshair locked to the center of the screen in aim mode

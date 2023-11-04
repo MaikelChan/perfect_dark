@@ -109,6 +109,29 @@ struct mpweapon g_MpWeapons[NUM_MPWEAPONS] = {
 	/*0x2e*/ { WEAPON_DISABLED }, // 0x25 on N64
 };
 
+#ifndef PLATFORM_N64
+
+#define PLAYER_EXT_CFG_DEFAULT { \
+	.fovy = 60.f, \
+	.fovzoommult = 1.f, \
+	.fovzoom = true, \
+	.mouseaimmode = MOUSEAIM_CLASSIC, \
+	.mouseaimspeedx = 0.7f, \
+	.mouseaimspeedy = 0.7f, \
+	.radialmenuspeed = 4.f, \
+	.crosshairsway = 1.f, \
+	.classiccrouch = true, \
+}
+
+struct extplayerconfig g_PlayerExtCfg[MAX_PLAYERS] = { 
+	PLAYER_EXT_CFG_DEFAULT,
+	PLAYER_EXT_CFG_DEFAULT,
+	PLAYER_EXT_CFG_DEFAULT,
+	PLAYER_EXT_CFG_DEFAULT,
+};
+
+#endif
+
 /**
  * Converts the given value into a float on a curved scale from 0.1 to 10.
  *

@@ -26,6 +26,9 @@
 #include "lib/collision.h"
 #include "data.h"
 #include "types.h"
+#ifndef PLATFORM_N64
+extern f32 fabsf(f32);
+#endif
 
 void bwalkInit(void)
 {
@@ -118,6 +121,10 @@ void bwalkInit(void)
 		g_Vars.currentplayer->moveinitspeed.y = 0;
 		g_Vars.currentplayer->moveinitspeed.z = 0;
 	}
+}
+
+void bwalkSetSwayTargetf(f32 value) {
+	g_Vars.currentplayer->swaytarget = value * 75.f;
 }
 
 void bwalkSetSwayTarget(s32 value)
@@ -1294,11 +1301,10 @@ void bwalkApplyMoveData(struct movedata *data)
 			bwalkUpdateSpeedSideways(1, 0.2f, data->digitalstepright);
 		} else if (data->unk14 == false) {
 			bwalkUpdateSpeedSideways(0, 0.2f, g_Vars.lvupdate60);
-		}
-
-		if (data->unk14) {
+		} else if (data->unk14){
 			bwalkUpdateSpeedSideways(data->analogstrafe * 0.014285714365542f, 0.2f, g_Vars.lvupdate60);
 		}
+
 
 		// Forward/back
 		if (data->digitalstepforward) {
@@ -1308,11 +1314,12 @@ void bwalkApplyMoveData(struct movedata *data)
 			bwalkUpdateSpeedForwards(-1, 1);
 		} else if (data->canlookahead == false) {
 			bwalkUpdateSpeedForwards(0, 1);
+		} else {
+			bwalkUpdateSpeedForwards(data->analogwalk * 0.014285714365542f, 1);
 		}
 
-		if (data->canlookahead) {
-			bwalkUpdateSpeedForwards(data->analogwalk * 0.014285714365542f, 1);
 
+		if (data->canlookahead) {
 			if (data->analogwalk > 60) {
 				g_Vars.currentplayer->speedmaxtime60 += g_Vars.lvupdate60;
 			} else {
@@ -1345,6 +1352,17 @@ void bwalkApplyMoveData(struct movedata *data)
 			g_Vars.currentplayer->speedmaxtime60 = 0;
 		}
 
+#ifndef PLATFORM_N64
+		if (data->rleanleft) {
+			bwalkSetSwayTarget(-1);
+		} else if (data->rleanright) {
+			bwalkSetSwayTarget(1);
+		} else if (fabsf(data->analoglean)) {
+			bwalkSetSwayTargetf(data->analoglean);
+		} else {
+			bwalkSetSwayTarget(0);
+		}
+#else
 		if (data->rleanleft) {
 			bwalkSetSwayTarget(-1);
 		} else if (data->rleanright) {
@@ -1352,6 +1370,7 @@ void bwalkApplyMoveData(struct movedata *data)
 		} else {
 			bwalkSetSwayTarget(0);
 		}
+#endif
 
 		while (data->crouchdown-- > 0) {
 			bwalkAdjustCrouchPos(-1);

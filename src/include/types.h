@@ -5076,6 +5076,7 @@ struct movedata {
 #ifndef PLATFORM_N64
 	/*    */ f32 freelookdx; // how much the mouse moved ...
 	/*    */ f32 freelookdy; // ... scaled by sensitivity
+	/*    */ f32 analoglean; // how much we're trying to lean
 #endif
 
 };
@@ -6121,5 +6122,21 @@ struct xz {
 	f32 x;
 	f32 z;
 };
+
+#ifndef PLATFORM_N64
+
+struct extplayerconfig {
+	f32 fovy;
+	f32 fovzoommult;
+	s32 fovzoom;
+	s32 mouseaimmode;
+	f32 mouseaimspeedx;
+	f32 mouseaimspeedy;
+	s32 classiccrouch;
+	f32 radialmenuspeed;
+	f32 crosshairsway;
+};
+
+#endif
 
 #endif

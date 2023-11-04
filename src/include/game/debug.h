@@ -46,7 +46,7 @@ void dmenuNavigateDown(void);
 Gfx *dmenuRender(Gfx *gdl);
 
 void debugUpdateMenu(void);
-bool debugProcessInput(s8 stickx, s8 sticky, u16 buttons, u16 buttonsthisframe);
+bool debugProcessInput(s8 stickx, s8 sticky, u32 buttons, u32 buttonsthisframe);
 bool debugIsLineModeEnabled(void);
 
 extern s32 var800786f4nb;

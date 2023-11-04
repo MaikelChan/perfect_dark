@@ -13,6 +13,7 @@
 #include "data.h"
 #include "types.h"
 #ifndef PLATFORM_N64
+#include "game/player.h"
 #include "input.h"
 #endif
 
@@ -48,10 +49,16 @@ void amTick(void)
 				s8 gotonextscreen = false;
 				s8 cstickx = joyGetStickXOnSample(j, contpadnum);
 				s8 csticky = joyGetStickYOnSample(j, contpadnum);
+#ifdef AVOID_UB
+				// if cstickx is -128, it will get negated and stored into absstickx, negating it again if it's 8 bit
+				s32 absstickx;
+				s32 abssticky;
+#else
 				s8 absstickx;
 				s8 abssticky;
-				u16 buttonsstate = joyGetButtonsOnSample(j, contpadnum, 0xffff);
-				u16 buttonspressed = joyGetButtonsPressedOnSample(j, contpadnum, 0xffff);
+#endif
+				u32 buttonsstate = joyGetButtonsOnSample(j, contpadnum, 0xffffffff);
+				u32 buttonspressed = joyGetButtonsPressedOnSample(j, contpadnum, 0xffffffff);
 				bool stickpushed = false;
 				s32 slotnum;
 				bool stayopen;
@@ -67,21 +74,23 @@ void amTick(void)
 				g_AmMenus[g_AmIndex].allbots = false;
 
 #ifndef PLATFORM_N64
+				s32 newstickx = (s32)cstickx;
+				s32 newsticky = (s32)csticky;
 				if (j == 0 && g_Vars.currentplayernum == 0 && inputMouseIsLocked()) {
 					f32 mdx, mdy;
 					struct activemenu *am = &g_AmMenus[g_AmIndex];
-					inputMouseGetScaledDelta(&mdx, &mdy);
+					inputMouseGetAbsScaledDelta(&mdx, &mdy);
 					if (mdx || mdy) {
-						am->mousex += mdx * 4.f;
-						am->mousey += mdy * 4.f;
+						am->mousex += mdx * PLAYER_EXTCFG().radialmenuspeed;
+						am->mousey += mdy * PLAYER_EXTCFG().radialmenuspeed;
 						am->mousex = (am->mousex > 127.f) ? 127.f : (am->mousex < -128.f) ? -128.f : am->mousex;
 						am->mousey = (am->mousey > 127.f) ? 127.f : (am->mousey < -128.f) ? -128.f : am->mousey;
 					}
-					const s32 newstickx = (s32)cstickx + (s32)am->mousex;
-					const s32 newsticky = (s32)csticky - (s32)am->mousey;
-					cstickx = (newstickx < -128) ? -128 : (newstickx > 127) ? 127 : newstickx;
-					csticky = (newsticky < -128) ? -128 : (newsticky > 127) ? 127 : newsticky;
+					newstickx += (s32)am->mousex;
+					newsticky -= (s32)am->mousey;
 				}
+				cstickx = (newstickx < -128) ? -128 : (newstickx > 127) ? 127 : newstickx;
+				csticky = (newsticky < -128) ? -128 : (newsticky > 127) ? 127 : newsticky;
 #endif
 
 				if (g_Vars.currentplayer->activemenumode == AMMODE_EDIT) {
@@ -162,8 +171,8 @@ void amTick(void)
 					s8 contpadnum2 = optionsGetContpadNum2(g_Vars.currentplayerstats->mpindex);
 					s8 cstickx2 = joyGetStickXOnSample(j, contpadnum2);
 					s8 csticky2 = joyGetStickYOnSample(j, contpadnum2);
-					u16 buttonsstate2 = joyGetButtonsOnSample(j, contpadnum2, 0xffff);
-					u16 buttonspressed2 = joyGetButtonsPressedOnSample(j, contpadnum2, 0xffff);
+					u32 buttonsstate2 = joyGetButtonsOnSample(j, contpadnum2, 0xffffffff);
+					u32 buttonspressed2 = joyGetButtonsPressedOnSample(j, contpadnum2, 0xffffffff);
 
 					if (g_Vars.currentplayer->activemenumode == AMMODE_EDIT) {
 						buttonsstate2 = buttonsstate2 & D_JPAD;

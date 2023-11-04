@@ -73,8 +73,6 @@ static void gfx_sdl_init(const char* game_name, const char* gfx_api_name, bool s
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_COMPATIBILITY);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
     if (sysArgCheck("--debug-gl")) {
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
     }
@@ -94,10 +92,52 @@ static void gfx_sdl_init(const char* game_name, const char* gfx_api_name, bool s
         sysFatalError("Could not open SDL window:\n%s", SDL_GetError());
     }
 
-    ctx = SDL_GL_CreateContext(wnd);
-    if (!ctx) {
-        sysFatalError("Could not create GL2.1 context:\n%s", SDL_GetError());
+    // ideally we need 3.0 compat
+    // if that doesn't work, try 3.2 core in case we're on mac, 2.1 compat as a last resort
+    static u32 glver[][3] = {
+        { 0, 0, 0                                    }, // for command line override
+        { 3, 0, SDL_GL_CONTEXT_PROFILE_COMPATIBILITY },
+        { 3, 2, SDL_GL_CONTEXT_PROFILE_CORE },
+        { 2, 1, SDL_GL_CONTEXT_PROFILE_COMPATIBILITY },
+    };
+
+    u32 glcore = false;
+    u32 verstart = 1;
+    const u32 verend = sizeof(glver) / sizeof(*glver);
+    const char *verstr = sysArgGetString("--gl-version");
+    if (verstr && *verstr) {
+        // user override
+        glver[0][2] = strstr(verstr, "core") ? SDL_GL_CONTEXT_PROFILE_CORE :
+            SDL_GL_CONTEXT_PROFILE_COMPATIBILITY;
+        sscanf(verstr, "%d.%d", &glver[0][0], &glver[0][1]);
+        if (glver[0][0] >= 1 && glver[0][0] <= 4 && glver[0][1] < 9) {
+            verstart = 0;
+        }
     }
+
+    ctx = NULL;
+    u32 vmin = 0, vmaj = 0;
+    for (u32 i = verstart; i < verend; ++i) {
+        vmaj = glver[i][0];
+        vmin = glver[i][1];
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, vmaj);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, vmin);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, glver[i][2]);
+        ctx = SDL_GL_CreateContext(wnd);
+        if (!ctx) {
+            sysLogPrintf(LOG_WARNING, "GL: could not create GL%d.%d context: %s", vmaj, vmin, SDL_GetError());
+        } else {
+            glcore = (glver[i][2] == SDL_GL_CONTEXT_PROFILE_CORE);
+            break;
+        }
+    }
+
+    if (!ctx) {
+        sysFatalError("Could not create an OpenGL context of any supported version.\nSDL error: %s", SDL_GetError());
+    } else {
+        sysLogPrintf(LOG_NOTE, "GL: created GL%d.%d%s context", vmaj, vmin, glcore ? "core" : "");
+    }
+
     SDL_GL_MakeCurrent(wnd, ctx);
     SDL_GL_SetSwapInterval(1);
 

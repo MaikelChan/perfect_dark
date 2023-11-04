@@ -311,6 +311,12 @@ Gfx *pacRenderHud(Gfx *gdl)
 		secs = (time240 + (TICKS(240) - 1)) / TICKS(240);
 		sprintf(text, "%d:%02d", mins, secs);
 
+#ifndef PLATFORM_N64
+		if (PLAYERCOUNT() == 1) {
+			gSPSetExtraGeometryModeEXT(gdl++, G_ASPECT_CENTER_EXT);
+		}
+#endif
+
 		gdl = text0f153628(gdl);
 		textMeasure(&textheight, &textwidth, text, g_CharsHandelGothicXs, g_FontHandelGothicXs, 0);
 
@@ -326,6 +332,10 @@ Gfx *pacRenderHud(Gfx *gdl)
 		gdl = textRender(gdl, &x, &y, text, g_CharsNumeric, g_FontNumeric, 0x00ff00a0, 0x88, viGetWidth(), viGetHeight(), 0, 0);
 #endif
 		gdl = text0f153780(gdl);
+
+#ifndef PLATFORM_N64
+		gSPClearExtraGeometryModeEXT(gdl++, G_ASPECT_MODE_EXT);
+#endif
 	}
 
 	return gdl;

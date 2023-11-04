@@ -13,7 +13,8 @@ enum LogLevel {
   LOG_ERROR,
 };
 
-void sysInit(s32 argc, const char **argv);
+void sysInitArgs(s32 argc, const char **argv);
+void sysInit(void);
 
 s32 sysArgCheck(const char *arg);
 const char *sysArgGetString(const char *arg);

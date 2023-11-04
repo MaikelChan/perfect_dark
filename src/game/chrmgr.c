@@ -41,7 +41,7 @@ void chrmgrReset(void)
 		var8009ccc0[i] = (void *)ALIGN64(mempAlloc(16 * 16 * sizeof(u16) + 0x40, MEMPOOL_STAGE));
 #else
 		if (!var8009ccc0[i]) {
-			var8009ccc0[i] = videoCreateFramebuffer(16, 16);
+			var8009ccc0[i] = videoCreateFramebuffer(16, 16, false, false);
 		}
 #endif
 	}

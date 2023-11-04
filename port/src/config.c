@@ -8,19 +8,41 @@
 #include "system.h"
 #include "utils.h"
 
-#define CONFIG_MAX_STR 512
 #define CONFIG_MAX_SECNAME 128
 #define CONFIG_MAX_KEYNAME 256
-#define CONFIG_MAX_SETTINGS 128
+#define CONFIG_MAX_SETTINGS 256
+
+typedef enum {
+	CFG_NONE,
+	CFG_S32,
+	CFG_F32,
+	CFG_STR
+} configtype;
 
 struct configentry {
 	char key[CONFIG_MAX_KEYNAME + 1];
-	char strval[CONFIG_MAX_STR + 1];
-	s32 s32val;
-	f32 f32val;
 	s32 seclen;
-} settings[CONFIG_MAX_SETTINGS + 1];
+	configtype type;
+	void *ptr;
+	union {
+		struct { f32 min_f32, max_f32; };
+		struct { s32 min_s32, max_s32; };
+		u32 max_str;
+	};
+} settings[CONFIG_MAX_SETTINGS];
+
 static s32 numSettings = 0;
+
+static inline s32 configClampInt(s32 val, s32 min, s32 max)
+{
+	return (val < min) ? min : ((val > max) ? max : val);
+}
+
+static inline f32 configClampFloat(f32 val, f32 min, f32 max)
+{
+	return (val < min) ? min : ((val > max) ? max : val);
+}
+
 
 static inline struct configentry *configFindEntry(const char *key)
 {
@@ -68,115 +90,89 @@ static inline const char *configGetSection(char *sec, const struct configentry *
 	return sec;
 }
 
-void configSetInt(const char *key, s32 val)
+void configRegisterInt(const char *key, s32 *var, s32 min, s32 max)
 {
 	struct configentry *cfg = configFindOrAddEntry(key);
 	if (cfg) {
-		cfg->s32val = val;
-		snprintf(cfg->strval, CONFIG_MAX_STR, "%d", val);
+		cfg->type = CFG_S32;
+		cfg->ptr = var;
+		cfg->min_s32 = min;
+		cfg->max_s32 = max;
 	}
 }
 
-void configSetFloat(const char *key, f32 val)
+void configRegisterFloat(const char *key, f32 *var, f32 min, f32 max)
 {
 	struct configentry *cfg = configFindOrAddEntry(key);
 	if (cfg) {
-		cfg->f32val = val;
-		snprintf(cfg->strval, CONFIG_MAX_STR, "%f", val);
+		cfg->type = CFG_F32;
+		cfg->ptr = var;
+		cfg->min_f32 = min;
+		cfg->max_f32 = max;
 	}
 }
 
-void configSetString(const char *key, const char *val)
+void configRegisterString(const char *key, char *var, u32 maxstr)
 {
 	struct configentry *cfg = configFindOrAddEntry(key);
 	if (cfg) {
-		strncpy(cfg->strval, val, CONFIG_MAX_STR);
+		cfg->type = CFG_STR;
+		cfg->ptr = var;
+		cfg->max_str = maxstr;
 	}
 }
 
-void configSetFromString(const char *key, const char *val)
-{
-	struct configentry *cfg = configFindOrAddEntry(key);
-	if (cfg) {
-		strncpy(cfg->strval, val, CONFIG_MAX_STR);
-		cfg->f32val = atof(val);
-		cfg->s32val = atoi(val);
-	}
-}
-
-s32 configGetInt(const char *key, s32 defval)
+static void configSetFromString(const char *key, const char *val)
 {
 	struct configentry *cfg = configFindEntry(key);
-	if (cfg) {
-		return cfg->s32val;
-	}
+	if (!cfg) return;
 
-	cfg = configAddEntry(key);
-	if (cfg) {
-		cfg->s32val = defval;
-		snprintf(cfg->strval, CONFIG_MAX_STR, "%d", defval);
+	s32 tmp_s32;
+	f32 tmp_f32;
+	switch (cfg->type) {
+		case CFG_S32:
+			tmp_s32 = atoi(val);
+			if (cfg->min_s32 < cfg->max_s32) {
+				tmp_f32 = configClampInt(tmp_s32, cfg->min_s32, cfg->max_s32);
+			}
+			*(s32 *)cfg->ptr = tmp_s32;
+			break;
+		case CFG_F32:
+			tmp_f32 = atof(val);
+			if (cfg->min_f32 < cfg->max_f32) {
+				tmp_f32 = configClampFloat(tmp_f32, cfg->min_f32, cfg->max_f32);
+			}
+			*(f32 *)cfg->ptr = tmp_f32;
+			break;
+		case CFG_STR:
+			strncpy(cfg->ptr, val, cfg->max_str ? cfg->max_str - 1 : 4096);
+			break;
+		default:
+			break;
 	}
-
-	return defval;
 }
 
-f32 configGetFloat(const char *key, f32 defval)
+static void configSaveEntry(struct configentry *cfg, FILE *f)
 {
-	struct configentry *cfg = configFindEntry(key);
-	if (cfg) {
-		return cfg->f32val;
+	switch (cfg->type) {
+		case CFG_S32:
+			if (cfg->min_s32 < cfg->max_s32) {
+				*(s32 *)cfg->ptr = configClampInt(*(s32 *)cfg->ptr, cfg->min_s32, cfg->max_s32);
+			}
+			fprintf(f, "%s=%d\n", cfg->key + cfg->seclen + 1, *(s32 *)cfg->ptr);
+			break;
+		case CFG_F32:
+			if (cfg->min_f32 < cfg->max_f32) {
+				*(f32 *)cfg->ptr = configClampFloat(*(f32 *)cfg->ptr, cfg->min_f32, cfg->max_f32);
+			}
+			fprintf(f, "%s=%f\n", cfg->key + cfg->seclen + 1, *(f32 *)cfg->ptr);
+			break;
+		case CFG_STR:
+			fprintf(f, "%s=%s\n", cfg->key + cfg->seclen + 1, (char *)cfg->ptr);
+			break;
+		default:
+			break;
 	}
-
-	cfg = configAddEntry(key);
-	if (cfg) {
-		cfg->f32val = defval;
-		snprintf(cfg->strval, CONFIG_MAX_STR, "%f", defval);
-	}
-
-	return defval;
-}
-
-const char *configGetString(const char *key, const char *defval)
-{
-	struct configentry *cfg = configFindEntry(key);
-	if (cfg) {
-		return cfg->strval;
-	}
-
-	cfg = configAddEntry(key);
-	if (cfg) {
-		strncpy(cfg->strval, defval, CONFIG_MAX_STR);
-	}
-
-	return defval;
-}
-
-s32 configGetIntClamped(const char *key, s32 defval, s32 minval, s32 maxval)
-{
-	const s32 ret = configGetInt(key, defval);
-	return (ret < minval) ? minval : ((ret > maxval) ? maxval : ret);
-}
-
-f32 configGetFloatClamped(const char *key, f32 defval, f32 minval, f32 maxval)
-{
-	const f32 ret = configGetFloat(key, defval);
-	return (ret < minval) ? minval : ((ret > maxval) ? maxval : ret);
-}
-
-static s32 configCmp(const struct configentry *a, const struct configentry *b) {
-	char tmpa[CONFIG_MAX_SECNAME + 1];
-	char tmpb[CONFIG_MAX_SECNAME + 1];
-	configGetSection(tmpa, a);
-	configGetSection(tmpb, b);
-
-	// compare section names first
-	const s32 seccmp = strncmp(tmpa, tmpb, CONFIG_MAX_SECNAME);
-	if (seccmp) {
-		return seccmp;
-	}
-
-	// same section; sort keys by first letter
-	return a->key[a->seclen + 1] - b->key[b->seclen + 1];
 }
 
 s32 configSave(const char *fname)
@@ -185,9 +181,6 @@ s32 configSave(const char *fname)
 	if (!f) {
 		return 0;
 	}
-
-	// sort the config so that the sections appear in order
-	qsort(settings, numSettings, sizeof(*settings), (void *)configCmp);
 
 	char tmpSec[CONFIG_MAX_SECNAME + 1] = { 0 };
 	char curSec[CONFIG_MAX_SECNAME + 1] = { 0 };
@@ -201,7 +194,7 @@ s32 configSave(const char *fname)
 			fprintf(f, "\n[%s]\n", tmpSec);
 			strncpy(curSec, tmpSec, CONFIG_MAX_SECNAME);
 		}
-		fprintf(f, "%s=%s\n", cfg->key + cfg->seclen + 1, cfg->strval);
+		configSaveEntry(cfg, f);
 	}
 
 	fsFileClose(f);

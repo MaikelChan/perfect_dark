@@ -196,6 +196,8 @@ void osContGetReadData(OSContPad *pad)
 		pad->button = 0;
 		pad->stick_x = 0;
 		pad->stick_y = 0;
+		pad->rstick_x = 0;
+		pad->rstick_y = 0;
 		if (inputReadController(i, pad) < 0) {
 			pad->errnum = CONT_NO_RESPONSE_ERROR;
 		} else {

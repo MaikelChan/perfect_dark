@@ -13031,6 +13031,27 @@ struct tvcmd {
 	u32 arg2;
 };
 
+#ifndef PLATFORM_N64
+
+static inline void tvscreenWrapTexCoord(s32 *s0, s32 *s1, s32 *s2, s32 *s3)
+{
+	// wrap all 4 corners at once so we don't get funny stretching
+	// not sure how this was working on the N64
+	if (*s0 > 0x7FFF || *s1 > 0x7FFF || *s2 > 0x7FFF || *s3 > 0x7FFF) {
+		*s0 -= 0x7FFF;
+		*s1 -= 0x7FFF;
+		*s2 -= 0x7FFF;
+		*s3 -= 0x7FFF;
+	} else if (*s0 < -0x8000 || *s1 < -0x8000 || *s2 < -0x8000 || *s3 < -0x8000) {
+		*s0 += 0x8000;
+		*s1 += 0x8000;
+		*s2 += 0x8000;
+		*s3 += 0x8000;
+	}
+}
+
+#endif
+
 Gfx *tvscreenRender(struct model *model, struct modelnode *node, struct tvscreen *screen, Gfx *gdl, s32 arg4, s32 arg5)
 {
 	if (node && (node->type & 0xff) == MODELNODETYPE_DL) {
@@ -13286,6 +13307,7 @@ Gfx *tvscreenRender(struct model *model, struct modelnode *node, struct tvscreen
 				f16 *= f22;
 			}
 
+#ifdef PLATFORM_N64
 			vertices[0].s = tconfig->width * (screen->xmid + f20) * 32.0f;
 			vertices[0].t = tconfig->height * (screen->ymid + f24) * 32.0f;
 			vertices[1].s = tconfig->width * (screen->xmid - f14) * 32.0f;
@@ -13294,6 +13316,26 @@ Gfx *tvscreenRender(struct model *model, struct modelnode *node, struct tvscreen
 			vertices[2].t = tconfig->height * (screen->ymid - f24) * 32.0f;
 			vertices[3].s = tconfig->width * (screen->xmid + f14) * 32.0f;
 			vertices[3].t = tconfig->height * (screen->ymid - f16) * 32.0f;
+#else
+			s32 s0 = tconfig->width * (screen->xmid + f20) * 32.0f;
+			s32 t0 = tconfig->height * (screen->ymid + f24) * 32.0f;
+			s32 s1 = tconfig->width * (screen->xmid - f14) * 32.0f;
+			s32 t1 = tconfig->height * (screen->ymid + f16) * 32.0f;
+			s32 s2 = tconfig->width * (screen->xmid - f20) * 32.0f;
+			s32 t2 = tconfig->height * (screen->ymid - f24) * 32.0f;
+			s32 s3 = tconfig->width * (screen->xmid + f14) * 32.0f;
+			s32 t3 = tconfig->height * (screen->ymid - f16) * 32.0f;
+			tvscreenWrapTexCoord(&s0, &s1, &s2, &s3);
+			tvscreenWrapTexCoord(&t0, &t1, &t2, &t3);
+			vertices[0].s = s0;
+			vertices[0].t = t0;
+			vertices[1].s = s1;
+			vertices[1].t = t1;
+			vertices[2].s = s2;
+			vertices[2].t = t2;
+			vertices[3].s = s3;
+			vertices[3].t = t3;
+#endif
 		}
 
 		colours[0].r = screen->red;

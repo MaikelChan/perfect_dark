@@ -26,16 +26,21 @@ void joyReadData(void);
 void joysHandleRetrace(void);
 void joy00014810(bool value);
 s32 joyGetNumSamples(void);
+s32 joyGetRStickXOnSample(s32 samplenum, s8 contpadnum);
+s32 joyGetRStickYOnSample(s32 samplenum, s8 contpadnum);
 s32 joyGetStickXOnSample(s32 samplenum, s8 contpadnum);
 s32 joyGetStickYOnSample(s32 samplenum, s8 contpadnum);
 s32 joyGetStickYOnSampleIndex(s32 samplenum, s8 contpadnum);
-u16 joyGetButtonsOnSample(s32 samplenum, s8 contpadnum, u16 mask);
-u16 joyGetButtonsPressedOnSample(s32 samplenum, s8 contpadnum, u16 mask);
-s32 joyCountButtonsOnSpecificSamples(u32 *arg0, s8 contpadnum, u16 mask);
+s32 joyGetRStickYOnSampleIndex(s32 samplenum, s8 contpadnum);
+u32 joyGetButtonsOnSample(s32 samplenum, s8 contpadnum, u32 mask);
+u32 joyGetButtonsPressedOnSample(s32 samplenum, s8 contpadnum, u32 mask);
+s32 joyCountButtonsOnSpecificSamples(u32 *arg0, s8 contpadnum, u32 mask);
 s8 joyGetStickX(s8 contpadnum);
 s8 joyGetStickY(s8 contpadnum);
-u16 joyGetButtons(s8 contpadnum, u16 mask);
-u16 joyGetButtonsPressedThisFrame(s8 contpadnum, u16 mask);
+s8 joyGetRStickX(s8 contpadnum);
+s8 joyGetRStickY(s8 contpadnum);
+u32 joyGetButtons(s8 contpadnum, u32 mask);
+u32 joyGetButtonsPressedThisFrame(s8 contpadnum, u32 mask);
 bool joyIsCyclicPollingEnabled(void);
 
 #if VERSION >= VERSION_NTSC_1_0

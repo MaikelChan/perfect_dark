@@ -345,8 +345,8 @@ void amgrFrame(void)
 		info->frameSamples = 184;
 		var8005cf94 = 2;
 	} else {
-		// have space in audio queue, render 2 naudio frames this frame
-		info->frameSamples = 368;
+		// have space in audio queue, render 2 naudio frames this frame (and 1 extra on PAL)
+		info->frameSamples = 368 + PAL * 184;
 
 		if (var8005cf94 != 0) {
 			var8005cf94--;

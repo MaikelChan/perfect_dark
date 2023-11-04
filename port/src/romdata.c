@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdarg.h>
 #include <string.h>
 #include <ctype.h>
 #include <PR/ultratypes.h>
@@ -25,21 +26,23 @@
 
 #define ROMDATA_ROM_NAME "pd." VERSION_ROMID ".z64"
 #define ROMDATA_ROM_SIZE 33554432
-#define ROMDATA_ROM_HASH // TODO
 
 #if VERSION == VERSION_NTSC_FINAL
 #define ROMDATA_ROM_TITLE "Perfect Dark"
 #define ROMDATA_ROM_ID "NPDE"
+#define ROMDATA_ROM_DESC "NTSC v1.1"
 #define ROMDATA_FILES_OFS 0x28080
 #define ROMDATA_DATA_OFS 0x39850
 #elif VERSION == VERSION_PAL_FINAL
 #define ROMDATA_ROM_TITLE "Perfect Dark"
 #define ROMDATA_ROM_ID "NPDP"
+#define ROMDATA_ROM_DESC "PAL"
 #define ROMDATA_FILES_OFS 0x28910
 #define ROMDATA_DATA_OFS 0x39850
 #elif VERSION == VERSION_JPN_FINAL
 #define ROMDATA_ROM_TITLE "PERFECT DARK"
 #define ROMDATA_ROM_ID "NPDJ"
+#define ROMDATA_ROM_DESC "JPN"
 #define ROMDATA_FILES_OFS 0x28800
 #define ROMDATA_DATA_OFS 0x39850
 #else
@@ -151,6 +154,19 @@ static preprocessfunc filePreprocFuncs[] = {
 	/* LOADTYPE_GUN   */ preprocessGunFile,
 };
 
+static inline void romdataWrongRomError(const char *fmt, ...)
+{
+	char reason[1024];
+	reason[0] = '\0';
+
+	va_list args;
+	va_start(args, fmt);
+	vsnprintf(reason, sizeof(reason), fmt, args);
+	va_end(args);
+
+	sysFatalError("Wrong ROM file.\n%s\nEnsure that you have the correct " ROMDATA_ROM_DESC " ROM in z64 format.", reason);
+}
+
 static inline void romdataLoadRom(void)
 {
 	sysLogPrintf(LOG_NOTE, "ROM file: %s", romName);
@@ -161,27 +177,29 @@ static inline void romdataLoadRom(void)
 		sysFatalError("Could not open ROM file %s.\nEnsure that it is in the %s directory.", romName, fsFullPath(""));
 	}
 
+	// zips are not guaranteed to start with PK, but might as well at least try
+	if (g_RomFileSize > 2 && (!memcmp(g_RomFile, "PK", 2) || !memcmp(g_RomFile, "Rar", 3) || !memcmp(g_RomFile, "7z", 2))) {
+		romdataWrongRomError("Your ROM is in an archive file. Please extract it.");
+	}
+
 	if (g_RomFileSize != ROMDATA_ROM_SIZE) {
-		sysFatalError("Wrong ROM file size.\nExpected: %u\nGot: %u", ROMDATA_ROM_SIZE, g_RomFileSize);
+		romdataWrongRomError("ROM size does not match: expected: %u, got: %u.", ROMDATA_ROM_SIZE, g_RomFileSize);
 	}
 
 	if (memcmp(g_RomFile + 0x3b, ROMDATA_ROM_ID, 4) || memcmp(g_RomFile + 0x20, ROMDATA_ROM_TITLE, sizeof(ROMDATA_ROM_TITLE) - 1)) {
-		sysFatalError("Wrong ROM file.\nEnsure that it is the correct NTSC v1.1 ROM in z64 format.");
+		romdataWrongRomError("ROM header does not match.");
 	}
 
 	// inflate the compressed data segment since that's where some useful stuff is
 
 	u8 *zipped = g_RomFile + ROMDATA_DATA_OFS;
-	if (!zipped) {
-		sysFatalError("Data segment not found.");
-	}
 	if (!rzipIs1173(zipped)) {
-		sysFatalError("Data segment is not 1173-compressed.");
+		romdataWrongRomError("Data segment is not 1173-compressed.");
 	}
 
 	const u32 dataSegLen = ((u32)zipped[2] << 16) | ((u32)zipped[3] << 8) | (u32)zipped[4];
 	if (dataSegLen < ROMDATA_FILES_OFS) {
-		sysFatalError("Data segment too small (%u), need at least %u.", dataSegLen, ROMDATA_FILES_OFS);
+		romdataWrongRomError("Data segment too small (%u), need at least %u.", dataSegLen, ROMDATA_FILES_OFS);
 	}
 
 	u8 *dataSeg = sysMemAlloc(dataSegLen);
@@ -291,7 +309,7 @@ static inline void romdataInitFiles(void)
 	if (!g_RomFile) {
 		// no ROM; try to load the file name list from disk
 		if (!romdataLoadExternalFileList()) {
-			sysFatalError("No ROM or external file for filename table.");
+			sysFatalError("No ROM file or external filename table found.");
 		}
 		return;
 	}

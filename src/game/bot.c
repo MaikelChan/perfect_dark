@@ -88,6 +88,10 @@ void botReset(struct chrdata *chr, u8 respawning)
 			chrSetShield(chr, 0);
 			chr->cmnum = 0;
 			chr->cmnum2 = 0;
+#ifndef PLATFORM_N64
+			chr->blurdrugamount = 0;
+			chr->poisoncounter = 0;
+#endif
 
 #if VERSION >= VERSION_NTSC_1_0
 			bgunFreeFireslot(chr->fireslots[0]);

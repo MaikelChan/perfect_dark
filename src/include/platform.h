@@ -49,7 +49,7 @@
 
 // byteswap macros
 
-#ifdef __GNUC__
+#if defined(__GNUC__) || defined(__clang__)
 	#define PD_BSWAP16(x) __builtin_bswap16(x)
 	#define PD_BSWAP32(x) __builtin_bswap32(x)
 	#define PD_BSWAP64(x) __builtin_bswap64(x)
@@ -80,6 +80,13 @@
 #else
 	#define PD_BEPTR(x) PD_BE32(x)
 	#define PD_LEPTR(x) PD_LE32(x)
+#endif
+
+// module constructor function attribute
+#if defined(__GNUC__) || defined(__clang__)
+	#define PD_CONSTRUCTOR __attribute__((constructor))
+#else
+	#error "Implement PD_CONSTRUCTOR macro for your compiler."
 #endif
 
 #endif

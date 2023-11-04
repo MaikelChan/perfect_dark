@@ -310,6 +310,9 @@ void crashInit(void)
 
 void crashShutdown(void)
 {
+	if (!g_CrashEnabled) {
+		return;
+	}
 #ifdef PLATFORM_WIN32
 	if (prevExFilter) {
 		SetUnhandledExceptionFilter(prevExFilter);

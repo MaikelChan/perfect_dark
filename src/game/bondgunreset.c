@@ -7,6 +7,9 @@
 #include "lib/memp.h"
 #include "data.h"
 #include "types.h"
+#ifndef PLATFORM_N64
+#include "game/player.h"
+#endif
 
 extern u32 g_BgunGunMemBaseSize4Mb2P;
 

@@ -307,10 +307,17 @@ Gfx *skyRender(Gfx *gdl)
 
 	if (&tl3dpos);
 
+#ifdef PLATFORM_N64
 	skyGetWorldPosFromScreenPos(0.0f, 0.0f, &tl3dpos);
 	skyGetWorldPosFromScreenPos(camGetScreenWidth() - 0.1f, 0.0f, &tr3dpos);
 	skyGetWorldPosFromScreenPos(0.0f, camGetScreenHeight() - 0.1f, &bl3dpos);
 	skyGetWorldPosFromScreenPos(camGetScreenWidth() - 0.1f, camGetScreenHeight() - 0.1f, &br3dpos);
+#else
+	skyGetWorldPosFromScreenPos(-4.0f, -4.0f, &tl3dpos);
+	skyGetWorldPosFromScreenPos(camGetScreenWidth() + 4.0f, -4.0f, &tr3dpos);
+	skyGetWorldPosFromScreenPos(-4.0f, camGetScreenHeight() + 4.0f, &bl3dpos);
+	skyGetWorldPosFromScreenPos(camGetScreenWidth() + 4.0f, camGetScreenHeight() + 4.0f, &br3dpos);
+#endif
 
 	tlcornerissky = skyIsScreenCornerInSky(&tl3dpos, &sp644, &sp58c);
 	trcornerissky = skyIsScreenCornerInSky(&tr3dpos, &sp638, &sp588);

@@ -45,9 +45,7 @@ struct Framebuffer {
 
 static std::map<pair<uint64_t, uint32_t>, struct ShaderProgram> shader_program_pool;
 static GLuint opengl_vbo;
-#ifdef __APPLE__
 static GLuint opengl_vao;
-#endif
 static bool current_depth_mask;
 
 static uint32_t frame_count;
@@ -58,6 +56,8 @@ static float current_noise_scale;
 static FilteringMode current_filter_mode = FILTER_LINEAR;
 
 static GLenum gl_mirror_clamp = GL_MIRROR_CLAMP_TO_EDGE;
+
+static bool gl_core_profile = false;
 
 static int gfx_opengl_get_max_texture_size() {
     GLint max_texture_size;
@@ -921,7 +921,9 @@ static void gfx_opengl_init(void) {
         // maybe replace this with sysFatalError, though the GLSL compiler will cause that later anyway
     }
 
-    if (!gfx_opengl_supports_framebuffers()) {
+    if (!gfx_framebuffers_enabled) {
+        sysLogPrintf(LOG_WARNING, "GL: framebuffer effects disabled by user");
+    } else if (!gfx_opengl_supports_framebuffers()) {
         sysLogPrintf(LOG_WARNING, "GL: GL_ARB_framebuffer_object unsupported, framebuffer effects disabled");
         gfx_framebuffers_enabled = false;
     }
@@ -931,13 +933,23 @@ static void gfx_opengl_init(void) {
         gl_mirror_clamp = GL_MIRRORED_REPEAT;
     }
 
+    if ((GLVersion.major == 3 && GLVersion.minor >= 2) || GLVersion.major > 3) {
+        // check if we're using core profile, which is more strict
+        int val = 0;
+        SDL_GL_GetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, &val);
+        gl_core_profile = (val == SDL_GL_CONTEXT_PROFILE_CORE);
+    }
+
     glGenBuffers(1, &opengl_vbo);
     glBindBuffer(GL_ARRAY_BUFFER, opengl_vbo);
 
-#ifdef __APPLE__
-    glGenVertexArrays(1, &opengl_vao);
-    glBindVertexArray(opengl_vao);
-#endif
+    if (gl_core_profile) {
+        // warn user that funny things can happen
+        sysLogPrintf(LOG_WARNING, "GL: using core profile, watch out for errors");
+        // core will explode if we don't use a VAO for our VBO
+        glGenVertexArrays(1, &opengl_vao);
+        glBindVertexArray(opengl_vao);
+    }
 
     if (GLAD_GL_ARB_depth_clamp) {
         glEnable(GL_DEPTH_CLAMP);
@@ -1100,7 +1112,7 @@ void gfx_opengl_select_texture_fb(int fb_id) {
     glBindTexture(GL_TEXTURE_2D, framebuffers[fb_id].clrbuf);
 }
 
-void gfx_opengl_copy_framebuffer(int fb_dst, int fb_src, int left, int top) {
+void gfx_opengl_copy_framebuffer(int fb_dst, int fb_src, int left, int top, bool flip_y, bool use_back) {
     if (!gfx_framebuffers_enabled || fb_dst >= (int)framebuffers.size() || fb_src >= (int)framebuffers.size()) {
         return;
     }
@@ -1129,15 +1141,21 @@ void gfx_opengl_copy_framebuffer(int fb_dst, int fb_src, int left, int top) {
         srcY1 = src.height;
     }
 
-    if (fb_src == 0) {
-        // flip the dst rect to mirror the image vertically
-        std::swap(dstY0, dstY1);
-    }
-
     glDisable(GL_SCISSOR_TEST);
 
     glBindFramebuffer(GL_READ_FRAMEBUFFER, src.fbo);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, dst.fbo);
+
+    if (flip_y) {
+        // flip the dst rect to mirror the image vertically
+        std::swap(dstY0, dstY1);
+    }
+
+    if (fb_src == 0) {
+        glReadBuffer(use_back ? GL_BACK : GL_FRONT);
+    } else {
+        glReadBuffer(GL_COLOR_ATTACHMENT0);
+    }
 
     glBlitFramebuffer(srcX0, srcY0, srcX1, srcY1, dstX0, dstY0, dstX1, dstY1, GL_COLOR_BUFFER_BIT, GL_NEAREST);
 

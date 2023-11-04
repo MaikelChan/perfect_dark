@@ -416,6 +416,12 @@ Gfx *htbRenderHud(Gfx *gdl)
 		sprintf(text, "%d:%02d", mins, secs);
 #endif
 
+#ifndef PLATFORM_N64
+		if (PLAYERCOUNT() == 1) {
+			gSPSetExtraGeometryModeEXT(gdl++, G_ASPECT_CENTER_EXT);
+		}
+#endif
+
 		gdl = text0f153628(gdl);
 		textMeasure(&textheight, &textwidth, text, g_CharsHandelGothicXs, g_FontHandelGothicXs, 0);
 
@@ -432,6 +438,10 @@ Gfx *htbRenderHud(Gfx *gdl)
 #endif
 
 		gdl = text0f153780(gdl);
+
+#ifndef PLATFORM_N64
+		gSPClearExtraGeometryModeEXT(gdl++, G_ASPECT_MODE_EXT);
+#endif
 	}
 
 	return gdl;

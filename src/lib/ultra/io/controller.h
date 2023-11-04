@@ -19,7 +19,7 @@ typedef struct
 	/* 0x1 */ u8 txsize;
 	/* 0x2 */ u8 rxsize;
 	/* 0x3 */ u8 cmd;
-	/* 0x4 */ u16 button;
+	/* 0x4 */ u32 button;
 	/* 0x6 */ s8 stick_x;
 	/* 0x7 */ s8 stick_y;
 } __OSContReadFormat;

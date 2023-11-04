@@ -6,6 +6,7 @@
 
 void bwalkInit(void);
 void bwalkSetSwayTarget(s32 value);
+void bwalkSetSwayTargetf(f32 value);
 void bwalkAdjustCrouchPos(s32 value);
 void bwalk0f0c3b38(struct coord *param_1, struct defaultobj *obj);
 s32 bwalkTryMoveUpwards(f32 amount);
