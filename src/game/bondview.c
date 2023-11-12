@@ -307,12 +307,12 @@ Gfx *bviewDrawMotionBlur(Gfx *gdl, u32 colour, u32 alpha)
 		somefloat += 1.0f / fyyy;
 	}
 #else
-	gDPSetFramebufferTextureEXT(gdl++, 0, 0, 0, g_PrevFrameFb);
+	gDPSetFramebufferTextureEXT(gdl++, 0, 0, 0, g_BlurFb);
 	gSPImageRectangleEXT(gdl++,
 		viewleft << 2, viewtop << 2, viewleft, viewtop,
 		(viewleft + viewwidth) << 2, (viewtop + viewheight) << 2, viewleft + viewwidth, viewtop + viewheight,
 		0, videoGetNativeWidth(), videoGetNativeHeight());
-		g_PrevFrameCapTimer = 0;
+	g_BlurFbCapTimer = 0;
 #endif
 
 	return gdl;
@@ -545,12 +545,12 @@ Gfx *bviewDrawZoomBlur(Gfx *gdl, u32 colour, s32 alpha, f32 arg3, f32 arg4)
 	const s32 top = ycenter - halfh;
 	const s32 right = xcenter + halfw;
 	const s32 bottom = ycenter + halfh;
-	gDPSetFramebufferTextureEXT(gdl++, 0, 0, 0, g_PrevFrameFb);
+	gDPSetFramebufferTextureEXT(gdl++, 0, 0, 0, g_BlurFb);
 	gSPImageRectangleEXT(gdl++,
 		left << 2, top << 2, viewleft, viewtop,
 		right << 2, bottom << 2, viewleft + viewwidth, viewtop + viewheight,
 		0, videoGetNativeWidth(), videoGetNativeHeight());
-	g_PrevFrameCapTimer = 0;
+	g_BlurFbCapTimer = 0;
 #endif
 
 	return gdl;

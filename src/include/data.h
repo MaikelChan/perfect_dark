@@ -543,7 +543,8 @@ extern s32 g_HudCenter;
 extern u32 g_HudAlignModeL;
 extern u32 g_HudAlignModeR;
 extern s32 g_PrevFrameFb;
-extern s32 g_PrevFrameCapTimer;
+extern s32 g_BlurFb;
+extern s32 g_BlurFbCapTimer;
 
 #define PLAYER_EXTCFG() g_PlayerExtCfg[g_Vars.currentplayerstats->mpindex & 3]
 #define PLAYER_DEFAULT_FOV (PLAYER_EXTCFG().fovy)

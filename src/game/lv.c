@@ -2050,7 +2050,7 @@ void lvTick(void)
 		g_Vars.lvupdate240 = 0;
 
 		for (j = 0; j < PLAYERCOUNT(); j++) {
-			g_Vars.players[j]->joybutinhibit = 0xefffffff;
+			g_Vars.players[j]->joybutinhibit = 0xffffefff;
 		}
 	} else {
 		s32 slowmo = lvGetSlowMotionType();

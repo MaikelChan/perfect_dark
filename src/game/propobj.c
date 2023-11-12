@@ -9002,6 +9002,12 @@ void autogunInitMatrices(struct prop *prop, Mtxf *mtx)
 
 void autogunTickShoot(struct prop *autogunprop)
 {
+#ifndef PLATFORM_N64
+	// HACK: fire every other tick at 60+ fps and every tick at <60 fps
+	if (g_Vars.lvupdate240 <= TICKS(4) && (g_Vars.lvframe60 & 1)) {
+		return;
+	}
+#endif
 	if (!lvIsPaused()) {
 		struct autogunobj *autogun = (struct autogunobj *) autogunprop->obj;
 		struct defaultobj *obj = autogunprop->obj;

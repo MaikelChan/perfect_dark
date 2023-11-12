@@ -102,7 +102,8 @@ OSScMsg g_SchedRspMsg = {OS_SC_RSP_MSG};
 bool g_SchedIsFirstTask = true;
 
 s32 g_PrevFrameFb = -1;
-s32 g_PrevFrameCapTimer = -1;
+s32 g_BlurFb = -1;
+s32 g_BlurFbCapTimer = -1;
 
 void schedSetCrashEnable1(bool enable)
 {
@@ -180,6 +181,7 @@ void osCreateScheduler(OSSched *sc, OSThread *thread, u8 mode, u32 numFields)
 	schedInitCrashLastRendered();
 
 	g_PrevFrameFb = videoCreateFramebuffer(0, 0, false, true);
+	g_BlurFb = videoCreateFramebuffer(0, 0, false, true);
 }
 
 void osScAddClient(OSSched *sc, OSScClient *c, OSMesgQueue *msgQ, bool is30fps)
@@ -385,11 +387,11 @@ void schedConsiderScreenshot(void)
 		g_MenuData.screenshottimer = 0;
 	}
 
-	if (g_PrevFrameCapTimer == 0) {
-		videoCopyFramebuffer(g_PrevFrameFb, 0, -1, -1);
-		g_PrevFrameCapTimer = -1;
-	} else if (g_PrevFrameCapTimer > 0) {
-		--g_PrevFrameCapTimer;
+	if (g_BlurFbCapTimer == 0) {
+		videoCopyFramebuffer(g_BlurFb, 0, -1, -1);
+		g_BlurFbCapTimer = -1;
+	} else if (g_BlurFbCapTimer > 0) {
+		--g_BlurFbCapTimer;
 	}
 
 	if (g_MenuData.screenshottimer >= 2) {

@@ -364,7 +364,11 @@ void amApply(s32 slot)
 							bgunEquipWeapon2(HAND_RIGHT, weaponnum);
 						}
 
-						if (bgunGetWeaponNum(HAND_LEFT) != WEAPON_NONE) {
+						// don't unequip detonator
+						// if we already have it equipped
+						if (weaponnum == WEAPON_REMOTEMINE) {
+							bgunEquipWeapon2(HAND_LEFT, weaponnum);
+						} else if (bgunGetWeaponNum(HAND_LEFT) != WEAPON_NONE) {
 							bgunEquipWeapon2(HAND_LEFT, WEAPON_NONE);
 						}
 					}

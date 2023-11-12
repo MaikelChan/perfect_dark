@@ -4811,7 +4811,9 @@ void chrDamage(struct chrdata *chr, f32 damage, struct coord *vector, struct gse
 						chrChoke(chr, choketype);
 					}
 
-					chrFlinchBody(chr);
+					if (g_Vars.currentplayer->haschrbody) {
+						chrFlinchBody(chr);
+					}
 				}
 
 				// Handle player boost

@@ -51,6 +51,9 @@ static void bgunProcessQuickDetonate(struct movedata *data, u32 c1buttons, u32 c
 		data->weaponbackoffset = 0;
 		data->weaponforwardoffset = 0;
 		data->btapcount = 0;
+		// prevent the previous slotnum
+		// from causing Jo to switch weapons
+		g_AmMenus[g_AmIndex].slotnum = 4;
 		amClose();
 		g_Vars.currentplayer->invdowntime = -2;
 		g_Vars.currentplayer->usedowntime = -2;
