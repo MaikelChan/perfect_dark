@@ -1,19 +1,31 @@
 #include <stdio.h>
 #include <SDL.h>
-#ifdef __MINGW32__
-// mingw has its nanosleep implementation in pthread.h for some reson
-#include <pthread.h>
-#else
 #include <unistd.h>
 #include <time.h>
-#endif
 
+#include "platform.h"
 #include "system.h"
 
 #include "gfx_window_manager_api.h"
 #include "gfx_screen_config.h"
 
-#define GFX_BACKEND_NAME "SDL"
+// define a way to yield the cpu when in a busy wait
+#ifdef PLATFORM_WIN32
+// winapi provides a yield macro
+#include <windows.h>
+#define DO_YIELD() YieldProcessor()
+#elif defined(PLATFORM_X86) || defined(PLATFORM_X86_64)
+// this should work even if the code is not built with SSE enabled, at least on gcc and clang,
+// but if it doesn't we'll have to use  __builtin_ia32_pause() or something
+#include <immintrin.h>
+#define DO_YIELD() _mm_pause()
+#elif defined(PLATFORM_ARM)
+// same as YieldProcessor() on ARM Windows
+#define DO_YIELD() __asm__ volatile("dmb ishst\n\tyield":::"memory")
+#else
+// fuck it
+#define DO_YIELD() do { } while (0)
+#endif
 
 static SDL_Window* wnd;
 static SDL_GLContext ctx;
@@ -27,14 +39,31 @@ static bool fullscreen_state;
 static bool is_running = true;
 static void (*on_fullscreen_changed_callback)(bool is_now_fullscreen);
 
-static uint64_t previous_time;
-
 static int target_fps = 120; // above 60 since vsync is enabled by default
-
+static uint64_t previous_time;
 static uint64_t qpc_freq;
+
+#ifdef PLATFORM_WIN32
+// on win32 we use waitable timers instead of nanosleep
+typedef HANDLE WINAPI (*CREATEWAITABLETIMEREXAFN)(LPSECURITY_ATTRIBUTES, LPCSTR, DWORD, DWORD);
+static HANDLE timer;
+static CREATEWAITABLETIMEREXAFN pfnCreateWaitableTimerExA;
+#endif
 
 #define FRAME_INTERVAL_US_NUMERATOR 1000000
 #define FRAME_INTERVAL_US_DENOMINATOR (target_fps)
+
+static inline void do_sleep(const int64_t left) {
+#ifdef PLATFORM_WIN32
+    static LARGE_INTEGER li;
+    li.QuadPart = -left;
+    SetWaitableTimer(timer, &li, 0, nullptr, nullptr, false);
+    WaitForSingleObject(timer, INFINITE);
+#else
+    const timespec spec = { 0, left * 100 };
+    nanosleep(&spec, nullptr);
+#endif
+}
 
 static void set_fullscreen(bool on, bool call_callback) {
     if (fullscreen_state == on) {
@@ -53,11 +82,6 @@ static void gfx_sdl_get_active_window_refresh_rate(uint32_t* refresh_rate) {
     SDL_DisplayMode mode;
     SDL_GetCurrentDisplayMode(display_in_use, &mode);
     *refresh_rate = mode.refresh_rate;
-}
-
-static inline void do_sleep(const uint64_t ns) {
-    const timespec spec = { 0, ns };
-    nanosleep(&spec, nullptr);
 }
 
 static void gfx_sdl_init(const char* game_name, const char* gfx_api_name, bool start_in_fullscreen, uint32_t width,
@@ -143,6 +167,20 @@ static void gfx_sdl_init(const char* game_name, const char* gfx_api_name, bool s
 
     qpc_freq = SDL_GetPerformanceFrequency();
 
+#ifdef PLATFORM_WIN32
+    // this function is only present on Vista+, so try to import it from kernel32 by hand
+    pfnCreateWaitableTimerExA = (CREATEWAITABLETIMEREXAFN)GetProcAddress(GetModuleHandleA("kernel32.dll"), "CreateWaitableTimerExA");
+    if (pfnCreateWaitableTimerExA) {
+        // function exists, try to create a hires timer
+        timer = pfnCreateWaitableTimerExA(nullptr, nullptr, CREATE_WAITABLE_TIMER_HIGH_RESOLUTION, TIMER_ALL_ACCESS);
+    }
+    if (!timer) {
+        // no function or hires timers not supported, fallback to lower resolution timer
+        sysLogPrintf(LOG_WARNING, "SDL: hires waitable timers not available");
+        timer = CreateWaitableTimerA(nullptr, false, nullptr);
+    }
+#endif
+
     set_fullscreen(start_in_fullscreen, false);
 }
 
@@ -211,10 +249,17 @@ static inline void sync_framerate_with_timer(void) {
     t = qpc_to_100ns(SDL_GetPerformanceCounter());
 
     const int64_t next = previous_time + 10 * FRAME_INTERVAL_US_NUMERATOR / FRAME_INTERVAL_US_DENOMINATOR;
-    const int64_t left = next - t;
+    int64_t left = next - t;
+    // We want to exit a bit early, so we can busy-wait the rest to never miss the deadline
+    left -= 15000UL;
     if (left > 0) {
-        do_sleep(left * 100);
+        do_sleep(left);
     }
+
+    do {
+        DO_YIELD();
+        t = qpc_to_100ns(SDL_GetPerformanceCounter());
+    } while ((int64_t)t < next);
 
     t = qpc_to_100ns(SDL_GetPerformanceCounter());
     if (left > 0 && t - next < 10000) {

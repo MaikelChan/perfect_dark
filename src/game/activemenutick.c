@@ -411,7 +411,7 @@ void amTick(void)
 
 			// Update alpha of slots so they fade in
 			if (g_AmMenus[g_AmIndex].alphafrac < 1) {
-				g_AmMenus[g_AmIndex].alphafrac += LVUPDATE60FREAL() / 30.0f;
+				g_AmMenus[g_AmIndex].alphafrac += (f32)g_Vars.lvupdate240 / (4.f * 30.0f);
 			}
 
 			if (g_AmMenus[g_AmIndex].alphafrac > 1) {
@@ -419,7 +419,7 @@ void amTick(void)
 			}
 
 			// Make selection border pulsate
-			g_AmMenus[g_AmIndex].selpulse += LVUPDATE60FREAL() / 5.0f;
+			g_AmMenus[g_AmIndex].selpulse += (f32)g_Vars.lvupdate240 / (4.f * 5.0f);
 
 			if (g_AmMenus[g_AmIndex].selpulse > 18.849555969238f) {
 				g_AmMenus[g_AmIndex].selpulse -= 18.849555969238f;

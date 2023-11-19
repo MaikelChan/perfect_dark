@@ -7671,7 +7671,12 @@ void doorTick(struct prop *doorprop)
 	}
 
 	// Update frac
+#ifdef PLATFORM_N64
 	if (door->lastcalc60 < g_Vars.lvframe60 || g_Vars.lvupdate240 == 0) {
+#else
+	// lastcalc60 actually stores lvframe240
+	if (door->lastcalc60 < g_Vars.lvframe240 || g_Vars.lvupdate240 == 0) {
+#endif
 		doorsCalcFrac(door);
 	}
 
@@ -20333,7 +20338,11 @@ void doorsCalcFrac(struct doorobj *door)
 			func0f08d460(loopdoor);
 		}
 
+#ifdef PLATFORM_N64
 		loopdoor->lastcalc60 = g_Vars.lvframe60;
+#else
+		loopdoor->lastcalc60 = g_Vars.lvframe240; // actually use the 240hz counter for higher framerates
+#endif
 		loopdoor = loopdoor->sibling;
 
 		if (loopdoor == door) {

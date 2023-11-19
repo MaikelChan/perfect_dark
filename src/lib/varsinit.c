@@ -28,7 +28,11 @@ void varsInit(void)
 	g_Vars.lostframetime60t = 0;
 	g_Vars.lostframetime240t = 0;
 	g_Vars.lvupdate240rem = 2;
+#ifdef PLATFORM_N64
 	g_Vars.mininc60 = 1;
+#else
+	g_Vars.mininc60 = g_TickRateDiv;
+#endif
 	g_Vars.roomportalrecursionlimit = 254;
 	g_Vars.diffframe240f = 4;
 	g_Vars.diffframe240freal = 4;

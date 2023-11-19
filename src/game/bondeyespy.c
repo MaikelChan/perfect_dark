@@ -922,8 +922,6 @@ void eyespyProcessInput(bool allowbuttons)
 			f32 mdx, mdy;
 			inputMouseGetScaledDelta(&mdx, &mdy);
 			if (mdx || mdy) {
-				mdx *= g_Vars.lvupdate60freal;
-				mdy *= g_Vars.lvupdate60freal;
 				if (g_Vars.currentplayerstats && !optionsGetForwardPitch(g_Vars.currentplayerstats->mpindex)) {
 					mdy = -mdy;
 				}

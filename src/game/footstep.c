@@ -177,9 +177,10 @@ void footstepCheckDefault(struct chrdata *chr)
 							chr->footstep = 2;
 						}
 					} else {
-#ifndef PLATFORM_N64 // fix spamming footsteps for 60fps port
-						if (g_Vars.lvupdate240 == LV_SLOMO_TICK_CAP) {
-							s32 roundedframe = (s32)(frame*2);
+#ifndef PLATFORM_N64
+						// fix spamming footsteps at >= 60fps
+						if (g_Vars.lvupdate240 < 4) {
+							const s32 roundedframe = (s32)(frame * (4.f / (f32)g_Vars.lvupdate240));
 							if (roundedframe == (g_FootstepAnims[i].frame1*2) && prevframe < g_FootstepAnims[i].frame1) {
 								chr->footstep = 1;
 							} else if (roundedframe == (g_FootstepAnims[i].frame2*2) && prevframe < g_FootstepAnims[i].frame2) {

@@ -494,7 +494,7 @@ void mainLoop(void)
 
 		while (g_MainChangeToStageNum < 0) {
 			const s32 cycles = osGetCount() - g_Vars.thisframestartt;
-			if (cycles >= g_Vars.mininc60 * CYCLES_PER_FRAME - CYCLES_PER_FRAME / 2) {
+			if (!g_Vars.mininc60 || (cycles >= g_Vars.mininc60 * CYCLES_PER_FRAME - CYCLES_PER_FRAME / 2)) {
 				schedStartFrame(&g_Sched);
 				mainTick();
 				schedEndFrame(&g_Sched);

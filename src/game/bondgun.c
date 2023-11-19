@@ -10918,6 +10918,7 @@ void bgunRender(Gfx **gdlptr)
 	struct modelrenderdata renderdata = {NULL, true, 3}; // 10c
 	struct player *player;
 	s32 i;
+	const u32 wnorm = mtx00016dcc(0, 300);
 
 	static bool renderhand = true; // var800702dc
 
@@ -10983,7 +10984,7 @@ void bgunRender(Gfx **gdlptr)
 				gSPLookAt(gdl++, camGetLookAt());
 			}
 
-			gSPPerspNormalize(gdl++, mtx00016dcc(0, 300));
+			gSPPerspNormalize(gdl++, wnorm);
 
 			// There is support for guns having a TV screen on them
 			// but no guns have this model part so it's not used.
@@ -11158,7 +11159,17 @@ void bgunRender(Gfx **gdlptr)
 		}
 	}
 
+#ifndef PLATFORM_N64
+	// put the casings into the same Z range as the gun
+	gSPPerspNormalize(gdl++, wnorm);
+#endif
+
 	casingsRender(&gdl);
+
+#ifndef PLATFORM_N64
+	gSPPerspNormalize(gdl++, viGetPerspScale());
+#endif
+
 	zbufSwap();
 
 	gdl = zbufConfigureRdp(gdl);

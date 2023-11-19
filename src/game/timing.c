@@ -41,12 +41,16 @@ void frametimeCalculate(void)
 
 		diffframe60 = (g_Vars.lostframetime60t + diffframet + CYCLES_PER_FRAME / 2) / CYCLES_PER_FRAME;
 		diffframe240 = (g_Vars.lostframetime240t + diffframet + CYCLES_PER_FRAME / 2 / 4) / (CYCLES_PER_FRAME / 4);
-	} while (diffframe60 < g_Vars.mininc60);
+	} while (g_Vars.mininc60 && diffframe60 < g_Vars.mininc60);
 
 	g_Vars.lostframetime60t = g_Vars.lostframetime60t + diffframet - diffframe60 * CYCLES_PER_FRAME;
 	g_Vars.lostframetime240t = g_Vars.lostframetime240t + diffframet - diffframe240 * (CYCLES_PER_FRAME / 4);
 
+#ifdef PLATFORM_N64
 	g_Vars.mininc60 = 1;
+#else
+	g_Vars.mininc60 = g_TickRateDiv;
+#endif
 
 	frametimeApply(diffframe60, diffframe240, count);
 }

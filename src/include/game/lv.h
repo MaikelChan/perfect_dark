@@ -6,10 +6,12 @@
 
 #ifdef PLATFORM_N64
 // game runs at ~30, so slomo = 1/2 of 30fps
-#define LV_SLOMO_TICK_CAP TICKS(4)
+#define LV_SLOMO_TICK_CAP 4
+#define LV_SLOMO_TICK_RATE LV_SLOMO_TICK_CAP
 #else
-// game runs at 60+, so slomo = 1/2 of 60fps
-#define LV_SLOMO_TICK_CAP TICKS(2)
+// game runs at 60+, so slomo = 1/2 of whatever framerate we're running at
+#define LV_SLOMO_TICK_CAP 1 // capping at >= 240fps would make it explode
+#define LV_SLOMO_TICK_RATE (g_Vars.lvupdate240 / 2)
 #endif
 
 u32 getVar80084040(void);

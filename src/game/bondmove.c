@@ -714,6 +714,7 @@ void bmoveProcessInput(bool allowc1x, bool allowc1y, bool allowc1buttons, bool i
 #ifndef PLATFORM_N64
 	const bool allowmlook = (g_Vars.currentplayernum == 0) && (allowc1x || allowc1y);
 	bool allowmcross = false;
+	const f32 mlookscale = g_Vars.lvupdate240 ? (4.f / (f32)g_Vars.lvupdate240) : 4.f;
 #endif
 
 	controlmode = optionsGetControlMode(g_Vars.currentplayerstats->mpindex);
@@ -2017,7 +2018,7 @@ void bmoveProcessInput(bool allowc1x, bool allowc1y, bool allowc1buttons, bool i
 				}
 
 #ifndef PLATFORM_N64
-				fVar25 += movedata.freelookdy;
+				fVar25 += movedata.freelookdy * mlookscale;
 #endif
 
 				g_Vars.currentplayer->speedverta = -fVar25 * tmp;
@@ -2058,7 +2059,7 @@ void bmoveProcessInput(bool allowc1x, bool allowc1y, bool allowc1buttons, bool i
 		}
 
 #ifndef PLATFORM_N64
-		fVar25 += movedata.freelookdx;
+		fVar25 += movedata.freelookdx * mlookscale;
 #endif
 
 		g_Vars.currentplayer->speedthetacontrol = fVar25 * tmp;

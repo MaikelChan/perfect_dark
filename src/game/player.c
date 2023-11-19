@@ -3592,8 +3592,8 @@ void playerTick(bool arg0)
 						if (g_Vars.currentplayerstats && !optionsGetForwardPitch(g_Vars.currentplayerstats->mpindex)) {
 							mdy = -mdy;
 						}
-						sp178 += mdy * LVUPDATE60FREAL() * 0.00025f;
-						sp174 -= mdx * LVUPDATE60FREAL() * 0.00025f;
+						sp178 += mdy * 0.00025f;
+						sp174 -= mdx * 0.00025f;
 					}
 				}
 #endif

@@ -2059,7 +2059,7 @@ void lvTick(void)
 		if (slowmo == SLOWMOTION_ON) {
 			if (g_Vars.speedpillon == false || g_Vars.in_cutscene) {
 				if (g_Vars.lvupdate240 > LV_SLOMO_TICK_CAP) {
-					g_Vars.lvupdate240 = LV_SLOMO_TICK_CAP;
+					g_Vars.lvupdate240 = LV_SLOMO_TICK_RATE;
 				}
 			}
 		} else if (slowmo == SLOWMOTION_SMART) {
@@ -2090,7 +2090,7 @@ void lvTick(void)
 
 					if (foundnearbychr) {
 						if (g_Vars.lvupdate240 > LV_SLOMO_TICK_CAP) {
-							g_Vars.lvupdate240 = LV_SLOMO_TICK_CAP;
+							g_Vars.lvupdate240 = LV_SLOMO_TICK_RATE;
 						}
 					} else {
 						if (g_Vars.lvupdate240 > TICKS(8)) {
@@ -2099,7 +2099,7 @@ void lvTick(void)
 					}
 				} else {
 					if (g_Vars.lvupdate240 > LV_SLOMO_TICK_CAP) {
-						g_Vars.lvupdate240 = LV_SLOMO_TICK_CAP;
+						g_Vars.lvupdate240 = LV_SLOMO_TICK_RATE;
 					}
 				}
 			}
@@ -2107,7 +2107,7 @@ void lvTick(void)
 			// Slow motion settings are off
 			if (g_Vars.speedpillon && g_Vars.in_cutscene == false) {
 				if (g_Vars.lvupdate240 > LV_SLOMO_TICK_CAP) {
-					g_Vars.lvupdate240 = LV_SLOMO_TICK_CAP;
+					g_Vars.lvupdate240 = LV_SLOMO_TICK_RATE;
 				}
 			}
 		}
