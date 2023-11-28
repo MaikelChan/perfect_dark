@@ -160,13 +160,19 @@ void gamefileLoadDefaults(struct gamefile *file)
 	optionsSetMusicVolume(0x7f80);
 #endif
 	sndSetSoundMode(SOUNDMODE_STEREO);
-#ifdef PLATFORM_N64
 	optionsSetControlMode(player1, CONTROLMODE_11);
-#else
-	optionsSetControlMode(player1, CONTROLMODE_12);
-#endif
 	optionsSetControlMode(player2, CONTROLMODE_11);
 	pakClearAllBitflags(file->flags);
+
+#ifndef PLATFORM_N64
+	// override with PC controls if enabled in the config
+	if (g_PlayerExtCfg[0].extcontrols) {
+		optionsSetControlMode(player1, CONTROLMODE_PC);
+	}
+	if (g_PlayerExtCfg[1].extcontrols) {
+		optionsSetControlMode(player2, CONTROLMODE_PC);
+	}
+#endif
 
 #ifdef PLATFORM_N64
 	pakSetBitflag(GAMEFILEFLAG_P1_FORWARDPITCH, file->flags, false);
@@ -332,6 +338,16 @@ s32 gamefileLoad(s32 device)
 			sndSetSoundMode(savebufferReadBits(&buffer, 2));
 			optionsSetControlMode(p1index, savebufferReadBits(&buffer, 3));
 			optionsSetControlMode(p2index, savebufferReadBits(&buffer, 3));
+
+#ifndef PLATFORM_N64
+			// override with PC controls if enabled in the config
+			if (g_PlayerExtCfg[0].extcontrols) {
+				optionsSetControlMode(p1index, CONTROLMODE_PC);
+			}
+			if (g_PlayerExtCfg[1].extcontrols) {
+				optionsSetControlMode(p2index, CONTROLMODE_PC);
+			}
+#endif
 
 			for (i = 0; i < ARRAYCOUNT(g_GameFile.flags); i++) {
 				g_GameFile.flags[i] = savebufferReadBits(&buffer, 8);
@@ -499,8 +515,16 @@ s32 gamefileSave(s32 device, s32 fileid, u16 deviceserial)
 		value = g_SoundMode;
 		savebufferOr(&buffer, value, 2);
 
+#ifdef PLATFORM_N64
 		savebufferOr(&buffer, optionsGetControlMode(p1index), 3);
 		savebufferOr(&buffer, optionsGetControlMode(p2index), 3);
+#else
+		// PC control mode is enabled in the .ini to avoid changing the save structure
+		s32 controlmode = optionsGetControlMode(p1index);
+		savebufferOr(&buffer, ((controlmode == CONTROLMODE_PC) ? CONTROLMODE_11 : controlmode), 3);
+		controlmode = optionsGetControlMode(p2index);
+		savebufferOr(&buffer, ((controlmode == CONTROLMODE_PC) ? CONTROLMODE_11 : controlmode), 3);
+#endif
 
 		for (i = 0; i < ARRAYCOUNT(g_GameFile.flags); i++) {
 			savebufferOr(&buffer, g_GameFile.flags[i], 8);
@@ -567,3 +591,59 @@ void gamefileGetOverview(char *arg0, char *name, u8 *stage, u8 *difficulty, u32 
 
 	*difficulty = savebufferReadBits(&buffer, 2);
 }
+
+#ifndef PLATFORM_N64
+
+// Unlock all of the unlockables.
+// These hacks are taken from the original debug mode.
+void gamefileUnlockEverything(void)
+{
+	s32 i, j;
+
+	// unlock all challenges
+	for (i = 0; i < ARRAYCOUNT(g_MpChallenges); ++i) {
+		for (j = 0; j < MAX_PLAYERS; ++j) {
+			g_MpChallenges[i].completions[j] = 0xff;
+		}
+	}
+	challengeDetermineUnlockedFeatures();
+
+	// complete all missions in coop
+	for (i = 0; i < ARRAYCOUNT(g_GameFile.coopcompletions); ++i) {
+		g_GameFile.coopcompletions[i] = 0x1fffff;
+	}
+
+	// unlock all guns
+	for (i = 0; i < ARRAYCOUNT(g_GameFile.weaponsfound); ++i) {
+		g_GameFile.weaponsfound[i] = 0xff;
+	}
+
+	// unlock all campaign levels
+	for (i = 0; i < NUM_SOLOSTAGES; i++) {
+		for (j = 0; j < 3; j++) {
+			g_GameFile.besttimes[i][j] = 7;
+		}
+	}
+
+	// unlock alternate intro sequence
+	g_AltTitleUnlocked = true;
+
+	// unlock all firing range challenges
+	for (i = 0; i < ARRAYCOUNT(g_GameFile.firingrangescores); ++i) {
+		g_GameFile.firingrangescores[i] = 0xff;
+	}
+
+	// unlock all device training
+	gamefileSetFlag(GAMEFILEFLAG_CI_CLOAK_DONE);
+	gamefileSetFlag(GAMEFILEFLAG_CI_DISGUISE_DONE);
+	gamefileSetFlag(GAMEFILEFLAG_CI_XRAY_DONE);
+	gamefileSetFlag(GAMEFILEFLAG_CI_IR_DONE);
+	gamefileSetFlag(GAMEFILEFLAG_CI_RTRACKER_DONE);
+	gamefileSetFlag(GAMEFILEFLAG_CI_DOORDECODER_DONE);
+	gamefileSetFlag(GAMEFILEFLAG_CI_NIGHTVISION_DONE);
+	gamefileSetFlag(GAMEFILEFLAG_CI_CAMSPY_DONE);
+	gamefileSetFlag(GAMEFILEFLAG_CI_ECMMINE_DONE);
+	gamefileSetFlag(GAMEFILEFLAG_CI_UPLINK_DONE);
+}
+
+#endif
