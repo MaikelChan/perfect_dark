@@ -190,6 +190,10 @@ char var800700bc[][10] = {
 	{ 'x','x','x'                         }, // "xxx"
 };
 
+#ifndef PLATFORM_N64
+s32 g_BgunGeMuzzleFlashes = false;
+#endif
+
 #if !MATCHING || VERSION >= VERSION_NTSC_1_0
 void bgunRumble(s32 handnum, s32 weaponnum)
 {
@@ -1911,7 +1915,17 @@ void bgun0f09a6f8(struct handweaponinfo *info, s32 handnum, struct hand *hand, s
 	if (func->flags & FUNCFLAG_NOMUZZLEFLASH) {
 		hand->flashon = false;
 	} else {
+#ifdef PLATFORM_N64
 		hand->flashon = true;
+#else
+		if (g_BgunGeMuzzleFlashes) {
+			if (func->type == INVENTORYFUNCTYPE_SHOOT_SINGLE || (hand->shotstotake & 1)) {
+				hand->flashon = true;
+			}
+		} else {
+			hand->flashon = true;
+		}
+#endif
 	}
 
 	bgunStartSlide(handnum);
@@ -12783,7 +12797,7 @@ Gfx *bgunDrawHud(Gfx *gdl)
 	gdl = text0f153628(gdl);
 
 #ifndef PLATFORM_N64
-	if (playercount < 2) {
+	if (playercount < 2 || (playercount == 2 && optionsGetScreenSplit() == SCREENSPLIT_HORIZONTAL)) {
 		gSPExtraGeometryModeEXT(gdl++, G_ASPECT_MODE_EXT, g_HudAlignModeR);
 	}
 #endif
@@ -13037,7 +13051,7 @@ Gfx *bgunDrawHud(Gfx *gdl)
 		}
 
 #ifndef PLATFORM_N64
-		if (playercount < 2) {
+		if (playercount < 2 || (playercount == 2 && optionsGetScreenSplit() == SCREENSPLIT_HORIZONTAL)) {
 			gSPExtraGeometryModeEXT(gdl++, G_ASPECT_MODE_EXT, g_HudAlignModeL);
 		}
 #endif
@@ -13077,7 +13091,7 @@ Gfx *bgunDrawHud(Gfx *gdl)
 		}
 
 #ifndef PLATFORM_N64
-		if (playercount < 2) {
+		if (playercount < 2 || (playercount == 2 && optionsGetScreenSplit() == SCREENSPLIT_HORIZONTAL)) {
 			gSPExtraGeometryModeEXT(gdl++, G_ASPECT_MODE_EXT, g_HudAlignModeR);
 		}
 #endif

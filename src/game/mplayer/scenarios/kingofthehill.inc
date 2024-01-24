@@ -79,6 +79,16 @@ struct menuitem g_KohOptionsMenuItems[] = {
 		MPOPTION_NOAUTOAIM,
 		menuhandlerMpCheckboxOption,
 	},
+#ifndef PLATFORM_N64
+	{
+		MENUITEMTYPE_CHECKBOX,
+		0,
+		MENUITEMFLAG_LOCKABLEMINOR | MENUITEMFLAG_LITERAL_TEXT,
+		(uintptr_t)"Spawn With Weapon",
+		MPOPTION_SPAWNWITHWEAPON,
+		menuhandlerMpCheckboxOption,
+	},
+#endif
 	{
 		MENUITEMTYPE_CHECKBOX,
 		0,
@@ -583,7 +593,8 @@ Gfx *kohRenderHud(Gfx *gdl)
 		}
 
 #ifndef PLATFORM_N64
-		if (PLAYERCOUNT() == 1) {
+		const s32 playercount = PLAYERCOUNT();
+		if (playercount < 2 || (playercount == 2 && optionsGetScreenSplit() == SCREENSPLIT_HORIZONTAL)) {
 			gSPSetExtraGeometryModeEXT(gdl++, G_ASPECT_CENTER_EXT);
 		}
 #endif

@@ -312,6 +312,11 @@ Gfx *radarRender(Gfx *gdl)
 		} else if (optionsGetScreenSplit() != SCREENSPLIT_VERTICAL && playernum == 1) {
 			g_RadarY -= 8;
 		}
+#ifndef PLATFORM_N64
+		if (optionsGetScreenSplit() == SCREENSPLIT_HORIZONTAL) {
+			gSPExtraGeometryModeEXT(gdl++, G_ASPECT_MODE_EXT, g_HudAlignModeR);
+		}
+#endif
 	} else if (playercount >= 3) {
 		if (playernum >= 2) {
 			g_RadarY -= 8;

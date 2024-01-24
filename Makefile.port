@@ -116,14 +116,23 @@ else
 endif
 
 VERSION_HASH := $(shell git rev-parse --short HEAD)
+VERSION_BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
 VERSION_TARGET := $(TARGET_PLATFORM)
 VERSION_ROMID := $(ROMID)
+
+ifeq ($(VERSION_BRANCH),)
+  VERSION_BRANCH := port-custom
+endif
+ifeq ($(VERSION_BRANCH),HEAD)
+  VERSION_BRANCH := port-custom
+endif
 
 DEFINES := \
   VERSION=$(VERSION) \
   VERSION_HASH=\"$(VERSION_HASH)\" \
   VERSION_TARGET=\"$(VERSION_TARGET)\" \
   VERSION_ROMID=\"$(VERSION_ROMID)\" \
+  VERSION_BRANCH=\"$(VERSION_BRANCH)\" \
   MATCHING=0 \
   PAL=$(IS_PAL) \
   PIRACYCHECKS=0 \
@@ -296,6 +305,9 @@ $(G_DIR)/tiles/%.h: $(A_DIR)/tiles/%.json
 
 $(BIN): $(O_FILES)
 	$(LD) $(COMMON_CFLAGS) $(OPT_LVL) -o $(BIN) $^ $(LDFLAGS)
+ifneq ($(CV2PDB),)
+	$(CV2PDB) $(BIN)
+endif
 
 $(B_DIR)/%.o: %.c
 	@mkdir -p $(dir $@)
@@ -316,4 +328,4 @@ allclean:
 	rm -rf src/generated
 
 codeclean:
-	find $(B_DIR)/game $(B_DIR)/inflate $(B_DIR)/lib $(B_DIR)/port -name '*.o' -delete
+	find $(B_DIR)/ -name '*.o' -delete

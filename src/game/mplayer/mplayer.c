@@ -122,6 +122,8 @@ struct mpweapon g_MpWeapons[NUM_MPWEAPONS] = {
 	.crosshairsway = 1.f, \
 	.crouchmode = CROUCHMODE_TOGGLE_ANALOG, \
 	.extcontrols = true, \
+	.crosshaircolour = 0x00ff0028, \
+	.crosshairsize = 2, \
 }
 
 struct extplayerconfig g_PlayerExtCfg[MAX_PLAYERS] = { 
@@ -2717,6 +2719,11 @@ struct mptrack g_MpTracks[] = {
 	/*0x27*/ { MUSIC_SKEDARRUINS,     120, L_MISC_163, SOLOSTAGEINDEX_SKEDARRUINS }, // "Skedar Ruins"
 	/*0x28*/ { MUSIC_SKEDARRUINS_X,   120, L_MISC_164, SOLOSTAGEINDEX_SKEDARRUINS }, // "Skedar Ruins X"
 	/*0x29*/ { MUSIC_CREDITS,         120, L_MISC_165, SOLOSTAGEINDEX_SKEDARRUINS }, // "End Credits"
+#if VERSION < VERSION_PAL_BETA
+	/*0x2a*/ { MUSIC_SKEDARRUINS_KING,120, L_MISC_261, SOLOSTAGEINDEX_SKEDARRUINS }, // "Skedar Warrior" (Skedar Leader)
+#else
+	/*0x2a*/ { MUSIC_SKEDARRUINS_KING,120, L_MISC_041, SOLOSTAGEINDEX_SKEDARRUINS }, // "E R R O R" (can't find a good approximation for Skedar Leader)
+#endif
 };
 
 bool mpIsTrackUnlocked(s32 tracknum)

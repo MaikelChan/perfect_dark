@@ -36,6 +36,7 @@ static bool vsync_enabled = true;
 static int window_width = DESIRED_SCREEN_WIDTH;
 static int window_height = DESIRED_SCREEN_HEIGHT;
 static bool fullscreen_state;
+static bool maximized_state;
 static bool is_running = true;
 static void (*on_fullscreen_changed_callback)(bool is_now_fullscreen);
 
@@ -76,6 +77,18 @@ static void set_fullscreen(bool on, bool call_callback) {
     }
 }
 
+static void set_maximize_window(bool on) {
+	if (maximized_state == on) {
+		return;
+	}
+	maximized_state = on;
+	if (on) {
+		SDL_MaximizeWindow(wnd);
+	} else {
+		SDL_RestoreWindow (wnd);
+	}
+}
+
 static void gfx_sdl_get_active_window_refresh_rate(uint32_t* refresh_rate) {
     int display_in_use = SDL_GetWindowDisplayIndex(wnd);
 
@@ -84,7 +97,7 @@ static void gfx_sdl_get_active_window_refresh_rate(uint32_t* refresh_rate) {
     *refresh_rate = mode.refresh_rate;
 }
 
-static void gfx_sdl_init(const char* game_name, const char* gfx_api_name, bool start_in_fullscreen, uint32_t width,
+static void gfx_sdl_init(const char* game_name, const char* gfx_api_name, bool start_in_fullscreen, bool start_maximized, uint32_t width,
                          uint32_t height, int32_t posX, int32_t posY) {
     window_width = width;
     window_height = height;
@@ -111,6 +124,7 @@ static void gfx_sdl_init(const char* game_name, const char* gfx_api_name, bool s
     }
 
     const Uint32 flags = SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_OPENGL;
+
     wnd = SDL_CreateWindow(title, posX, posY, window_width, window_height, flags);
     if (!wnd) {
         sysFatalError("Could not open SDL window:\n%s", SDL_GetError());
@@ -181,6 +195,7 @@ static void gfx_sdl_init(const char* game_name, const char* gfx_api_name, bool s
     }
 #endif
 
+    set_maximize_window(start_maximized);
     set_fullscreen(start_in_fullscreen, false);
 }
 
@@ -194,6 +209,10 @@ static void gfx_sdl_set_fullscreen_changed_callback(void (*on_fullscreen_changed
 
 static void gfx_sdl_set_fullscreen(bool enable) {
     set_fullscreen(enable, true);
+}
+
+static void gfx_sdl_set_maximize_window(bool enable) {
+    set_maximize_window(enable);
 }
 
 static void gfx_sdl_set_cursor_visibility(bool visible) {
@@ -291,7 +310,7 @@ static void gfx_sdl_set_target_fps(int fps) {
 }
 
 static bool gfx_sdl_can_disable_vsync(void) {
-    return false;
+    return true;
 }
 
 static void *gfx_sdl_get_window_handle(void) {
@@ -302,9 +321,13 @@ static void gfx_sdl_set_window_title(const char *title) {
     SDL_SetWindowTitle(wnd, title);
 }
 
-static void gfx_sdl_set_swap_interval(int interval) {
-    SDL_GL_SetSwapInterval(interval);
-    vsync_enabled = (interval != 0);
+static bool gfx_sdl_set_swap_interval(int interval) {
+    const bool success = SDL_GL_SetSwapInterval(interval) >= 0;
+    vsync_enabled = success && (interval != 0);
+    if (!success) {
+        sysLogPrintf(LOG_WARNING, "SDL: failed to set vsync %d: %s", interval, SDL_GetError());
+    }
+    return success;
 }
 
 struct GfxWindowManagerAPI gfx_sdl = { 
@@ -312,6 +335,7 @@ struct GfxWindowManagerAPI gfx_sdl = {
     gfx_sdl_close,
     gfx_sdl_set_fullscreen_changed_callback,
     gfx_sdl_set_fullscreen,
+    gfx_sdl_set_maximize_window,
     gfx_sdl_get_active_window_refresh_rate,
     gfx_sdl_set_cursor_visibility,
     gfx_sdl_get_dimensions,

@@ -217,6 +217,7 @@ struct GfxDimensions gfx_current_dimensions;
 static struct GfxDimensions gfx_prev_dimensions;
 struct XYWidthHeight gfx_current_game_window_viewport;
 struct XYWidthHeight gfx_current_native_viewport;
+float gfx_current_native_aspect = 4.f / 3.f;
 bool gfx_framebuffers_enabled = true;
 
 static bool game_renders_to_framebuffer;
@@ -1288,6 +1289,7 @@ static void gfx_sp_tri1(uint8_t vtx1_idx, uint8_t vtx2_idx, uint8_t vtx3_idx, bo
         (rdp.other_mode_l & (3 << 24)) == (G_BL_0 << 24) && (rdp.other_mode_l & (3 << 20)) == (G_BL_CLR_MEM << 20);
     bool use_grayscale = rdp.grayscale;
     bool use_modulate = use_alpha && (rsp.extra_geometry_mode & G_MODULATE_EXT) != 0;
+    bool use_blur = (rdp.other_mode_h & (3U << G_MDSFT_TEXTFILT)) == G_TF_BLUR_EXT;
 
     if (texture_edge) {
         use_alpha = true;
@@ -1316,6 +1318,9 @@ static void gfx_sp_tri1(uint8_t vtx1_idx, uint8_t vtx2_idx, uint8_t vtx3_idx, bo
     }
     if (use_grayscale) {
         cc_options |= (uint64_t)SHADER_OPT_GRAYSCALE;
+    }
+    if (use_blur) {
+        cc_options |= (uint64_t)SHADER_OPT_BLUR;
     }
 
     // If we are not using alpha, clear the alpha components of the combiner as they have no effect
@@ -1648,12 +1653,12 @@ static void gfx_sp_geometry_mode(uint32_t clear, uint32_t set) {
 static inline void gfx_update_aspect_mode(void) {
     const uint32_t side = rsp.aspect_mode & G_ASPECT_CENTER_EXT;
 
-    rsp.aspect_scale = rsp.aspect_mode ? (4.f / 3.f) : gfx_current_window_dimensions.aspect_ratio;
+    rsp.aspect_scale = rsp.aspect_mode ? gfx_current_native_aspect : gfx_current_window_dimensions.aspect_ratio;
 
     if (side == G_ASPECT_LEFT_EXT) {
-        rsp.aspect_ofs = 1.f - 3.f * gfx_current_dimensions.aspect_ratio / 4.f;
+        rsp.aspect_ofs = 1.f - gfx_current_dimensions.aspect_ratio / gfx_current_native_aspect;
     } else if (side == G_ASPECT_RIGHT_EXT) {
-        rsp.aspect_ofs = 3.f * gfx_current_dimensions.aspect_ratio / 4.f - 1.f;
+        rsp.aspect_ofs = gfx_current_dimensions.aspect_ratio / gfx_current_native_aspect - 1.f;
     } else {
         rsp.aspect_ofs = 0.f;
     }
@@ -1681,8 +1686,8 @@ static void gfx_adjust_viewport_or_scissor(XYWidthHeight* area, bool preserve_as
         area->y = SCREEN_HEIGHT - area->y;
         area->y *= RATIO_Y;
         if (preserve_aspect) {
-            // preserve 4:3
-            const float ratio = (4.f / 3.f) / gfx_current_dimensions.aspect_ratio;
+            // preserve native aspect ratio
+            const float ratio = gfx_current_native_aspect / gfx_current_dimensions.aspect_ratio;
             const float midx = gfx_current_dimensions.width * 0.5f;
             area->x = midx + (area->x - midx) * ratio;
             area->x += rsp.aspect_ofs * gfx_current_dimensions.width * 0.5f;
@@ -2694,10 +2699,10 @@ extern "C" void gfx_get_dimensions(uint32_t* width, uint32_t* height, int32_t* p
 }
 
 extern "C" void gfx_init(struct GfxWindowManagerAPI* wapi, struct GfxRenderingAPI* rapi, const char* game_name,
-              bool start_in_fullscreen, uint32_t width, uint32_t height, uint32_t posX, uint32_t posY) {
+              bool start_in_fullscreen, bool start_maximized, uint32_t width, uint32_t height, uint32_t posX, uint32_t posY) {
     gfx_wapi = wapi;
     gfx_rapi = rapi;
-    gfx_wapi->init(game_name, rapi->get_name(), start_in_fullscreen, width, height, posX, posY);
+    gfx_wapi->init(game_name, rapi->get_name(), start_in_fullscreen, start_maximized, width, height, posX, posY);
     gfx_rapi->init();
     gfx_rapi->update_framebuffer_parameters(0, width, height, 1, false, true, true, true);
     gfx_current_dimensions.internal_mul = 1;

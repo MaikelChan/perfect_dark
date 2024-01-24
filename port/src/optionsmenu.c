@@ -652,6 +652,19 @@ static MenuItemHandlerResult menuhandlerFullScreen(s32 operation, struct menuite
 	return 0;
 }
 
+static MenuItemHandlerResult menuhandlerMaximizeWindow(s32 operation, struct menuitem *item, union handlerdata *data)
+{
+	switch (operation) {
+	case MENUOP_GET:
+		return videoGetMaximizeWindow();
+	case MENUOP_SET:
+		videoSetMaximizeWindow(data->checkbox.value);
+		break;
+	}
+
+	return 0;
+}
+
 static MenuItemHandlerResult menuhandlerTexFilter(s32 operation, struct menuitem *item, union handlerdata *data)
 {
 	switch (operation) {
@@ -672,6 +685,19 @@ static MenuItemHandlerResult menuhandlerTexFilter2D(s32 operation, struct menuit
 		return videoGetTextureFilter2D();
 	case MENUOP_SET:
 		videoSetTextureFilter2D(data->checkbox.value);
+		break;
+	}
+
+	return 0;
+}
+
+static MenuItemHandlerResult menuhandlerGeMuzzleFlashes(s32 operation, struct menuitem *item, union handlerdata *data)
+{
+	switch (operation) {
+	case MENUOP_GET:
+		return g_BgunGeMuzzleFlashes;
+	case MENUOP_SET:
+		g_BgunGeMuzzleFlashes = data->checkbox.value;
 		break;
 	}
 
@@ -739,6 +765,14 @@ struct menuitem g_ExtendedVideoMenuItems[] = {
 		MENUITEMTYPE_CHECKBOX,
 		0,
 		MENUITEMFLAG_LITERAL_TEXT,
+		(uintptr_t)"Maximize Window",
+		0,
+		menuhandlerMaximizeWindow,
+	},
+	{
+		MENUITEMTYPE_CHECKBOX,
+		0,
+		MENUITEMFLAG_LITERAL_TEXT,
 		(uintptr_t)"Texture Filtering",
 		0,
 		menuhandlerTexFilter,
@@ -750,6 +784,14 @@ struct menuitem g_ExtendedVideoMenuItems[] = {
 		(uintptr_t)"GUI Texture Filtering",
 		0,
 		menuhandlerTexFilter2D,
+	},
+	{
+		MENUITEMTYPE_CHECKBOX,
+		0,
+		MENUITEMFLAG_LITERAL_TEXT,
+		(uintptr_t)"GE64-style Muzzle Flashes",
+		0,
+		menuhandlerGeMuzzleFlashes,
 	},
 	{
 		MENUITEMTYPE_DROPDOWN,
@@ -903,6 +945,178 @@ static MenuItemHandlerResult menuhandlerCrosshairSway(s32 operation, struct menu
 	return 0;
 }
 
+static MenuItemHandlerResult menuhandlerCrosshairR(s32 operation, struct menuitem* item, union handlerdata* data)
+{
+	u32 newColor;
+
+	switch (operation) {
+	case MENUOP_GETSLIDER:
+		data->slider.value = (g_PlayerExtCfg[g_ExtMenuPlayer].crosshaircolour >> 24) & 0xFF;
+		break;
+
+	case MENUOP_SET:
+		newColor = (g_PlayerExtCfg[g_ExtMenuPlayer].crosshaircolour & 0xFFFFFF) | data->slider.value << 24;
+		g_PlayerExtCfg[g_ExtMenuPlayer].crosshaircolour = newColor;
+		break;
+	}
+
+	return 0;
+}
+
+static MenuItemHandlerResult menuhandlerCrosshairG(s32 operation, struct menuitem* item, union handlerdata* data)
+{
+	u32 newColor;
+
+	switch (operation) {
+	case MENUOP_GETSLIDER:
+		data->slider.value = (g_PlayerExtCfg[g_ExtMenuPlayer].crosshaircolour >> 16) & 0xFF;
+		break;
+
+	case MENUOP_SET:
+		newColor = (g_PlayerExtCfg[g_ExtMenuPlayer].crosshaircolour & 0xFF00FFFF) | data->slider.value << 16;
+		g_PlayerExtCfg[g_ExtMenuPlayer].crosshaircolour = newColor;
+		break;
+	}
+
+	return 0;
+}
+
+static MenuItemHandlerResult menuhandlerCrosshairB(s32 operation, struct menuitem* item, union handlerdata* data)
+{
+	u32 newColor;
+
+	switch (operation) {
+	case MENUOP_GETSLIDER:
+		data->slider.value = (g_PlayerExtCfg[g_ExtMenuPlayer].crosshaircolour >> 8) & 0xFF;
+		break;
+
+	case MENUOP_SET:
+		newColor = (g_PlayerExtCfg[g_ExtMenuPlayer].crosshaircolour & 0xFFFF00FF) | data->slider.value << 8;
+		g_PlayerExtCfg[g_ExtMenuPlayer].crosshaircolour = newColor;
+		break;
+	}
+
+	return 0;
+}
+
+static MenuItemHandlerResult menuhandlerCrosshairA(s32 operation, struct menuitem* item, union handlerdata* data)
+{
+	u32 newColor;
+
+	switch (operation) {
+	case MENUOP_GETSLIDER:
+		data->slider.value = g_PlayerExtCfg[g_ExtMenuPlayer].crosshaircolour & 0xFF;
+		break;
+
+	case MENUOP_SET:
+		newColor = (g_PlayerExtCfg[g_ExtMenuPlayer].crosshaircolour & 0xFFFFFF00) | data->slider.value;
+		g_PlayerExtCfg[g_ExtMenuPlayer].crosshaircolour = newColor;
+		break;
+	}
+
+	return 0;
+}
+
+static MenuItemHandlerResult menuhandlerCrosshairColorPreview(s32 operation, struct menuitem* item, union handlerdata* data)
+{
+	if (operation == MENUOP_GETCOLOUR) {
+		data->label.colour1 = g_PlayerExtCfg[g_ExtMenuPlayer].crosshaircolour;
+	}
+
+	return 0;
+}
+
+static MenuItemHandlerResult menuhandlerCrosshairSize(s32 operation, struct menuitem *item, union handlerdata *data)
+{
+	switch (operation) {
+	case MENUOP_GETSLIDER:
+		data->slider.value = g_PlayerExtCfg[g_ExtMenuPlayer].crosshairsize;
+		break;
+	case MENUOP_SET:
+		g_PlayerExtCfg[g_ExtMenuPlayer].crosshairsize = data->slider.value;
+		break;
+	}
+
+	return 0;
+}
+
+struct menuitem g_ExtendedGameCrosshairColourMenuItems[] = {
+	{
+		MENUITEMTYPE_SLIDER,
+		0,
+		MENUITEMFLAG_LITERAL_TEXT | MENUITEMFLAG_SLIDER_WIDE,
+		(uintptr_t)"Red",
+		255,
+		menuhandlerCrosshairR,
+	},
+	{
+		MENUITEMTYPE_SLIDER,
+		0,
+		MENUITEMFLAG_LITERAL_TEXT | MENUITEMFLAG_SLIDER_WIDE,
+		(uintptr_t)"Green",
+		255,
+		menuhandlerCrosshairG,
+	},
+	{
+		MENUITEMTYPE_SLIDER,
+		0,
+		MENUITEMFLAG_LITERAL_TEXT | MENUITEMFLAG_SLIDER_WIDE,
+		(uintptr_t)"Blue",
+		255,
+		menuhandlerCrosshairB,
+	},
+	{
+		MENUITEMTYPE_SLIDER,
+		0,
+		MENUITEMFLAG_LITERAL_TEXT | MENUITEMFLAG_SLIDER_WIDE,
+		(uintptr_t)"Alpha",
+		255,
+		menuhandlerCrosshairA,
+	},
+	{
+		MENUITEMTYPE_SEPARATOR,
+		0,
+		0,
+		0,
+		0,
+		NULL,
+	},
+	{
+		MENUITEMTYPE_COLORBOX,
+		0,
+		0,
+		0,
+		0,
+		menuhandlerCrosshairColorPreview,
+	},
+	{
+		MENUITEMTYPE_SEPARATOR,
+		0,
+		0,
+		0,
+		0,
+		NULL,
+	},
+	{
+		MENUITEMTYPE_SELECTABLE,
+		0,
+		MENUITEMFLAG_SELECTABLE_CLOSESDIALOG,
+		L_OPTIONS_213, // "Back"
+		0,
+		NULL,
+	},
+	{ MENUITEMTYPE_END },
+};
+
+struct menudialogdef g_ExtendedGameCrosshairColourMenuDialog = {
+	MENUDIALOGTYPE_DEFAULT,
+	(uintptr_t)"Crosshair Colour",
+	g_ExtendedGameCrosshairColourMenuItems,
+	NULL,
+	MENUDIALOGFLAG_LITERAL_TEXT,
+	NULL,
+};
+
 struct menuitem g_ExtendedGameMenuItems[] = {
 	{
 		MENUITEMTYPE_DROPDOWN,
@@ -927,6 +1141,22 @@ struct menuitem g_ExtendedGameMenuItems[] = {
 		(uintptr_t)"Crosshair Sway",
 		20,
 		menuhandlerCrosshairSway,
+	},
+	{
+		MENUITEMTYPE_SLIDER,
+		0,
+		MENUITEMFLAG_LITERAL_TEXT | MENUITEMFLAG_SLIDER_WIDE,
+		(uintptr_t)"Crosshair Size",
+		4,
+		menuhandlerCrosshairSize,
+	},
+	{
+		MENUITEMTYPE_SELECTABLE,
+		0,
+		MENUITEMFLAG_LITERAL_TEXT | MENUITEMFLAG_SELECTABLE_OPENSDIALOG,
+		(uintptr_t)"Crosshair Colour\n",
+		0,
+		(void*)&g_ExtendedGameCrosshairColourMenuDialog,
 	},
 	{
 		MENUITEMTYPE_SEPARATOR,

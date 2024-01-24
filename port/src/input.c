@@ -12,6 +12,11 @@
 #include "system.h"
 #include "fs.h"
 
+#if !SDL_VERSION_ATLEAST(2, 0, 14)
+// this was added in 2.0.14
+#define SDL_CONTROLLER_TYPE_VIRTUAL SDL_CONTROLLER_TYPE_UNKNOWN
+#endif
+
 #define CONTROLLERDB_FNAME "gamecontrollerdb.txt"
 
 #define MAX_BIND_STR 256
@@ -830,6 +835,10 @@ s32 inputRumbleSupported(s32 idx)
 void inputRumble(s32 idx, f32 strength, f32 time)
 {
 	if (idx < 0 || idx >= INPUT_MAX_CONTROLLERS || !pads[idx]) {
+		return;
+	}
+
+	if (padsCfg[idx].rumbleScale <= 0.f) {
 		return;
 	}
 

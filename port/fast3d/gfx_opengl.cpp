@@ -394,7 +394,27 @@ static struct ShaderProgram* gfx_opengl_create_and_load_new_shader(uint64_t shad
     append_line(fs_buf, &fs_len, "    return fract(sin(random) * 143758.5453);");
     append_line(fs_buf, &fs_len, "}");
 
-    if (current_filter_mode == FILTER_THREE_POINT) {
+    if (cc_features.opt_blur) {
+        // blur filter, used for menu backgrounds
+        // used to be two for loops from 0 to 4, but apparently intel drivers crashed trying to unroll it
+        append_line(fs_buf, &fs_len, R"(
+            const lowp float blurWeights[16] = float[16](
+                0.009947, 0.009641, 0.008778, 0.007509,
+                0.009641, 0.009345, 0.008508, 0.007278,
+                0.008778, 0.008508, 0.007747, 0.006626,
+                0.007509, 0.007278, 0.006626, 0.005668
+            );
+            lowp vec4 hookTexture2D(in sampler2D t, in vec2 uv, in vec2 tsize) {
+                lowp vec4 cw = vec4(0.0);
+                for (int i = 0; i < 16; ++i) {
+                    vec2 xy = vec2(float(i & 3), float(i >> 2));
+                    vec2 ofs = (vec2(-1.5) + xy) / tsize;
+                    cw += vec4(texture2D(t, uv + ofs).rgb * blurWeights[i], blurWeights[i]);
+                }
+                return vec4(cw.rgb / cw.a, 1.0);
+            })"
+        );
+    } else if (current_filter_mode == FILTER_THREE_POINT) {
 #if __APPLE__
         append_line(fs_buf, &fs_len, "#define TEX_OFFSET(off) texture(tex, texCoord - (off)/texSize)");
 #else

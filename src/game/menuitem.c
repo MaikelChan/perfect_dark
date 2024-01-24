@@ -2109,6 +2109,36 @@ Gfx *menuitemMeterRender(Gfx *gdl, struct menurendercontext *context)
 	return gdl;
 }
 
+#ifndef PLATFORM_N64
+
+// Draws a colored box which fills the background of the menu item.
+Gfx* menuitemColorBoxRender(Gfx *gdl, struct menurendercontext *context)
+{
+	u32 width = context->width;
+	u32 height = context->height;
+	u32 colour1;
+	s32 x1;
+	s32 x2;
+
+	x1 = context->x;
+	x2 = x1 + width;
+
+	union handlerdata data;
+	if (context->item->handlervoid) {
+		context->item->handlervoid(MENUOP_GETCOLOUR, context->item, &data);
+	}
+
+	colour1 = data.label.colour1;
+
+	gdl = textSetPrimColour(gdl, colour1);
+	gDPFillRectangleScaled(gdl++, x1, context->y, x2, context->y + height);
+	gdl = text0f153838(gdl);
+
+	return gdl;
+}
+
+#endif 
+
 Gfx *menuitemSelectableRender(Gfx *gdl, struct menurendercontext *context)
 {
 	u32 leftcolour;
@@ -4349,6 +4379,11 @@ Gfx *menuitemRender(Gfx *gdl, struct menurendercontext *context)
 	case MENUITEMTYPE_CAROUSEL:    return menuitemCarouselRender(gdl, context);
 	case MENUITEMTYPE_MODEL:       return menuitemModelRender(gdl, context);
 	case MENUITEMTYPE_CONTROLLER:  return menuitemControllerRender(gdl, context);
+
+#ifndef PLATFORM_N64
+	case MENUITEMTYPE_COLORBOX:    return menuitemColorBoxRender(gdl, context);
+#endif
+
 	}
 
 	return gdl;

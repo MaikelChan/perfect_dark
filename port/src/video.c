@@ -21,6 +21,7 @@ static s32 vidWidth = 640;
 static s32 vidHeight = 480;
 static s32 vidFramebuffers = true;
 static s32 vidFullscreen = false;
+static s32 vidMaximize = false;
 static s32 vidVsync = 1;
 static s32 vidMSAA = 1;
 static s32 vidFramerateLimit = 0;
@@ -39,13 +40,22 @@ s32 videoInit(void)
 	renderingAPI = &gfx_opengl_api;
 
 	gfx_current_native_viewport.width = 320;
-	gfx_current_native_viewport.height = 240;
+	gfx_current_native_viewport.height = 220;
+	gfx_current_native_aspect = 320.f / 220.f;
 	gfx_framebuffers_enabled = (bool)vidFramebuffers;
 	gfx_msaa_level = vidMSAA;
 
-	gfx_init(wmAPI, renderingAPI, "PD", vidFullscreen, vidWidth, vidHeight, 100, 100);
+	gfx_init(wmAPI, renderingAPI, "PD", vidFullscreen, vidMaximize, vidWidth, vidHeight, 100, 100);
 
-	wmAPI->set_swap_interval(vidVsync);
+	if (!wmAPI->set_swap_interval(vidVsync)) {
+		vidVsync = 0;
+	}
+
+	if (vidVsync == 0 && vidFramerateLimit == 0) {
+		// cap FPS if there's no vsync to prevent the game from exploding
+		vidFramerateLimit = VIDEO_MAX_FPS;
+	}
+
 	wmAPI->set_target_fps(vidFramerateLimit); // disabled because vsync is on
 	renderingAPI->set_texture_filter((enum FilteringMode)texFilter);
 
@@ -110,6 +120,7 @@ void videoUpdateNativeResolution(s32 w, s32 h)
 {
 	gfx_current_native_viewport.width = w;
 	gfx_current_native_viewport.height = h;
+	gfx_current_native_aspect = (float)w / (float)h;
 }
 
 s32 videoGetNativeWidth(void)
@@ -135,6 +146,11 @@ s32 videoGetHeight(void)
 s32 videoGetFullscreen(void)
 {
 	return vidFullscreen;
+}
+
+s32 videoGetMaximizeWindow(void)
+{
+	return vidMaximize;
 }
 
 f32 videoGetAspect(void)
@@ -163,6 +179,14 @@ void videoSetFullscreen(s32 fs)
 	if (fs != vidFullscreen) {
 		vidFullscreen = !!fs;
 		wmAPI->set_fullscreen(vidFullscreen);
+	}
+}
+
+void videoSetMaximizeWindow(s32 fs)
+{
+	if (fs != vidMaximize) {
+		vidMaximize = !!fs;
+		wmAPI->set_maximize(vidMaximize);
 	}
 }
 
@@ -222,11 +246,12 @@ void videoFreeCachedTexture(const void *texptr)
 PD_CONSTRUCTOR static void videoConfigInit(void)
 {
 	configRegisterInt("Video.DefaultFullscreen", &vidFullscreen, 0, 1);
+	configRegisterInt("Video.DefaultMaximize", &vidMaximize, 0, 1);
 	configRegisterInt("Video.DefaultWidth", &vidWidth, 0, 32767);
 	configRegisterInt("Video.DefaultHeight", &vidHeight, 0, 32767);
 	configRegisterInt("Video.VSync", &vidVsync, -1, 10);
 	configRegisterInt("Video.FramebufferEffects", &vidFramebuffers, 0, 1);
-	configRegisterInt("Video.FramerateLimit", &vidFramerateLimit, 0, 10000);
+	configRegisterInt("Video.FramerateLimit", &vidFramerateLimit, 0, VIDEO_MAX_FPS);
 	configRegisterInt("Video.MSAA", &vidMSAA, 1, 16);
 	configRegisterInt("Video.TextureFilter", &texFilter, 0, 2);
 	configRegisterInt("Video.TextureFilter2D", &texFilter2D, 0, 1);

@@ -5,11 +5,12 @@
 #include <stdbool.h>
 
 struct GfxWindowManagerAPI {
-    void (*init)(const char* game_name, const char* gfx_api_name, bool start_in_fullscreen, uint32_t width,
+    void (*init)(const char* game_name, const char* gfx_api_name, bool start_in_fullscreen, bool start_maximized, uint32_t width,
                  uint32_t height, int32_t posX, int32_t posY);
     void (*close)(void);
     void (*set_fullscreen_changed_callback)(void (*on_fullscreen_changed)(bool is_now_fullscreen));
     void (*set_fullscreen)(bool enable);
+    void (*set_maximize)(bool enable);
     void (*get_active_window_refresh_rate)(uint32_t* refresh_rate);
     void (*set_cursor_visibility)(bool visible);
     void (*get_dimensions)(uint32_t* width, uint32_t* height, int32_t* posX, int32_t* posY);
@@ -22,7 +23,7 @@ struct GfxWindowManagerAPI {
     bool (*can_disable_vsync)(void);
     void *(*get_window_handle)(void);
     void (*set_window_title)(const char *);
-    void (*set_swap_interval)(int);
+    bool (*set_swap_interval)(int);
 };
 
 #endif
