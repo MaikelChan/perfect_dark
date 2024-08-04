@@ -699,12 +699,42 @@ static void gfx_opengl_set_sampler_parameters(int tile, bool linear_filter, uint
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, gfx_cm_to_opengl(cmt));
 }
 
-static void gfx_opengl_set_depth_test_and_mask(bool depth_test, bool z_upd) {
-    if (depth_test || z_upd) {
+static void gfx_opengl_set_depth_mode(bool depth_test, bool depth_update, bool depth_compare, bool depth_source_prim, uint16_t zmode) {
+    if (depth_test) {
         glEnable(GL_DEPTH_TEST);
-        glDepthMask(z_upd ? GL_TRUE : GL_FALSE);
-        glDepthFunc(depth_test ? GL_LEQUAL : GL_ALWAYS);
-        current_depth_mask = z_upd;
+        glDepthMask(depth_update ? GL_TRUE : GL_FALSE);
+        current_depth_mask = depth_update;
+
+        if (depth_compare) {
+            switch (zmode) {
+                case ZMODE_INTER:
+                    glDepthFunc(GL_LEQUAL);
+                    glDisable(GL_POLYGON_OFFSET_FILL);
+                    glPolygonOffset(0, 0);
+                    break;
+
+                case ZMODE_OPA:
+                case ZMODE_XLU:
+                    if (depth_source_prim) {
+                        glDepthFunc(GL_LEQUAL);
+                    } else {
+                        glDepthFunc(GL_LESS);
+                    }
+                    glDisable(GL_POLYGON_OFFSET_FILL);
+                    glPolygonOffset(0, 0);
+                    break;
+
+                case ZMODE_DEC:
+                    glDepthFunc(GL_LEQUAL);
+                    glEnable(GL_POLYGON_OFFSET_FILL);
+                    glPolygonOffset(-2, -2);
+                    break;
+            }
+        } else {
+            glDepthFunc(GL_ALWAYS);
+            glDisable(GL_POLYGON_OFFSET_FILL);
+            glPolygonOffset(0, 0);
+        }
     } else {
         glDisable(GL_DEPTH_TEST);
     }
@@ -712,16 +742,6 @@ static void gfx_opengl_set_depth_test_and_mask(bool depth_test, bool z_upd) {
 
 static void gfx_opengl_set_depth_range(float znear, float zfar) {
     glDepthRange(znear, zfar);
-}
-
-static void gfx_opengl_set_zmode_decal(bool zmode_decal) {
-    if (zmode_decal) {
-        glPolygonOffset(-2, -2);
-        glEnable(GL_POLYGON_OFFSET_FILL);
-    } else {
-        glPolygonOffset(0, 0);
-        glDisable(GL_POLYGON_OFFSET_FILL);
-    }
 }
 
 static void gfx_opengl_set_viewport(int x, int y, int width, int height) {
@@ -1156,9 +1176,8 @@ struct GfxRenderingAPI gfx_opengl_api = {
     gfx_opengl_select_texture,
     gfx_opengl_upload_texture,
     gfx_opengl_set_sampler_parameters,
-    gfx_opengl_set_depth_test_and_mask,
+    gfx_opengl_set_depth_mode,
     gfx_opengl_set_depth_range,
-    gfx_opengl_set_zmode_decal,
     gfx_opengl_set_viewport,
     gfx_opengl_set_scissor,
     gfx_opengl_set_use_alpha,

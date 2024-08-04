@@ -197,9 +197,8 @@ static struct RDP {
 } rdp;
 
 static struct RenderingState {
-    uint8_t depth_test_and_mask; // 1: depth test, 2: depth mask
+    uint8_t depth_mode;
     float depth_zfar;
-    bool decal_mode;
     bool alpha_blend;
     bool modulate;
     struct XYWidthHeight viewport, scissor;
@@ -1240,25 +1239,24 @@ static void gfx_sp_tri1(uint8_t vtx1_idx, uint8_t vtx2_idx, uint8_t vtx3_idx, bo
         }
     }
 
-    bool depth_test = (rsp.geometry_mode & G_ZBUFFER) == G_ZBUFFER;
-    bool depth_mask = (rdp.other_mode_l & Z_UPD) == Z_UPD;
-    uint8_t depth_test_and_mask = (depth_test ? 1 : 0) | (depth_mask ? 2 : 0);
-    if (depth_test_and_mask != rendering_state.depth_test_and_mask) {
-        gfx_flush();
-        gfx_rapi->set_depth_test_and_mask(depth_test, depth_mask);
-        rendering_state.depth_test_and_mask = depth_test_and_mask;
-    }
     if (rsp.depth_zfar != rendering_state.depth_zfar) {
         gfx_flush();
         gfx_rapi->set_depth_range(0.0f, rsp.depth_zfar);
         rendering_state.depth_zfar = rsp.depth_zfar;
     }
 
-    bool zmode_decal = (rdp.other_mode_l & ZMODE_DEC) == ZMODE_DEC;
-    if (zmode_decal != rendering_state.decal_mode) {
+    bool depth_test = ((rsp.geometry_mode & G_ZBUFFER) == G_ZBUFFER || (rdp.other_mode_l & G_ZS_PRIM) == G_ZS_PRIM) &&
+                      ((rdp.other_mode_h & G_CYC_1CYCLE) == G_CYC_1CYCLE || (rdp.other_mode_h & G_CYC_2CYCLE) == G_CYC_2CYCLE);
+    bool depth_update = (rdp.other_mode_l & Z_UPD) == Z_UPD;
+    bool depth_compare = (rdp.other_mode_l & Z_CMP) == Z_CMP;
+    bool depth_source_prim = (rdp.other_mode_l & G_ZS_PRIM) == G_ZS_PRIM /* && gDP.primDepth.z == 1.0f */;
+    uint16_t zmode = rdp.other_mode_l & ZMODE_DEC;
+    uint8_t depth_mode = (depth_test ? 1 : 0) | (depth_update ? 2 : 0) | (depth_compare ? 4 : 0) | (depth_source_prim ? 8 : 0) | (zmode >> 6);
+
+    if (depth_mode != rendering_state.depth_mode) {
         gfx_flush();
-        gfx_rapi->set_zmode_decal(zmode_decal);
-        rendering_state.decal_mode = zmode_decal;
+        gfx_rapi->set_depth_mode(depth_test, depth_update, depth_compare, depth_source_prim, zmode);
+        rendering_state.depth_mode = depth_mode;
     }
 
     if (rdp.viewport_or_scissor_changed) {
