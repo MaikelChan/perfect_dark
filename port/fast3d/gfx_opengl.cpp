@@ -32,6 +32,7 @@ struct ShaderProgram {
     uint8_t num_attribs;
     GLint frame_count_location;
     GLint noise_scale_location;
+    GLint three_point_filter_locations[2];
 };
 
 struct Framebuffer {
@@ -54,6 +55,7 @@ static std::vector<Framebuffer> framebuffers;
 static size_t current_framebuffer;
 static float current_noise_scale;
 static FilteringMode current_filter_mode = FILTER_LINEAR;
+static bool current_linear_filters[2] = {false, false};
 
 static GLenum gl_mirror_clamp = GL_MIRROR_CLAMP_TO_EDGE;
 
@@ -93,6 +95,12 @@ static void gfx_opengl_set_uniforms(struct ShaderProgram* prg) {
     }
     if (prg->noise_scale_location >= 0) {
         glUniform1f(prg->noise_scale_location, current_noise_scale);
+    }
+    if (prg->three_point_filter_locations[0] >= 0) {
+        glUniform1i(prg->three_point_filter_locations[0], current_linear_filters[0]);
+    }
+    if (prg->three_point_filter_locations[1] >= 0) {
+        glUniform1i(prg->three_point_filter_locations[1], current_linear_filters[1]);
     }
 }
 
@@ -369,9 +377,13 @@ static struct ShaderProgram* gfx_opengl_create_and_load_new_shader(uint64_t shad
     }
     if (cc_features.used_textures[0]) {
         append_line(fs_buf, &fs_len, "uniform sampler2D uTex0;");
+        if (current_filter_mode == FILTER_THREE_POINT)
+            append_line(fs_buf, &fs_len, "uniform int three_point_filter0;");
     }
     if (cc_features.used_textures[1]) {
         append_line(fs_buf, &fs_len, "uniform sampler2D uTex1;");
+        if (current_filter_mode == FILTER_THREE_POINT)
+            append_line(fs_buf, &fs_len, "uniform int three_point_filter1;");
     }
 
     append_line(fs_buf, &fs_len, "uniform int frame_count;");
@@ -387,7 +399,7 @@ static struct ShaderProgram* gfx_opengl_create_and_load_new_shader(uint64_t shad
         // used to be two for loops from 0 to 4, but apparently intel drivers crashed trying to unroll it
         // used to have a const weight array, but apparently drivers for the GT620 don't like const array initializers
         append_line(fs_buf, &fs_len, R"(
-            lowp vec4 hookTexture2D(in sampler2D t, in vec2 uv, in vec2 tsize) {
+            lowp vec4 hookTexture2D(in sampler2D t, in vec2 uv, in vec2 tsize, in int three_point_filter) {
                 lowp vec4 cw = vec4(0.0);
                 for (int i = 0; i < 16; ++i) {
                     vec2 xy = vec2(float(i & 3), float(i >> 2));
@@ -411,11 +423,15 @@ static struct ShaderProgram* gfx_opengl_create_and_load_new_shader(uint64_t shad
         append_line(fs_buf, &fs_len, "    vec4 c2 = TEX_OFFSET(vec2(offset.x, offset.y - sign(offset.y)));");
         append_line(fs_buf, &fs_len, "    return c0 + abs(offset.x)*(c1-c0) + abs(offset.y)*(c2-c0);");
         append_line(fs_buf, &fs_len, "}");
-        append_line(fs_buf, &fs_len, "vec4 hookTexture2D(in sampler2D tex, in vec2 uv, in vec2 texSize) {");
-        append_line(fs_buf, &fs_len, "    return filter3point(tex, uv, texSize);");
+        append_line(fs_buf, &fs_len, "vec4 hookTexture2D(in sampler2D tex, in vec2 uv, in vec2 texSize, in int three_point_filter) {");
+#if __APPLE__
+        append_line(fs_buf, &fs_len, "    return three_point_filter == 1 ? filter3point(tex, uv, texSize) : texture(tex, uv);");
+#else
+        append_line(fs_buf, &fs_len, "    return three_point_filter == 1 ? filter3point(tex, uv, texSize) : texture2D(tex, uv);");
+#endif
         append_line(fs_buf, &fs_len, "}");
     } else {
-        append_line(fs_buf, &fs_len, "vec4 hookTexture2D(in sampler2D tex, in vec2 uv, in vec2 texSize) {");
+        append_line(fs_buf, &fs_len, "vec4 hookTexture2D(in sampler2D tex, in vec2 uv, in vec2 texSize, in int three_point_filter) {");
 #if __APPLE__
         append_line(fs_buf, &fs_len, "    return texture(tex, uv);");
 #else
@@ -461,7 +477,10 @@ static struct ShaderProgram* gfx_opengl_create_and_load_new_shader(uint64_t shad
                 }
             }
 
-            fs_len += sprintf(fs_buf + fs_len, "vec4 texVal%d = hookTexture2D(uTex%d, vTexCoordAdj%d, texSize%d);\n", i, i, i, i);
+            if (current_filter_mode == FILTER_THREE_POINT)
+                fs_len += sprintf(fs_buf + fs_len, "vec4 texVal%d = hookTexture2D(uTex%d, vTexCoordAdj%d, texSize%d, three_point_filter%d);\n", i, i, i, i, i);
+            else
+                fs_len += sprintf(fs_buf + fs_len, "vec4 texVal%d = hookTexture2D(uTex%d, vTexCoordAdj%d, texSize%d, 0);\n", i, i, i, i);
         }
     }
 
@@ -574,6 +593,9 @@ static struct ShaderProgram* gfx_opengl_create_and_load_new_shader(uint64_t shad
     glAttachShader(shader_program, fragment_shader);
     glLinkProgram(shader_program);
 
+    glDeleteShader(vertex_shader);
+    glDeleteShader(fragment_shader);
+
     size_t cnt = 0;
 
     struct ShaderProgram* prg = &shader_program_pool[make_pair(shader_id0, shader_id1)];
@@ -640,6 +662,8 @@ static struct ShaderProgram* gfx_opengl_create_and_load_new_shader(uint64_t shad
 
     prg->frame_count_location = glGetUniformLocation(shader_program, "frame_count");
     prg->noise_scale_location = glGetUniformLocation(shader_program, "noise_scale");
+    prg->three_point_filter_locations[0] = glGetUniformLocation(shader_program, "three_point_filter0");
+    prg->three_point_filter_locations[1] = glGetUniformLocation(shader_program, "three_point_filter1");
 
     gfx_opengl_load_shader(prg);
 
@@ -657,6 +681,14 @@ static void gfx_opengl_shader_get_info(struct ShaderProgram* prg, uint8_t* num_i
     used_textures[1] = prg->used_textures[1];
 }
 
+static void gfx_opengl_clear_shaders(void) {
+    glUseProgram(0);
+    for (auto& pair : shader_program_pool) {
+        glDeleteProgram(pair.second.opengl_program_id);
+    }
+    shader_program_pool.clear();
+}
+
 static GLuint gfx_opengl_new_texture(void) {
     GLuint ret;
     glGenTextures(1, &ret);
@@ -667,9 +699,11 @@ static void gfx_opengl_delete_texture(uint32_t texID) {
     glDeleteTextures(1, &texID);
 }
 
-static void gfx_opengl_select_texture(int tile, GLuint texture_id) {
+static void gfx_opengl_select_texture(int tile, GLuint texture_id, bool linear_filter) {
     glActiveTexture(GL_TEXTURE0 + tile);
     glBindTexture(GL_TEXTURE_2D, texture_id);
+
+    current_linear_filters[tile] = linear_filter;
 }
 
 static void gfx_opengl_upload_texture(const uint8_t* rgba32_buf, uint32_t width, uint32_t height) {
@@ -1065,12 +1099,23 @@ bool gfx_opengl_start_draw_to_framebuffer(int fb_id, float noise_scale) {
     }
 }
 
-void gfx_opengl_clear_framebuffer() {
+void gfx_opengl_clear_framebuffer(bool clear_color, bool clear_depth) {
     glDisable(GL_SCISSOR_TEST);
-    glDepthMask(GL_TRUE);
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glDepthMask(current_depth_mask ? GL_TRUE : GL_FALSE);
+    
+    GLbitfield mask = 0;
+    if (clear_color) {
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        mask |= GL_COLOR_BUFFER_BIT;
+    }
+    if (clear_depth) {
+        glDepthMask(GL_TRUE);
+        mask |= GL_DEPTH_BUFFER_BIT;
+    }
+    glClear(mask);
+    if (clear_depth) {
+        glDepthMask(current_depth_mask ? GL_TRUE : GL_FALSE);
+    }
+
     glEnable(GL_SCISSOR_TEST);
 }
 
@@ -1156,7 +1201,6 @@ void gfx_opengl_copy_framebuffer(int fb_dst, int fb_src, int left, int top, bool
 
 void gfx_opengl_set_texture_filter(FilteringMode mode) {
     current_filter_mode = mode;
-    gfx_texture_cache_clear();
 }
 
 FilteringMode gfx_opengl_get_texture_filter(void) {
@@ -1172,6 +1216,7 @@ struct GfxRenderingAPI gfx_opengl_api = {
     gfx_opengl_create_and_load_new_shader,
     gfx_opengl_lookup_shader,
     gfx_opengl_shader_get_info,
+    gfx_opengl_clear_shaders,
     gfx_opengl_new_texture,
     gfx_opengl_select_texture,
     gfx_opengl_upload_texture,
