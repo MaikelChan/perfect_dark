@@ -127,6 +127,8 @@ ifeq ($(VERSION_BRANCH),HEAD)
   VERSION_BRANCH := port-custom
 endif
 
+VERSION_BRANCH := $(addsuffix -maikelchan, $(VERSION_BRANCH))
+
 DEFINES := \
   VERSION=$(VERSION) \
   VERSION_HASH=\"$(VERSION_HASH)\" \
@@ -159,6 +161,10 @@ ifneq (,$(findstring windows,$(TARGET_PLATFORM)))
     TARGET_LDFLAGS += -static-libstdc++
   else
     TARGET_LDFLAGS += -lstdc++
+  endif
+
+  ifeq ($(GCC_OPT_LVL), -Og)
+    TARGET_LDFLAGS += -mconsole
   endif
 else # assume *nix
   TARGET_CFLAGS := $(shell pkg-config sdl2 --cflags-only-I)

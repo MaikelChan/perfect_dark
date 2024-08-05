@@ -9,7 +9,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/ntsc-final-port/pd.exe",
-            "args": [],
+            "args": ["--debug-gl"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}/../Build/",
             "environment": [],
