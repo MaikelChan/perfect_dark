@@ -2,15 +2,16 @@
     "configurations": [
         {
             "name": "Windows (NTSC Final)",
-            "compilerPath": "C:/msys64/mingw32/bin/i686-w64-mingw32-gcc.exe",
+            "compilerPath": "C:/msys64/mingw64/bin/cc.exe",
             "includePath": [
                 "${workspaceFolder}/include",
                 "${workspaceFolder}/include/PR",
                 "${workspaceFolder}/port/include",
                 "${workspaceFolder}/src/include",
-                "${workspaceFolder}/src/generated/ntsc-final",
-                "C:/msys64/mingw32/include",
-                "C:/msys64/mingw32/include/SDL2"
+                "${workspaceFolder}/src/lib/ultra/audio",
+                "${workspaceFolder}/build/src/generated/ntsc-final",
+                "C:/msys64/mingw64/include",
+                "C:/msys64/mingw64/include/SDL2"
             ],
             "defines": [
                 "_LANGUAGE_C",
@@ -18,11 +19,12 @@
                 "MATCHING=0",
                 "PAL=0",
                 "PIRACYCHECKS=0",
+                "PLATFORM_64BIT=1",
                 "ROM_SIZE=32",
                 "VERSION=2",
                 "VERSION_HASH=\"\"",
                 "VERSION_ROMID=\"ntsc-final\"",
-                "VERSION_TARGET=\"i686-windows\""
+                "VERSION_TARGET=\"x86_64-windows\""
             ]
         }
     ],

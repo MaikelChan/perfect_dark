@@ -2,25 +2,38 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "Clean (PC)",
+            "label": "Clean",
             "type": "shell",
-            "command": "make clean -f Makefile.port",
+            "command": "rm -rf build",
             "group": "build",
             "problemMatcher": []
         },
         {
-            "label": "Build",
+            "label": "Generate project files",
             "type": "shell",
-            "command": "make -f Makefile.port -j GCC_OPT_LVL=-O2",
+            "command": "cmake -G\"Unix Makefiles\" -Bbuild .",
             "group": "build",
             "problemMatcher": []
+        },
+        {
+            "label": "Build", // This is currently the same as (Debug), -O2 on 64bits seems still broken
+            "type": "shell",
+            "command": "cmake --build build -j --verbose -- -O",
+            "group": "build",
+            "problemMatcher": [],
+            "dependsOn": [
+                "Generate project files"
+            ]
         },
         {
             "label": "Build (Debug)",
             "type": "shell",
-            "command": "make -f Makefile.port -j GCC_OPT_LVL=-Og",
+            "command": "cmake --build build -j --verbose -- -O",
             "group": "build",
-            "problemMatcher": []
+            "problemMatcher": [],
+            "dependsOn": [
+                "Generate project files"
+            ]
         }
     ]
 }

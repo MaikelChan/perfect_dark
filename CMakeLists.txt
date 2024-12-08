@@ -121,6 +121,8 @@ if((VERSION_BRANCH STREQUAL "") OR (VERSION_BRANCH STREQUAL "HEAD"))
   set(VERSION_BRANCH "port-custom")
 endif()
 
+set(VERSION_BRANCH ${VERSION_BRANCH}-maikelchan)
+
 message(STATUS "Version: ${VERSION_ROMID}, hash ${VERSION_HASH}, branch ${VERSION_BRANCH}")
 
 configure_file("${CMAKE_SOURCE_DIR}/port/include/versioninfo.h.in" "${CMAKE_BINARY_DIR}/port/include/versioninfo.h" @ONLY)
