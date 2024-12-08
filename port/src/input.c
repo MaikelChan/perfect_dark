@@ -802,8 +802,12 @@ static inline void inputUpdateMouse(void)
 
 	mouseWheel = 0;
 
+	s32 mdx = 0;
+	s32 mdy = 0;
+	SDL_GetRelativeMouseState(&mdx, &mdy);
 	if (mouseLocked) {
-		SDL_GetRelativeMouseState(&mouseDX, &mouseDY);
+		mouseDX = mdx;
+		mouseDY = mdy;
 	} else {
 		mouseDX = mx - mouseX;
 		mouseDY = my - mouseY;
@@ -989,6 +993,13 @@ const char *inputGetConnectedControllerName(s32 id)
 	}
 
 	snprintf(fullName, sizeof(fullName), "%d: %s", jidx, name);
+
+	// replace non-ascii chars with spaces
+	for (char *p = fullName; *p; ++p) {
+		if ((u32)*p >= 0x7f) {
+			*p = ' ';
+		}
+	}
 
 	return fullName;
 }

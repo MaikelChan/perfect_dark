@@ -192,6 +192,9 @@ static struct RDP {
     bool viewport_or_scissor_changed;
     void* z_buf_address;
     void* color_image_address;
+
+    int16_t subpixel_ofs_x;
+    int16_t subpixel_ofs_y;
 } rdp;
 
 static struct RenderingState {
@@ -1573,7 +1576,7 @@ static inline void gfx_sp_tri4(Gfx *cmd) {
     uint8_t x = C1(0, 4);
     uint8_t y = C1(4, 4);
     uint8_t z = C0(0, 4);
-    
+
     if(x || y || z) {
         gfx_sp_tri1(x, y, z, false);
     }
@@ -1637,34 +1640,27 @@ static void gfx_sp_extra_geometry_mode(uint32_t clear, uint32_t set) {
 }
 
 static void gfx_adjust_viewport_or_scissor(XYWidthHeight* area, bool preserve_aspect = false) {
-    if (!fbActive) {
-        area->width *= RATIO_X;
-        area->x *= RATIO_X;
-        area->height *= RATIO_Y;
-        area->y = SCREEN_HEIGHT - area->y;
-        area->y *= RATIO_Y;
-        if (preserve_aspect) {
-            // preserve native aspect ratio
-            const float ratio = gfx_current_native_aspect / gfx_current_dimensions.aspect_ratio;
-            const float midx = gfx_current_dimensions.width * 0.5f;
-            area->x = midx + (area->x - midx) * ratio;
-            area->x += rsp.aspect_ofs * gfx_current_dimensions.width * 0.5f;
-            area->width *= ratio;
-        }
+    // HACK: assume all target framebuffers have the same aspect
+    area->width *= RATIO_X;
+    area->x *= RATIO_X;
+    area->height *= RATIO_Y;
+    area->y = SCREEN_HEIGHT - area->y;
+    area->y *= RATIO_Y;
+    if (preserve_aspect) {
+        // preserve native aspect ratio
+        const float ratio = gfx_current_native_aspect / gfx_current_dimensions.aspect_ratio;
+        const float midx = gfx_current_dimensions.width * 0.5f;
+        area->x = midx + (area->x - midx) * ratio;
+        area->x += rsp.aspect_ofs * gfx_current_dimensions.width * 0.5f;
+        area->width *= ratio;
+    }
 
-        if (!game_renders_to_framebuffer ||
-            (gfx_msaa_level > 1 && gfx_current_dimensions.width == gfx_current_game_window_viewport.width &&
-             gfx_current_dimensions.height == gfx_current_game_window_viewport.height)) {
-            area->x += gfx_current_game_window_viewport.x;
-            area->y += gfx_current_window_dimensions.height -
-                       (gfx_current_game_window_viewport.y + gfx_current_game_window_viewport.height);
-        }
-    } else {
-        area->width *= RATIO_Y;
-        area->height *= RATIO_Y;
-        area->x *= RATIO_Y;
-        area->y = active_fb->second.orig_height - area->y;
-        area->y *= RATIO_Y;
+    if (!game_renders_to_framebuffer ||
+        (gfx_msaa_level > 1 && gfx_current_dimensions.width == gfx_current_game_window_viewport.width &&
+            gfx_current_dimensions.height == gfx_current_game_window_viewport.height)) {
+        area->x += gfx_current_game_window_viewport.x;
+        area->y += gfx_current_window_dimensions.height -
+                    (gfx_current_game_window_viewport.y + gfx_current_game_window_viewport.height);
     }
 }
 
@@ -1976,6 +1972,11 @@ static void gfx_dp_set_fill_color(uint32_t packed_color) {
     rdp.fill_color.a = a * 255;
 }
 
+static void gfx_dp_set_subpixel_offset(int16_t x, int16_t y) {
+    rdp.subpixel_ofs_x = x;
+    rdp.subpixel_ofs_y = y;
+}
+
 static void gfx_draw_rectangle(int32_t ulx, int32_t uly, int32_t lrx, int32_t lry) {
     uint32_t saved_other_mode_h = rdp.other_mode_h;
     uint32_t cycle_type = (rdp.other_mode_h & (3U << G_MDSFT_CYCLETYPE));
@@ -1983,6 +1984,11 @@ static void gfx_draw_rectangle(int32_t ulx, int32_t uly, int32_t lrx, int32_t lr
     if (cycle_type == G_CYC_COPY) {
         rdp.other_mode_h = (rdp.other_mode_h & ~(3U << G_MDSFT_TEXTFILT)) | G_TF_POINT;
     }
+
+    ulx += rdp.subpixel_ofs_x;
+    lrx += rdp.subpixel_ofs_x;
+    uly += rdp.subpixel_ofs_y;
+    lry += rdp.subpixel_ofs_y;
 
     // U10.2 coordinates
     float ulxf = ulx;
@@ -2368,6 +2374,10 @@ static void gfx_run_dl(Gfx* cmd) {
                 break;
             // G_SETPRIMCOLOR, G_CCMUX_PRIMITIVE, G_ACMUX_PRIMITIVE, is used by Goddard
             // G_CCMUX_TEXEL1, LOD_FRACTION is used in Bowser room 1
+            case G_SETSUBPIXELOFFSET_EXT: {
+                gfx_dp_set_subpixel_offset(C0(0, 16), C1(0, 16));
+                break;
+            }
             case G_TEXRECT:
             case G_TEXRECTFLIP: {
                 int32_t lrx, lry, tile, ulx, uly;
@@ -2726,6 +2736,7 @@ extern "C" void gfx_resize_framebuffer(int fb, uint32_t width, uint32_t height, 
 extern "C" void gfx_set_framebuffer(int fb, float noise_scale) {
     gfx_rapi->start_draw_to_framebuffer(fb, noise_scale);
     gfx_rapi->clear_framebuffer(true, true);
+    active_fb = framebuffers.find(fb);
 }
 
 extern "C" void gfx_copy_framebuffer(int fb_dst, int fb_src, int left, int top, int use_back) {
@@ -2750,4 +2761,5 @@ extern "C" void gfx_copy_framebuffer(int fb_dst, int fb_src, int left, int top, 
 
 extern "C" void gfx_reset_framebuffer(void) {
     gfx_rapi->start_draw_to_framebuffer(0, (float)gfx_current_dimensions.height / SCREEN_HEIGHT);
+    active_fb = framebuffers.end();
 }
